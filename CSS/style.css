@@ -1,0 +1,81 @@
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: #f7f9fb; 
+}
+.form-container { 
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 10px -5px rgba(0, 0, 0, 0.04); 
+}
+.input-field { 
+    border: 1px solid #d1d5db; 
+    padding: 0.75rem; 
+    border-radius: 0.5rem; 
+    width: 100%; 
+    transition: border-color 0.2s;
+}
+.auth-button { 
+    transition: background-color 0.2s, transform 0.1s, opacity 0.2s; 
+}
+.auth-button:hover { 
+    background-color: #2563eb; 
+}
+/* Style for disabled buttons */
+.auth-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.message {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+.message.success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* --- NEW VALIDATION STYLES --- */
+
+/* Input field border colors */
+.input-field.valid {
+    border-color: #10b981; /* Green-500 */
+}
+.input-field.invalid {
+    border-color: #ef4444; /* Red-500 */
+}
+
+/* Password requirement checklist styles */
+.requirement {
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+/* Default (pending) state */
+.requirement::before {
+    content: '○';
+    margin-right: 8px;
+    color: #9ca3af; /* Gray-400 */
+}
+/* Valid state */
+.requirement.valid {
+    color: #059669; /* Green-600 */
+}
+.requirement.valid::before {
+    content: '✓';
+    color: #10b981; /* Green-500 */
+    font-weight: bold;
+}
+/* Invalid state (when actively typing and failing) */
+.requirement.invalid {
+    color: #b91c1c; /* Red-700 */
+}
+.requirement.invalid::before {
+    content: '✕';
+    color: #ef4444; /* Red-500 */
+    font-weight: bold;
+}

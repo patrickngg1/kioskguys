@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk - Register</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Link to the shared stylesheet -->
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="form-container w-full max-w-md bg-white p-8 rounded-xl">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Kiosk Sign Up</h1>
+            <a href="./login.html" class="block text-center text-sm font-medium text-blue-600 hover:text-blue-800 mb-6">Already have an account? Sign In</a>
+            
+            <!-- Container for general messages (like after successful registration) -->
+            <div id="message-container"></div>
+            
+            <form id="register-form" novalidate>
+                <!-- Full Name -->
+                <div class="mb-4">
+                    <label for="register-full-name" class="block text-sm font-medium text-gray-600 mb-1">Full Name</label>
+                    <input type="text" id="register-full-name" required class="input-field" placeholder="Jane Doe">
+                </div>
+                
+                <!-- UTA Email -->
+                <div class="mb-4">
+                    <label for="register-email" class="block text-sm font-medium text-gray-600 mb-1">UTA Email</label>
+                    <input type="email" id="register-email" required class="input-field" placeholder="netid@mavs.uta.edu">
+                    <p id="email-error" class="text-xs text-red-600 mt-1 hidden">Must be a valid @uta.edu or @mavs.uta.edu email.</p>
+                </div>
+
+                <!-- Password -->
+                <div class="mb-4">
+                    <label for="register-password" class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+                    <input type="password" id="register-password" required class="input-field" placeholder="Enter password">
+                </div>
+
+                <!-- Password Requirements Checklist -->
+                <div id="password-requirements" class="mb-6 space-y-1 text-sm text-gray-600">
+                    <p class="font-semibold">Password must contain:</p>
+                    <div id="req-length" class="requirement">At least 8 characters</div>
+                    <div id="req-uppercase" class="requirement">At least one uppercase letter (A-Z)</div>
+                    <div id="req-number" class="requirement">At least one number (0-9)</div>
+                    <div id="req-special" class="requirement">At least one special character (!@#$%^&*)</div>
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="mb-6">
+                    <label for="confirm-password" class="block text-sm font-medium text-gray-600 mb-1">Confirm Password</label>
+                    <input type="password" id="confirm-password" required class="input-field" placeholder="Confirm your password">
+                    <p id="password-match-error" class="text-xs text-red-600 mt-1 hidden">Passwords do not match.</p>
+                </div>
+
+                <button type="submit" id="register-btn" class="auth-button w-full bg-blue-600 text-white py-3 rounded-lg font-bold" disabled>
+                    Register
+                </button>
+            </form>
+        </div>
+    </div>
+    <!-- The 'type="module"' is crucial for using import/export -->
+    <script type="module" src="./js/auth.js"></script>
+</body>
+</html>
