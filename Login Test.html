@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Auth System</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for aesthetic */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .form-container {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 10px -5px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease-in-out;
+        }
+        .input-field {
+            border: 1px solid #d1d5db;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6; /* Blue 500 */
+        }
+        .auth-button {
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .auth-button:hover {
+            background-color: #2563eb;
+        }
+        .auth-button:active {
+            transform: scale(0.98);
+        }
+        .message-box {
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen flex items-center justify-center p-4">
+        <!-- Auth Container -->
+        <div id="auth-container" class="form-container w-full max-w-md bg-white p-8 rounded-xl">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Kiosk Access</h1>
+            
+            <!-- Message/Error Display -->
+            <div id="message-container" class="mb-4 message-box hidden p-3 rounded-lg text-sm font-medium"></div>
+
+            <!-- Tab Switcher -->
+            <div class="flex mb-6">
+                <button id="show-login" class="flex-1 py-3 rounded-l-lg font-semibold text-gray-700 transition" onclick="setView('login')">Sign In</button>
+                <button id="show-register" class="flex-1 py-3 rounded-r-lg font-semibold text-gray-700 transition" onclick="setView('register')">Sign Up</button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-view">
+                <form id="login-form" onsubmit="event.preventDefault(); handleLogin()">
+                    <div class="mb-4">
+                        <label for="login-email" class="block text-sm font-medium text-gray-600 mb-1">Email (uta.edu or mavs.uta.edu)</label>
+                        <input type="email" id="login-email" required class="input-field" placeholder="email@uta.edu">
+                    </div>
+                    <div class="mb-6">
+                        <label for="login-password" class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+                        <input type="password" id="login-password" required class="input-field" placeholder="Enter your password">
+                    </div>
+                    <button type="submit" id="login-btn" class="auth-button w-full bg-blue-600 text-white py-3 rounded-lg font-bold">
+                        Sign In
+                    </button>
+                </form>
+            </div>
+
+            <!-- Registration Form -->
+            <div id="register-view" class="hidden">
+                <form id="register-form" onsubmit="event.preventDefault(); handleRegister()">
+                    <div class="mb-4">
+                        <label for="register-full-name" class="block text-sm font-medium text-gray-600 mb-1">Full Name</label>
+                        <input type="text" id="register-full-name" required class="input-field" placeholder="Jane Doe">
+                    </div>
+                    <div class="mb-4">
+                        <label for="register-email" class="block text-sm font-medium text-gray-600 mb-1">UTA Email</label>
+                        <input type="email" id="register-email" required class="input-field" placeholder="netid@mavs.uta.edu">
+                    </div>
+                    <div class="mb-6">
+                        <label for="register-password" class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+                        <input type="password" id="register-password" required class="input-field" placeholder="Min. 8 chars, 1 number, 1 uppercase">
+                        <p class="text-xs text-gray-500 mt-1">
+                            Must be at least 8 characters long and include an uppercase letter and a number.
+                        </p>
+                    </div>
+                    <button type="submit" id="register-btn" class="auth-button w-full bg-blue-600 text-white py-3 rounded-lg font-bold">
+                        Register
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Authenticated View (Hidden until user logs in) -->
+        <div id="authenticated-view" class="hidden w-full max-w-md bg-white p-8 rounded-xl form-container text-center">
+            <svg class="mx-auto h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618 4.618a8.257 8.257 0 01-1.373 2.155c-.32.378-.696.721-1.1.996.114.16.223.325.328.497.525.867.75 1.834.61 2.805A7.846 7.846 0 0112 21c-1.396 0-2.73-.396-3.882-1.127-.145-.09-.289-.18-.432-.27-.29-.18-.57-.375-.84-.585-.4-.32-.78-.67-1.14-1.05-.72-.77-1.28-1.63-1.69-2.58A8.068 8.068 0 013 12c0-1.22.28-2.39.81-3.46.41-.83.99-1.58 1.74-2.22.6-.5.4-.5.4-.5.72-.65 1.54-1.18 2.5-1.58A8.01 8.01 0 0112 3c1.396 0 2.73.396 3.882 1.127.145.09.289.18.432.27.29.18.57.375.84.585.4.32.78.67 1.14 1.05.72.77 1.28 1.63 1.69 2.58A8.068 8.068 0 0121 12z" />
+            </svg>
+            <h2 class="text-2xl font-bold mt-4 text-gray-800">Welcome!</h2>
+            <p class="text-gray-600 mt-2">You are successfully authenticated as:</p>
+            <p id="user-email-display" class="text-xl font-mono text-blue-600 mt-3 break-words"></p>
+            <p class="text-sm text-gray-500 mt-4">This is where your Room Reservation and Supply Request features will go.</p>
+            <button onclick="handleLogout()" class="mt-8 auth-button bg-red-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-600">
+                Sign Out
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Firebase SDK Imports (Module style for modern JS) -->
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAnalytics } from "firebase/analytics";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL VARIABLES & INITIALIZATION ---
+
+        // ======================================================================================
+        // --- IMPORTANT: REPLACE THESE PLACEHOLDERS WITH YOUR ACTUAL FIREBASE CONFIGURATION ---
+        // ======================================================================================
+        
+        // 1. Your Firebase Project Configuration (from your Firebase Console)
+        const firebaseConfig = {
+            apiKey: "AIzaSyB96NREDjjL73nmLmOsTMwcJqTlOnF6oxE",
+            authDomain: "kiosk-5b741.firebaseapp.com",
+            projectId: "kiosk-5b741",
+            storageBucket: "kiosk-5b741.firebasestorage.app",
+            messagingSenderId: "715474338207",
+            appId: "1:715474338207:web:91556c3cc0fb47925e3daa",
+            measurementId: "G-LF4DSPL368"
+            // Optional: measurementId: "G-XXXXXXXXXX"
+        };
+
+        // 2. A unique identifier for your app's data in Firestore.
+        const YOUR_APP_ID_FOR_FIRESTORE = 'kiosk-room-booking-v1'; 
+        
+        // 3. Custom Auth Token (Set to null/false unless you have a specific token to inject)
+        const YOUR_INITIAL_AUTH_TOKEN = null; 
+        
+        // Global variables used by the app logic
+        const appId = YOUR_APP_ID_FOR_FIRESTORE;
+        const initialAuthToken = YOUR_INITIAL_AUTH_TOKEN;
+        // ======================================================================================
+
+        let app;
+        let db;
+        let auth;
+
+        // Export utility functions to the global window object for HTML access
+        window.setView = setView;
+        window.handleLogin = handleLogin;
+        window.handleRegister = handleRegister;
+        window.handleLogout = handleLogout;
+        window.getCurrentUserId = getCurrentUserId; // Helper function
+
+        let currentView = 'login';
+        
+        // Use the initial token if it exists, otherwise sign in anonymously
+        async function initializeFirebase() {
+            // Check if config placeholders are still present
+            if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+                console.error("Firebase Configuration Error: Please replace the placeholder values in the YOUR_FIREBASE_CONFIG constant.");
+                displayMessage('Configuration Error: Update Firebase keys in the script.', 'error');
+                return;
+            }
+
+            try {
+                // Set Firestore log level for debugging
+                setLogLevel('Debug');
+                
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Set persistence to session, which is suitable for a public kiosk (session is cleared on tab/browser close)
+                await setPersistence(auth, browserSessionPersistence);
+                
+                // 1. Attempt to sign in with the custom token if provided
+                if (initialAuthToken) {
+                    console.log('Attempting sign-in with custom token...');
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    // 2. If no custom token, sign in anonymously for basic Firestore access
+                    console.log('No custom token found, signing in anonymously...');
+                    await signInAnonymously(auth);
+                }
+
+                // Listen for Auth State changes to update the UI
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        console.log("User authenticated:", user.uid, user.email || 'Anonymous');
+                        // Fetch the user's profile data (if it exists)
+                        fetchUserProfile(user.uid);
+                    } else {
+                        console.log("No user signed in.");
+                        updateUI(null);
+                    }
+                });
+
+                // Initial view setup
+                setView('login'); 
+
+            } catch (error) {
+                console.error("Firebase Initialization or Auth Error:", error);
+                displayMessage('System Error: Could not connect to authentication services. Check console for details.', 'error');
+            }
+        }
+
+        // --- AUTHENTICATION HELPERS ---
+        
+        // Gets the current user ID, crucial for Firestore pathing
+        function getCurrentUserId() {
+            return auth.currentUser?.uid || crypto.randomUUID();
+        }
+
+        /**
+         * Validates the email against the required UTA domains.
+         * @param {string} email 
+         * @returns {boolean}
+         */
+        function validateEmailDomain(email) {
+            const domain = email.substring(email.lastIndexOf("@"));
+            return domain === '@mavs.uta.edu' || domain === '@uta.edu';
+        }
+
+        /**
+         * Validates the password strength (min 8 chars, 1 uppercase, 1 number).
+         * @param {string} password 
+         * @returns {string | null} Returns error message or null if valid.
+         */
+        function validatePassword(password) {
+            if (password.length < 8) {
+                return "Password must be at least 8 characters long.";
+            }
+            if (!/[A-Z]/.test(password)) {
+                return "Password must contain at least one uppercase letter.";
+            }
+            if (!/[0-9]/.test(password)) {
+                return "Password must contain at least one number.";
+            }
+            return null;
+        }
+
+
+        // --- FIREBASE HANDLERS ---
+        
+        async function handleRegister() {
+            const fullName = document.getElementById('register-full-name').value.trim();
+            const email = document.getElementById('register-email').value.trim();
+            const password = document.getElementById('register-password').value;
+
+            displayMessage('', 'clear'); // Clear previous messages
+            
+            // 1. Input Validation
+            if (!fullName) {
+                return displayMessage('Please enter your full name.', 'error');
+            }
+            if (!validateEmailDomain(email)) {
+                return displayMessage('Registration email must end with @mavs.uta.edu or @uta.edu.', 'error');
+            }
+            const passwordError = validatePassword(password);
+            if (passwordError) {
+                return displayMessage(passwordError, 'error');
+            }
+
+            const btn = document.getElementById('register-btn');
+            btn.innerHTML = 'Registering...';
+            btn.disabled = true;
+
+            try {
+                // 2. Create user with Email and Password
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                const userId = user.uid;
+                
+                // 3. Save additional user data (Full Name) to Firestore
+                const userProfileDocRef = doc(db, 
+                    'artifacts', appId, 
+                    'users', userId, 
+                    'user_profiles', userId 
+                );
+                
+                await setDoc(userProfileDocRef, {
+                    fullName: fullName,
+                    email: email,
+                    createdAt: new Date().toISOString()
+                });
+
+                displayMessage('Registration successful! Profile saved. You are now signed in.', 'success');
+                // The onAuthStateChanged listener will handle the UI update
+
+            } catch (error) {
+                let message = 'Registration failed. Please try again.';
+                if (error.code === 'auth/email-already-in-use') {
+                    message = 'This email is already registered. Try signing in.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'The email address is not valid.';
+                } else {
+                    console.error("Registration Error:", error);
+                }
+                displayMessage(message, 'error');
+            } finally {
+                btn.innerHTML = 'Register';
+                btn.disabled = false;
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            displayMessage('', 'clear'); // Clear previous messages
+
+            const btn = document.getElementById('login-btn');
+            btn.innerHTML = 'Signing In...';
+            btn.disabled = true;
+
+            try {
+                // 1. Input Validation (basic)
+                if (!email || !password) {
+                    return displayMessage('Please fill out both email and password fields.', 'error');
+                }
+
+                // 2. Sign In
+                await signInWithEmailAndPassword(auth, email, password);
+
+                displayMessage('Login successful!', 'success');
+                // The onAuthStateChanged listener will handle the UI update
+
+            } catch (error) {
+                let message = 'Login failed.';
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    message = 'Invalid email or password.';
+                } else {
+                    console.error("Login Error:", error);
+                }
+                displayMessage(message, 'error');
+            } finally {
+                btn.innerHTML = 'Sign In';
+                btn.disabled = false;
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await signOut(auth);
+                displayMessage('You have been signed out.', 'info');
+                setView('login'); // Switch back to login view after sign out
+            } catch (error) {
+                console.error("Logout Error:", error);
+                displayMessage('Failed to log out. Please try again.', 'error');
+            }
+        }
+
+        async function fetchUserProfile(userId) {
+            // Note: Data is saved to private path /artifacts/{appId}/users/{userId}/user_profiles/{userId}
+            const userProfileDocRef = doc(db, 
+                'artifacts', appId, 
+                'users', userId, 
+                'user_profiles', userId 
+            );
+
+            try {
+                const docSnap = await getDoc(userProfileDocRef);
+                const profile = docSnap.exists() ? docSnap.data() : null;
+                updateUI(auth.currentUser, profile);
+            } catch(error) {
+                console.error("Error fetching user profile:", error);
+                // Continue to update UI even if profile fetch fails
+                updateUI(auth.currentUser, null); 
+            }
+        }
+
+        // --- UI UTILITIES ---
+
+        function updateUI(user, profile = null) {
+            const authContainer = document.getElementById('auth-container');
+            const authenticatedView = document.getElementById('authenticated-view');
+            const userEmailDisplay = document.getElementById('user-email-display');
+
+            if (user && user.email) {
+                // User is fully authenticated (logged in via email/password)
+                authContainer.classList.add('hidden');
+                authenticatedView.classList.remove('hidden');
+                
+                const displayName = profile?.fullName || user.email;
+                userEmailDisplay.innerHTML = `${displayName} (${user.email})<br><span class="text-sm font-light text-gray-400">User ID: ${user.uid}</span>`;
+            } else {
+                // No user or anonymous user
+                authContainer.classList.remove('hidden');
+                authenticatedView.classList.add('hidden');
+                userEmailDisplay.textContent = '';
+            }
+        }
+
+        function setView(view) {
+            currentView = view;
+            const loginView = document.getElementById('login-view');
+            const registerView = document.getElementById('register-view');
+            const showLoginBtn = document.getElementById('show-login');
+            const showRegisterBtn = document.getElementById('show-register');
+
+            if (view === 'login') {
+                loginView.classList.remove('hidden');
+                registerView.classList.add('hidden');
+                showLoginBtn.classList.add('bg-blue-100', 'text-blue-700');
+                showLoginBtn.classList.remove('text-gray-700');
+                showRegisterBtn.classList.remove('bg-blue-100', 'text-blue-700');
+            } else { // register
+                loginView.classList.add('hidden');
+                registerView.classList.remove('hidden');
+                showRegisterBtn.classList.add('bg-blue-100', 'text-blue-700');
+                showRegisterBtn.classList.remove('text-gray-700');
+                showLoginBtn.classList.remove('bg-blue-100', 'text-blue-700');
+            }
+            displayMessage('', 'clear'); // Clear messages when switching views
+        }
+
+        /**
+         * Displays a message in the designated container.
+         * @param {string} text The message content.
+         * @param {'success' | 'error' | 'info' | 'clear'} type The type of message.
+         */
+        function displayMessage(text, type) {
+            const container = document.getElementById('message-container');
+            container.innerHTML = text;
+            container.classList.remove('bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800', 'hidden');
+
+            if (type === 'clear' || !text) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            if (type === 'success') {
+                container.classList.add('bg-green-100', 'text-green-800');
+            } else if (type === 'error') {
+                container.classList.add('bg-red-100', 'text-red-800');
+            } else { // info
+                container.classList.add('bg-blue-100', 'text-blue-800');
+            }
+        }
+
+        // --- START APPLICATION ---
+        initializeFirebase();
+
+    </script>
+</body>
+</html>
