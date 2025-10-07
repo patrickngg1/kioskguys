@@ -3,18 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kiosk - Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="./css/style.css">
+    <title>Welcome</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f7f6; }
+        .container { text-align: center; background-color: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        p { color: #666; }
+        .login-btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #0078D4; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; transition: background-color 0.3s; }
+        .login-btn:hover { background-color: #005a9e; }
+        .profile-link { margin-top: 15px; display: block; color: #0078D4; }
+    </style>
 </head>
 <body>
-    <div class="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-        <div class="w-full max-w-2xl bg-white p-8 rounded-xl text-center shadow-lg">
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">Welcome to the Kiosk</h1>
-            <p class="text-gray-600 mb-6">You are signed in as <span id="user-email" class="font-semibold">...</span></p>
-            <button id="signout-btn" class="w-full max-w-xs mx-auto bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700">Sign Out</button>
-        </div>
+    <!-- We must load the socialaccount tags to use the login URL helper -->
+    {% load socialaccount %}
+
+    <div class="container">
+        <h1>UTA Organization Portal</h1>
+        {% if user.is_authenticated %}
+            <p>Welcome back, {{ user.email }}!</p>
+            <a href="{% url 'profile' %}" class="login-btn">Go to Your Profile</a>
+        {% else %}
+            <p>Please sign in with your UTA Microsoft 365 account to continue.</p>
+            <!-- This template tag generates the correct URL for the Microsoft login flow -->
+            <a href="{% provider_login_url 'microsoft' %}" class="login-btn">
+                Sign in with Microsoft 365
+            </a>
+        {% endif %}
     </div>
-    <script type="module" src="./js/auth.js"></script>
 </body>
 </html>
