@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kiosk Map + Auth</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* --- Background Styling --- */
+    body {
+      font-family: 'Inter', sans-serif;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Background image with blur overlay */
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: url('https://utamavs.com/images/2021/5/20/UT_Arlington_Campus_Tower_Entrance_Sign.jpg');
+      background-size: cover;
+      background-position: center;
+      filter: blur(8px) brightness(0.7);
+      z-index: -2;
+    }
+
+    body::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.05);
+      z-index: -1;
+    }
+
+    /* Responsive layout */
+    @media (max-width: 900px) {
+      body {
+        flex-direction: column;
+        overflow: auto;
+      }
+      #map-container, #auth-section {
+        width: 100%;
+        height: 50vh;
+        margin: 0;
+      }
+    }
+
+    /* --- Map Styling --- */
+    #map-container {
+      flex: 1;
+      padding: 1.5rem; /* space around edges */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+
+    #map-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 1.5rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+    }
+
+    /* --- Auth Section --- */
+    #auth-section {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+      padding: 2rem;
+    }
+
+    .form-container {
+      width: 100%;
+      max-width: 540px; /* larger box */
+      min-height: 600px; /* taller */
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 1.25rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      padding: 3rem;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .input-field {
+      border: 1px solid #d1d5db;
+      padding: 0.85rem;
+      border-radius: 0.5rem;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .auth-button {
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .auth-button:hover {
+      background-color: #2563eb;
+    }
+
+    .auth-button:active {
+      transform: scale(0.98);
+    }
+
+    .message-box {
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Left: Map -->
+  <div id="map-container">
+    <iframe
+      id="map-frame"
+      src="https://app.mappedin.com/map/68e942afb47af0000bc1385b?embedded=true"
+      title="Mappedin Map"
+      allow="clipboard-write 'self' https://app.mappedin.com; web-share 'self' https://app.mappedin.com"
+      scrolling="no"
+      frameborder="0"
+    ></iframe>
+  </div>
+
+  <!-- Right: Auth Section -->
+  <div id="auth-section">
+    <div id="app" class="w-full max-w-lg">
+      <div id="auth-container" class="form-container">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Kiosk Access</h1>
+
+        <div id="message-container" class="mb-4 message-box hidden p-3 rounded-lg text-sm font-medium"></div>
+
+        <div class="flex justify-center space-x-3 mb-6">
+          <button id="show-login"
+            class="px-5 py-2 rounded-md font-semibold text-white bg-orange-500 hover:bg-orange-600 transition"
+            onclick="setView('login')">
+            Sign In
+          </button>
+
+          <button id="show-register"
+            class="px-5 py-2 rounded-md font-semibold text-white bg-orange-500 hover:bg-orange-600 transition"
+            onclick="setView('register')">
+            Sign Up
+          </button>
+        </div>
+
+        <!-- Login -->
+        <div id="login-view">
+          <form id="login-form" onsubmit="event.preventDefault(); handleLogin()">
+            <div class="mb-4">
+              <label for="login-email" class="block text-sm font-medium text-gray-600 mb-1">Email</label>
+              <input type="email" id="login-email" required class="input-field" placeholder="email@uta.edu">
+            </div>
+            <div class="mb-6">
+              <label for="login-password" class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+              <input type="password" id="login-password" required class="input-field" placeholder="Enter your password">
+            </div>
+            <button type="submit" id="login-btn" class="auth-button w-full bg-blue-600 text-white py-3 rounded-lg font-bold">
+              Sign In
+            </button>
+          </form>
+        </div>
+
+        <!-- Register -->
+        <div id="register-view" class="hidden">
+          <form id="register-form" onsubmit="event.preventDefault(); handleRegister()">
+            <div class="mb-4">
+              <label for="register-full-name" class="block text-sm font-medium text-gray-600 mb-1">Full Name</label>
+              <input type="text" id="register-full-name" required class="input-field" placeholder="Jane Doe">
+            </div>
+            <div class="mb-4">
+              <label for="register-email" class="block text-sm font-medium text-gray-600 mb-1">UTA Email</label>
+              <input type="email" id="register-email" required class="input-field" placeholder="netid@mavs.uta.edu">
+            </div>
+            <div class="mb-6">
+              <label for="register-password" class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+              <input type="password" id="register-password" required class="input-field" placeholder="Min. 8 chars, 1 number, 1 uppercase">
+            </div>
+            <button type="submit" id="register-btn" class="auth-button w-full bg-blue-600 text-white py-3 rounded-lg font-bold">
+              Register
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Authenticated -->
+      <div id="authenticated-view" class="hidden bg-white p-8 rounded-xl form-container text-center mt-6">
+        <h2 class="text-2xl font-bold mt-4 text-gray-800">Welcome!</h2>
+        <p class="text-gray-600 mt-2">You are successfully authenticated as:</p>
+        <p id="user-email-display" class="text-xl font-mono text-blue-600 mt-3 break-words"></p>
+        <button onclick="handleLogout()" class="mt-8 auth-button bg-red-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-600">
+          Sign Out
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Logic (unchanged) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB96NREDjjL73nmLmOsTMwcJqTlOnF6oxE",
+      authDomain: "kiosk-5b741.firebaseapp.com",
+      projectId: "kiosk-5b741",
+      storageBucket: "kiosk-5b741.firebasestorage.app",
+      messagingSenderId: "715474338207",
+      appId: "1:715474338207:web:91556c3cc0fb47925e3daa",
+      measurementId: "G-LF4DSPL368"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    await setPersistence(auth, browserSessionPersistence);
+    onAuthStateChanged(auth, (user) => updateUI(user));
+
+    // UI & Auth functions (simplified)
+    window.setView = setView;
+    window.handleLogin = handleLogin;
+    window.handleRegister = handleRegister;
+    window.handleLogout = handleLogout;
+
+    function displayMessage(text, type) {
+      const c = document.getElementById('message-container');
+      c.textContent = text;
+      c.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+      if (!text) { c.classList.add('hidden'); return; }
+      if (type === 'success') c.classList.add('bg-green-100', 'text-green-800');
+      else if (type === 'error') c.classList.add('bg-red-100', 'text-red-800');
+    }
+
+    function setView(view) {
+      document.getElementById('login-view').classList.toggle('hidden', view !== 'login');
+      document.getElementById('register-view').classList.toggle('hidden', view !== 'register');
+      displayMessage('', 'clear');
+    }
+
+    async function handleRegister() {
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        displayMessage('Registration successful!', 'success');
+      } catch (e) {
+        displayMessage('Registration failed.', 'error');
+      }
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        displayMessage('Login successful!', 'success');
+      } catch (e) {
+        displayMessage('Login failed.', 'error');
+      }
+    }
+
+    async function handleLogout() {
+      await signOut(auth);
+      displayMessage('Signed out.', 'info');
+    }
+
+    function updateUI(user) {
+      const authContainer = document.getElementById('auth-container');
+      const authView = document.getElementById('authenticated-view');
+      const emailDisplay = document.getElementById('user-email-display');
+      if (user) {
+        authContainer.classList.add('hidden');
+        authView.classList.remove('hidden');
+        emailDisplay.textContent = user.email || 'Anonymous';
+      } else {
+        authContainer.classList.remove('hidden');
+        authView.classList.add('hidden');
+      }
+    }
+
+    setView('login');
+  </script>
+
+</body>
+</html>
