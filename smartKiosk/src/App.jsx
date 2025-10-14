@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import KioskMap from './components/KioskMap';
+import AuthScreen from './components/AuthScreen';
 import './App.css';
 
 function App() {
