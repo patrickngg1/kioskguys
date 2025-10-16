@@ -98,14 +98,10 @@ const AuthScreen = () => {
   const isAuthenticated = user && user.email && view === 'authenticated';
 
   return (
-    <div
-      id='auth-section'
-      className='flex-1 flex items-center justify-center p-8 backdrop-blur-sm'
-    >
-      <div className='w-full max-w-lg'>
+    <div id='auth-section'>
+      <div>
         <MessageAlert text={message.text} type={message.type} />
 
-        {/* Render AuthForm or AuthenticatedView based on state */}
         {isAuthenticated ? (
           <AuthenticatedView
             user={user}

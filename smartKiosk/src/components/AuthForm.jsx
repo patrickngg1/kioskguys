@@ -299,10 +299,7 @@ const AuthForm = ({ displayMessage, currentView, setView }) => {
   }`;
 
   return (
-    <div
-      id='auth-container'
-      className='form-container w-full max-w-md bg-white p-8 rounded-xl'
-    >
+    <div id='auth-container' className='form-container'>
       <h1 className='text-3xl font-extrabold text-gray-900 mb-6 text-center'>
         Kiosk Access
       </h1>

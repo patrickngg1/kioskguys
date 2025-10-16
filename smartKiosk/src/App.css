@@ -1,36 +1,44 @@
-body {
+.app-layout {
   font-family: 'Inter', sans-serif;
   height: 100vh;
+  width: 100vw;
   margin: 0;
   display: flex;
   flex-direction: row;
   overflow: hidden;
   position: relative;
+  box-sizing: border-box;
+  isolation: isolate; /* keep overlays ordered */
 }
 
-/* Background image with blur overlay */
-body::before {
+/* 1) Background image with blur + slight dim (from mock HTML body::before) */
+.app-layout::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image: url('https://utamavs.com/images/2021/5/20/UT_Arlington_Campus_Tower_Entrance_Sign.jpg');
   background-size: cover;
   background-position: center;
-  filter: blur(8px) brightness(0.7);
+  filter: blur(7px) brightness(0.6); /* same as mock */
+  transform: scale(1.06); /* avoid blurred-edge shrink */
   z-index: -2;
 }
 
-body::after {
+/* 2) Thin white wash over the whole page (from mock HTML body::after) */
+.app-layout::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.05);
+  inset: -1px;
+  pointer-events: none;
   z-index: -1;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 220px rgba(255, 255, 255, 0.2),
+    inset 0 0 520px rgba(255, 255, 255, 0.12);
 }
 
-/* Responsive layout */
+/* Responsive layout (copied) */
 @media (max-width: 900px) {
-  body {
+  .app-layout {
     flex-direction: column;
     overflow: auto;
   }
@@ -42,16 +50,17 @@ body::after {
   }
 }
 
-/* --- Map Styling --- */
+/* --- Map Styling (copied) --- */
 #map-container {
   flex: 1;
-  padding: 1.5rem; /* space around edges */
+  padding: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
-
 #map-frame {
   width: 100%;
   height: 100%;
@@ -61,27 +70,106 @@ body::after {
   overflow: hidden;
 }
 
-/* --- Auth Section --- */
+/* --- Auth Section (copied) --- */
 #auth-section {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px); /* glassy background */
   padding: 2rem;
+  position: relative;
+  z-index: 1;
 }
-
 .form-container {
-  width: 100%;
-  max-width: 540px; /* larger box */
-  min-height: 600px; /* taller */
-  background: rgba(255, 255, 255, 0.9);
+  width: clamp(320px, 40vw, 560px);
+  padding: clamp(1.25rem, 3.2vw, 3rem);
+  min-height: auto; /* let height follow content */
+  background: rgba(255, 255, 255, 0.88);
   border-radius: 1.25rem;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
-  padding: 3rem;
-  transition: all 0.3s ease-in-out;
+  transition: width 0.25s ease, padding 0.25s ease;
 }
 
+.form-container h1 {
+  font-size: 2.5rem; /* ~text-4xl/5xl */
+  line-height: 1.1;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.02em;
+}
+
+/* Make the card just a bit glassier */
+.form-container {
+  background: rgba(255, 255, 255, 0.88); /* slightly brighter glass */
+  backdrop-filter: blur(6px);
+}
+
+/* Orange toggle pills (Sign In / Sign Up) */
+.form-container .flex.mb-6 > button {
+  background: #f97316; /* orange-500 */
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.form-container .flex.mb-6 > button:hover {
+  filter: brightness(0.95);
+}
+
+/* Inputs: force light look (mock shows light inputs) */
+.input-field {
+  background: #ffffff; /* ensure white on dark OS themes */
+  color: #111827; /* gray-900 */
+  border: 1px solid #d1d5db; /* already in your file, restated for clarity */
+  padding: 0.85rem;
+  border-radius: 0.5rem;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+.input-field::placeholder {
+  color: #6b7280; /* gray-500 */
+  opacity: 1;
+}
+.input-field:focus {
+  outline: none;
+  border-color: #3b82f6; /* blue-500 */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+/* Primary action button (blue Sign In) */
+.auth-button {
+  display: inline-block;
+  width: 100%;
+  background: #2563eb; /* blue-600 */
+  color: #fff;
+  font-weight: 700;
+  padding: 0.85rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  transition: transform 0.06s ease, background-color 0.2s ease;
+}
+.auth-button:hover {
+  background: #1d4ed8;
+} /* blue-700 */
+.auth-button:active {
+  transform: scale(0.98);
+}
+
+/* Links under password */
+#forgot-password-link,
+#resend-verification-link {
+  color: #2563eb; /* blue-600 */
+  text-decoration: none;
+}
+#forgot-password-link:hover,
+#resend-verification-link:hover {
+  color: #1d4ed8;
+}
 .input-field {
   border: 1px solid #d1d5db;
   padding: 0.85rem;
@@ -89,20 +177,16 @@ body::after {
   width: 100%;
   transition: border-color 0.2s;
 }
-
 .input-field:focus {
   outline: none;
   border-color: #3b82f6;
 }
-
-.auth-button {
-  transition: background-color 0.2s, transform 0.1s;
-}
-
 .auth-button:hover {
   background-color: #2563eb;
 }
-
+.auth-button {
+  transition: background-color 0.2s, transform 0.1s;
+}
 .auth-button:active {
   transform: scale(0.98);
 }
