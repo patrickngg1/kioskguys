@@ -285,7 +285,7 @@ input.input-field:-webkit-autofill {
   }
   #map-container,
   #auth-section {
-    width: 100%;
+    width: auto;
     height: 50vh;
     margin: 0;
   }
