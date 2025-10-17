@@ -8,6 +8,7 @@ import { auth, db } from '../firebase-config';
 
 const APP_ID = 'kiosk-room-booking-v1';
 
+/* Helpers */
 function validateEmailDomain(email) {
   const domain = email.substring(email.lastIndexOf('@'));
   return domain === '@mavs.uta.edu' || domain === '@uta.edu';
@@ -20,6 +21,36 @@ function validatePassword(password) {
   if (!/[0-9]/.test(password))
     return 'Password must contain at least one number.';
   return null;
+}
+
+/* Password input with eye toggle (uses CSS background-image) */
+function PasswordInput({
+  value,
+  onChange,
+  placeholder = 'Enter your password',
+  inputClass = 'input-field',
+  autoComplete = 'current-password',
+}) {
+  const [show, setShow] = React.useState(false);
+  return (
+    <div className='input-wrap'>
+      <input
+        className={`${inputClass} with-eye`}
+        type={show ? 'text' : 'password'}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        autoComplete={autoComplete}
+      />
+      <button
+        type='button'
+        className={`eye-btn ${show ? 'is-showing' : ''}`}
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        aria-pressed={show}
+      />
+    </div>
+  );
 }
 
 export default function AuthForm({ displayMessage, currentView, setView }) {
@@ -121,7 +152,6 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
     <div id='auth-container' className='form-container'>
       <h1>Kiosk Access</h1>
 
-      {/* Tabs */}
       <div className='tab-bar'>
         <button
           type='button'
@@ -141,7 +171,6 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
         </button>
       </div>
 
-      {/* Body with grouped fields (fixes label↔input gap) */}
       <div className='form-body'>
         {view === 'login' ? (
           <form onSubmit={handleLogin}>
@@ -153,19 +182,18 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
                 placeholder='email@uta.edu'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete='username'
                 required
               />
             </div>
 
             <div className='form-group'>
               <label className='form-label'>Password</label>
-              <input
-                className={inputClass}
-                type='password'
-                placeholder='Enter your password'
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
+                inputClass={inputClass}
+                autoComplete='current-password'
               />
             </div>
 
@@ -189,6 +217,7 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
                 placeholder='Jane Doe'
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                autoComplete='name'
                 required
               />
             </div>
@@ -201,19 +230,19 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
                 placeholder='netid@mavs.uta.edu'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete='email'
                 required
               />
             </div>
 
             <div className='form-group'>
               <label className='form-label'>Password</label>
-              <input
-                className={inputClass}
-                type='password'
-                placeholder='Min. 8 chars, 1 number, 1 uppercase'
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
+                placeholder='Min. 8 chars, 1 number, 1 uppercase'
+                inputClass={inputClass}
+                autoComplete='new-password'
               />
               <p
                 className='text-xs'
@@ -226,13 +255,12 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
 
             <div className='form-group'>
               <label className='form-label'>Confirm Password</label>
-              <input
-                className={inputClass}
-                type='password'
-                placeholder='Confirm your password'
+              <PasswordInput
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                required
+                placeholder='Confirm your password'
+                inputClass={inputClass}
+                autoComplete='new-password'
               />
             </div>
 
