@@ -1,18 +1,32 @@
-import './App.css';
-import KioskMap from './components/KioskMap';
-import AuthScreen from './components/AuthScreen';
+// App.jsx
+import React from 'react';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 
-function App() {
+import LoginPage from './components/LoginPage';
+import Dashboard from './components/Dashboard';
+// import ProtectedRoute from './components/ProtectedRoute';
+import './App.css';
+
+export default function App() {
   return (
-    <div className='app-layout'>
-      <div id='map-container'>
-        <KioskMap />
-      </div>
-      <div id='auth-section'>
-        <AuthScreen />
-      </div>
-    </div>
+    <Router>
+      <Routes>
+        <Route path='/' element={<LoginPage />} />
+
+        {/* DEV MODE: dashboard accessible without auth */}
+        <Route path='/dashboard' element={<Dashboard />} />
+
+        {/* When ready to secure again, switch to:
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        */}
+      </Routes>
+    </Router>
   );
 }
-
-export default App;

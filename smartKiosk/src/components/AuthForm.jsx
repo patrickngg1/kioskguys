@@ -155,7 +155,7 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
       <div className='tab-bar'>
         <button
           type='button'
-          className={`tab-btn ${view === 'login' ? 'active' : ''}`}
+          className={`tab-button ${view === 'login' ? 'active' : ''}`}
           onClick={() => setViewSafe('login')}
           aria-selected={view === 'login'}
         >
@@ -163,7 +163,7 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
         </button>
         <button
           type='button'
-          className={`tab-btn ${view === 'register' ? 'active' : ''}`}
+          className={`tab-button ${view === 'register' ? 'active' : ''}`}
           onClick={() => setViewSafe('register')}
           aria-selected={view === 'register'}
         >
@@ -227,7 +227,7 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
               <input
                 className={inputClass}
                 type='email'
-                placeholder='netid@mavs.uta.edu'
+                placeholder='email@mavs.uta.edu'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete='email'
