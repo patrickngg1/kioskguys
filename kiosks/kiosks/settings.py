@@ -40,8 +40,8 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'main.apps.MainConfig',
-    'corsheaders'
-
+    'corsheaders',
+    'kiosks'
 ]
 
 MIDDLEWARE = [
