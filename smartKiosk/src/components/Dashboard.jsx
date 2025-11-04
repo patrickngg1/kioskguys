@@ -151,7 +151,7 @@ export default function Dashboard() {
           <Banner item={banners[bannerIdx]} />
           <div className='card map-card'>
             <div className='map-head'>Map</div>
-            <div style={{ height: '65vh' }}>
+            <div style={{ height: '50vh' }}>
               <KioskMap />
             </div>
           </div>

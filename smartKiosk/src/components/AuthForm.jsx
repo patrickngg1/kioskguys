@@ -150,7 +150,7 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
 
   return (
     <div id='auth-container' className='form-container'>
-      <h1>Kiosk Access</h1>
+      <h1 className='kiosk-title'>Kiosk Access</h1>
 
       <div className='tab-bar'>
         <button
@@ -204,7 +204,7 @@ export default function AuthForm({ displayMessage, currentView, setView }) {
             </div>
 
             <button className={buttonClass} type='submit' disabled={loading}>
-              {loading ? 'Signing In…' : 'Sign In'}
+              {loading ? 'Signing In…' : 'Access Kiosk'}
             </button>
           </form>
         ) : (
