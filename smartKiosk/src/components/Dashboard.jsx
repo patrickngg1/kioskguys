@@ -17,6 +17,22 @@ import { auth, db } from '../firebase-config';
 const APP_ID = 'kiosk-room-booking-v1';
 const DEV_MODE = true;
 
+// Load every .png and .jpg in /src/assets as URLs at build time
+const assetPng = import.meta.glob('../assets/*.png', {
+  eager: true,
+  as: 'url',
+});
+const assetJpg = import.meta.glob('../assets/*.jpg', {
+  eager: true,
+  as: 'url',
+});
+
+// Helper: get image for an item name, falling back to Kleenex.png
+const getSupplyImg = (name) =>
+  assetPng[`../assets/${name}.png`] ||
+  assetJpg[`../assets/${name}.jpg`] ||
+  assetPng['../assets/Kleenex.png'];
+
 const nowISO = () => new Date().toISOString();
 const readJSON = (k, fallback) => {
   try {
@@ -352,10 +368,8 @@ export default function Dashboard() {
       aria-label={`Select ${name}`}
     >
       {/* Replace src with your generated asset path when ready */}
-      <img
-        src={`https://via.placeholder.com/160?text=${encodeURIComponent(name)}`}
-        alt={name}
-      />
+      <img src={getSupplyImg(name)} alt={name} />
+
       <span>{name}</span>
     </div>
   );

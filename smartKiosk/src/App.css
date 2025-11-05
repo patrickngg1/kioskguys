@@ -1430,6 +1430,7 @@ input.input-field:-webkit-autofill {
   max-width: 900px;
   width: 92%;
   animation: slideUp 0.3s ease;
+  margin-top: 3rem;
 }
 
 .modal-box h2 {
@@ -1662,6 +1663,11 @@ input.input-field:-webkit-autofill {
   box-shadow: 0 0 24px rgba(37, 99, 235, 0.45),
     0 0 20px rgba(249, 115, 22, 0.35);
 }
+.supply-item.selected span {
+  color: #000;
+  font-weight: 600;
+}
+
 .supply-item img {
   width: 80%;
   height: 80%;
