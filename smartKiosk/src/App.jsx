@@ -30,7 +30,7 @@ function AppContent() {
       clearTimeout(inactivityTimer.current);
       inactivityTimer.current = setTimeout(() => {
         setStarted(false);
-      }, 6000); // 60 seconds
+      }, 60000); // 60 seconds
     };
 
     const events = ['click', 'mousemove', 'keydown', 'touchstart'];
