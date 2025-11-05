@@ -40,8 +40,8 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'main.apps.MainConfig',
-    'corsheaders'
-
+    'corsheaders',
+    'kiosks'
 ]
 
 MIDDLEWARE = [
@@ -88,10 +88,19 @@ WSGI_APPLICATION = 'kiosks.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'test',
+        'USER': '3hps72F5SkXUDHH.root',
+        'PASSWORD': 'Ypqr0JFtUtjJSo62',
+        'HOST': 'gateway01.us-east-1.prod.aws.tidbcloud.com',
+        'PORT': 4000,
+        'OPTIONS': {
+            'ssl_mode': 'VERIFY_IDENTITY',
+            'ssl': {'ca': str(BASE_DIR / 'isrgrootx1.pem')}
+        }
+    },
 }
+
 
 
 # Password validation
