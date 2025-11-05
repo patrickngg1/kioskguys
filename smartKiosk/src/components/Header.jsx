@@ -38,7 +38,7 @@ export default function Header() {
 
         {/* ===== Center Accent Message ===== */}
         <div className='header-center' aria-hidden='true'>
-          <span className='welcome-msg'>Welcome</span>
+          <span className='welcome-msg'>Welcome, Maverick!</span>
         </div>
 
         {/* ===== Right Clock Section ===== */}

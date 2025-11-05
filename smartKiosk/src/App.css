@@ -1,5 +1,5 @@
 /* =======================================================================
-   App.css - Cleaned and Consolidated Styles (Aesthetic Scrollbar Refinement)
+   App.css - Cleaned and Consolidated Styles (Final Dynamic Screen Fix)
    ======================================================================= */
 
 /* =================================
@@ -12,45 +12,28 @@ body,
   margin: 0;
   padding: 0;
   /* FIX: Ensure only one scrollbar (vertical) and hide horizontal overflow */
-  overflow-x: hidden;
-  /* FIX: Changed from 'scroll' to 'auto' to prevent scrollbar space reservation when not needed on large screens */
+  overflow-x: hidden !important;
+  /* FIX: Only show vertical scrollbar if content overflows */
   overflow-y: auto;
+  /* CRITICAL FIX: Ensure no background color obscures the fixed pseudo-element */
+  background: transparent !important;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* --- Scrollbar Aesthetics (Applied globally for sleek kiosk look) --- */
-/* Target all scrolling elements (body, map container, form container) */
-*::-webkit-scrollbar {
-  width: 6px; /* Slightly thinner */
-  background-color: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  /* Darker, more subtle scrollbar, suitable for dark background */
-  background-color: rgba(120, 120, 120, 0.4);
-  border-radius: 10px;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(120, 120, 120, 0.6);
-}
-
-.app-layout {
-  height: 100vh;
-  /* FIX: Use 100vw here to ensure full coverage against the body's hidden overflow, making layout predictable */
-  width: 100vw;
-  display: flex;
-  flex-direction: row;
-  /* Desktop: Hide scrollbars, layout is constrained by flex properties */
-  overflow: hidden;
+/* --- CRITICAL FIX: The entire background (Image, Blur, Vignette, Animation) is moved to a single fixed element on the body. --- */
+body {
   position: relative;
-  box-sizing: border-box;
-  isolation: isolate;
-  padding-top: 72px; /* Space for the fixed header */
+  /* Ensure the body itself is transparent so the fixed pseudo-elements can show */
+  background: transparent !important;
 }
 
-/* Blurred photo background with dark glaze and slow zoom */
-.app-layout::before {
+body::before {
   content: '';
-  position: absolute;
+  /* Ensure it covers the entire viewport and stays fixed during scroll */
+  position: fixed;
   inset: 0;
+  /* 1. Image and linear gradient glaze */
   background-image: linear-gradient(
       115deg,
       rgba(0, 0, 0, 0.313),
@@ -59,13 +42,36 @@ body,
     url('https://utamavs.com/images/2021/5/20/UT_Arlington_Campus_Tower_Entrance_Sign.jpg');
   background-size: cover;
   background-position: center;
+  /* Fallback color if image fails. This element is Z-indexed low. */
+  background-color: #111827;
+  /* 2. Blur, Scale, and Animation */
   filter: blur(8px) brightness(0.75);
-  transform: scale(1.06);
-  z-index: -2;
+  transform: scale(1.03);
   animation: slowZoom 20s ease-in-out infinite;
-  /* FIX: Ensure background starts as full height */
-  min-height: 100%;
+  /* 3. Z-Index below content/vignette (using -2 as -1 is used for vignette) */
+  z-index: -2;
 }
+
+/* Vignette effect (applied over the blurred image layer) */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at 65% 50%,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(0, 0, 0, 0.45) 90%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Remove image from HTML to prevent layering conflicts */
+html {
+  background: none;
+  z-index: auto;
+}
+
 @keyframes slowZoom {
   0% {
     transform: scale(1.06);
@@ -81,19 +87,123 @@ body,
   }
 }
 
-/* Vignette effect (dark radial gradient) */
-.app-layout::after {
-  content: '';
-  position: absolute;
+/* --- Scrollbar Aesthetics (Applied globally for sleek kiosk look) --- */
+*::-webkit-scrollbar {
+  width: 6px;
+  background-color: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(120, 120, 120, 0.4);
+  border-radius: 10px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(120, 120, 120, 0.6);
+}
+
+.app-layout {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  padding: 0 3rem;
+  flex-direction: row;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+  isolation: isolate;
+  background: transparent !important;
+  align-items: center; /* vertically centers both map and form */
+  justify-content: center; /* optional: keeps balance horizontally */
+  padding-top: 64px; /* match header height exactly */
+  min-height: calc(100vh - 64px);
+  z-index: 1; /* CRITICAL: Ensure the content layer sits above the blurred fixed backgrounds */
+}
+
+/* =================================
+   10. TAP TO BEGIN OVERLAY
+   ==================================*/
+.start-overlay {
+  position: fixed;
   inset: 0;
   background: radial-gradient(
-    circle at 65% 50%,
-    rgba(255, 255, 255, 0.06) 0%,
-    rgba(0, 0, 0, 0.35) 85%
-  );
-  z-index: -1;
-  /* FIX: Ensure vignette covers full height */
-  min-height: 100%;
+      circle at center,
+      rgba(17, 24, 39, 0.85) 0%,
+      rgba(0, 0, 0, 0.9) 80%
+    ),
+    url('https://utamavs.com/images/2021/5/20/UT_Arlington_Campus_Tower_Entrance_Sign.jpg');
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5000;
+  animation: overlayPulse 6s ease-in-out infinite;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.start-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(1.05);
+}
+
+.start-text {
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f97316; /* solid orange */
+  text-align: center;
+  text-shadow: 0 0 8px rgba(37, 99, 235, 0.4), 0 0 16px rgba(37, 99, 235, 0.5),
+    0 0 28px rgba(37, 99, 235, 0.4), 0 0 40px rgba(37, 99, 235, 0.35);
+  animation: glowTapBlue 2.5s ease-in-out infinite;
+  user-select: none;
+}
+
+@keyframes glowTapBlue {
+  0%,
+  100% {
+    text-shadow: 0 0 8px rgba(37, 99, 235, 0.4), 0 0 16px rgba(37, 99, 235, 0.5),
+      0 0 28px rgba(37, 99, 235, 0.4), 0 0 40px rgba(37, 99, 235, 0.35);
+    transform: scale(1);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(37, 99, 235, 0.7),
+      0 0 20px rgba(37, 99, 235, 0.6), 0 0 32px rgba(37, 99, 235, 0.6),
+      0 0 50px rgba(37, 99, 235, 0.45);
+    transform: scale(1.05);
+  }
+}
+
+/* --- Fade In Animation for Tap to Begin Overlay --- */
+.start-overlay.fade-in {
+  opacity: 0;
+  animation: overlayFadeIn 0.8s ease-out forwards;
+}
+
+@keyframes overlayFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(1.05);
+    filter: brightness(0.7) blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1) blur(0);
+  }
+}
+
+@keyframes overlayPulse {
+  0%,
+  100% {
+    filter: brightness(0.9);
+  }
+  50% {
+    filter: brightness(1.1);
+  }
 }
 
 .uta-logo {
@@ -125,7 +235,11 @@ body,
   gap: 1rem;
   padding: 0 22px;
   z-index: 1200;
-  background: rgba(17, 24, 39, 0.56);
+  background: linear-gradient(
+    180deg,
+    rgba(17, 24, 39, 0.75),
+    rgba(17, 24, 39, 0.55)
+  );
   backdrop-filter: blur(10px) saturate(130%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
@@ -239,13 +353,14 @@ body,
    ==================================*/
 #map-container {
   flex: 1;
-  min-width: 50%;
   display: flex;
   align-items: center;
+  align-self: center !important;
   justify-content: center;
   padding: 1rem;
   box-sizing: border-box;
-  overflow: hidden; /* Keeps map inside bounds */
+  overflow: hidden;
+  margin-left: rem;
 }
 
 #map-frame {
@@ -271,12 +386,12 @@ body,
 
 #auth-section {
   flex: 1;
-  /* REMOVED: min-width: 420px; <--- This was preventing smooth shrinking */
   display: flex;
   align-items: center;
+  align-self: center !important;
   justify-content: center;
   padding: 2rem;
-  overflow: auto; /* Allow scrolling for form content */
+  overflow: auto;
   box-sizing: border-box;
   backdrop-filter: blur(2px);
   position: relative;
@@ -288,8 +403,7 @@ body,
    ==================================*/
 .form-container {
   /* Final size/position and appearance */
-  /* This clamp ensures the form shrinks nicely but is readable */
-  width: clamp(340px, 28vw, 460px);
+  width: clamp(400px, 28vw, 460px);
   transform: translateY(-4%);
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px) saturate(130%);
@@ -312,6 +426,22 @@ body,
 .form-container:hover {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3),
     inset 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.form-container::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 10%;
+  width: 80%;
+  height: 8px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.25) 0%,
+    rgba(0, 0, 0, 0) 80%
+  );
+  filter: blur(6px);
+  border-radius: 50%;
 }
 
 @keyframes fadeUp {
@@ -363,10 +493,10 @@ body,
     transform: translateX(-120%) translateY(-80%) rotate(8deg);
   }
   15% {
-    opacity: 0.7;
+    opacity: 0.5;
   }
   30% {
-    opacity: 0.9;
+    opacity: 0.7;
   }
   45% {
     opacity: 0;
@@ -402,7 +532,7 @@ body,
   margin-bottom: 1.2rem;
   line-height: 1.2;
   /* Final gradient/glow */
-  background: linear-gradient(90deg, #2563eb 0%, #f97316 85%);
+  background: linear-gradient(90deg, #0140c8 0%, #ff6a00 85%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 0 18px rgba(255, 255, 255, 0.3);
@@ -734,10 +864,21 @@ input.input-field:-webkit-autofill {
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   overflow: hidden;
+  animation: pulseBlue 4s ease-in-out infinite;
 
   /* Gradient & Shadow */
   background: linear-gradient(135deg, #60a5fa 0%, #2563eb 40%, #1d4ed8 100%);
   box-shadow: 0 0 10px rgba(37, 99, 235, 0.4), 0 0 25px rgba(37, 99, 235, 0.25);
+}
+
+@keyframes pulseBlue {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(37, 99, 235, 0.55);
+  }
 }
 
 .auth-button:hover {
@@ -786,12 +927,16 @@ input.input-field:-webkit-autofill {
 
 .dashboard-view .dashboard-grid {
   width: min(1280px, 96vw);
-  min-height: 100vh;
+  min-height: calc(100vh - 64px); /* account for fixed header height */
   margin: 0 auto;
   display: grid;
   grid-template-columns: 280px 1fr 320px;
-  gap: 1rem;
-  padding: 1.5rem 0;
+  gap: 1.5rem;
+
+  /* ✅ spacing fix: add breathing room below header */
+  padding-top: 0rem; /* roughly 80px, includes 64px header + extra gap */
+  padding-bottom: 2rem;
+  box-sizing: border-box;
 }
 
 .dashboard-view .card {
@@ -833,7 +978,6 @@ input.input-field:-webkit-autofill {
 }
 .dashboard-view .map-card {
   margin-top: 1rem;
-  padding: 0;
   overflow: hidden;
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.9);
@@ -1031,9 +1175,754 @@ input.input-field:-webkit-autofill {
   animation: idlePulse 6s ease-in-out infinite;
 }
 
+/* ===============================
+   12. DASHBOARD MODALS
+   =============================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal-box {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  padding: 2rem;
+  border-radius: 1.5rem;
+  width: min(400px, 90%);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s ease;
+}
+
+.modal-box h2 {
+  text-align: center;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 1rem;
+}
+
+.modal-box form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-box input,
+.modal-box select {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #ccc;
+}
+
+.modal-box label {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   UTA DARK THEME — PREMIUM KIOSK STYLE
+   ============================================================ */
+
+/* ---------- Modal Background ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at 30% 10%,
+    rgba(30, 58, 138, 0.35),
+    rgba(7, 12, 24, 0.95)
+  );
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  animation: fadeIn 0.3s ease;
+}
+
+/* ---------- Modal Box (Glass Shell) ---------- */
+.modal-box {
+  position: relative;
+  background: linear-gradient(
+    to bottom right,
+    rgba(17, 24, 39, 0.85),
+    rgba(10, 15, 26, 0.9)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1.75rem;
+  padding: 2rem 2.5rem 2.25rem;
+  box-shadow: 0 0 35px rgba(0, 0, 0, 0.55), 0 0 35px rgba(37, 99, 235, 0.25);
+  color: #e5e7eb;
+  max-width: 900px;
+  width: 92%;
+  animation: slideUp 0.3s ease;
+}
+
+.modal-box h2 {
+  text-align: center;
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #60a5fa, #f97316);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1.25rem;
+}
+
+/* ---------- Close Button ---------- */
+.close-btn {
+  position: absolute;
+  top: 14px;
+  right: 20px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.close-btn:hover {
+  transform: scale(1.1);
+  opacity: 1;
+  color: #f97316;
+}
+
+/* ---------- Conference Room Cards ---------- */
+.rooms-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 1.25rem;
+  margin: 1rem 0 1.25rem;
+}
+
+/* Each room card */
+.room-card {
+  flex: 1 1 45%;
+  max-width: 340px;
+  background: linear-gradient(
+    to bottom right,
+    rgba(30, 41, 59, 0.75),
+    rgba(15, 23, 42, 0.9)
+  );
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.room-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+.room-card.selected {
+  background: linear-gradient(
+      to bottom right,
+      rgba(30, 58, 138, 0.65),
+      rgba(249, 115, 22, 0.7)
+    ),
+    linear-gradient(to bottom, rgba(17, 24, 39, 0.85), rgba(10, 15, 26, 0.9));
+  border: 2px solid transparent;
+  box-shadow: 0 0 28px rgba(59, 130, 246, 0.45),
+    0 0 16px rgba(249, 115, 22, 0.35);
+}
+
+.room-name {
+  font-weight: 800;
+  color: #f8fafc;
+  font-size: 1.2rem;
+}
+.room-status {
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+.room-status.free {
+  color: #22c55e;
+}
+.room-status.busy {
+  color: #ef4444;
+}
+.room-meta {
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+/* ---------- Form Fields ---------- */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.75rem;
+}
+.grid-2 label {
+  font-weight: 700;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+.grid-2 input,
+.grid-2 select {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s ease;
+}
+.grid-2 input:focus,
+.grid-2 select:focus {
+  border-color: #60a5fa;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+/* ---------- Gradient Buttons ---------- */
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1e3a8a, #ea580c);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.9rem;
+  padding: 0.85rem 1.25rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  background-size: 220%;
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.3);
+}
+.btn-primary:hover {
+  background-position: right;
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.5), 0 0 15px rgba(249, 115, 22, 0.4);
+}
+
+.reserve-form button {
+  margin-top: 1.5rem !important; /* adds clean separation */
+}
+
+/* ---------- Supplies Modal ---------- */
+.modal-box.large {
+  width: min(940px, 96%);
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.supply-hint {
+  text-align: center;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  margin-bottom: 1rem;
+}
+
+.supply-section {
+  margin-bottom: 1.5rem;
+}
+.supply-title {
+  font-weight: 800;
+  color: #f8fafc;
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+  padding-bottom: 0.25rem;
+}
+.supply-subtitle {
+  font-weight: 700;
+  color: #f97316;
+  margin-bottom: 0.25rem;
+}
+
+.supply-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 1rem;
+  justify-items: center;
+  padding: 0.25rem 0;
+}
+
+.supply-item {
+  background: linear-gradient(
+    to bottom right,
+    rgba(31, 41, 55, 0.85),
+    rgba(15, 23, 42, 0.9)
+  );
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  border-radius: 1.25rem;
+  padding: 0.75rem;
+  text-align: center;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+.supply-item:hover {
+  transform: translateY(-3px);
+  border-color: rgba(59, 130, 246, 0.45);
+}
+.supply-item.selected {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+    linear-gradient(135deg, #1e3a8a, #2563eb, #ea580c) border-box;
+  box-shadow: 0 0 24px rgba(37, 99, 235, 0.45),
+    0 0 20px rgba(249, 115, 22, 0.35);
+}
+
+.supply-item img {
+  border-radius: 0.85rem;
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  margin-bottom: 0.35rem;
+  filter: brightness(0.85);
+}
+.supply-item span {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+/* ---------- Confirmation Toast ---------- */
+.confirm-toast {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 6000;
+  pointer-events: none;
+  animation: fadeIn 0.25s ease;
+}
+.confirm-card {
+  background: rgba(17, 24, 39, 0.95);
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4),
+    0 0 25px rgba(249, 115, 22, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  animation: toastPop 0.25s ease;
+}
+.confirm-emoji {
+  font-size: 1.4rem;
+}
+.confirm-text {
+  font-weight: 800;
+  background: linear-gradient(90deg, #60a5fa, #f97316);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ===== Time Picker Layout Fix ===== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem 1.25rem;
+  align-items: end;
+}
+
+.time-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.time-picker select {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+/* ===== AM/PM Badge ===== */
+.ampm-badge {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, #2563eb, #1e3a8a, #f97316);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.3px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.45), 0 0 12px rgba(249, 115, 22, 0.3);
+  pointer-events: none;
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(37, 99, 235, 0.45),
+      0 0 12px rgba(249, 115, 22, 0.3);
+    opacity: 0.95;
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.55),
+      0 0 24px rgba(249, 115, 22, 0.4);
+    opacity: 1;
+  }
+}
+
+/* Mobile stacking */
+@media (max-width: 600px) {
+  .rooms-row {
+    flex-direction: column;
+    align-items: center;
+  }
+  .room-card {
+    width: 90%;
+    max-width: 500px;
+  }
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes toastPop {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ===== Improved Reservation Form Layout ===== */
+.reserve-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 1rem;
+  box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.05);
+}
+
+.form-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.form-row > div {
+  flex: 1 1 45%;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row label {
+  font-weight: 700;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.form-row input,
+.form-row select {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(17, 24, 39, 0.85);
+  color: #f8fafc;
+  font-size: 0.95rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: all 0.25s ease;
+}
+
+.form-row input:focus,
+.form-row select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+  outline: none;
+}
+/* Make dropdown list show fewer items at once */
+.form-row select {
+  max-height: 2.7rem;
+  overflow-y: auto;
+}
+
+/* Limit visible height of open dropdown (browser-supported) */
+.form-row select option {
+  line-height: 1.8;
+}
+
+select::-webkit-scrollbar {
+  width: 8px;
+}
+select::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #2563eb, #f97316);
+  border-radius: 6px;
+}
+
+/* ============================================================
+   PERFECT COLUMN ALIGNMENT FOR RESERVATION FORM
+   ============================================================ */
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* equal width */
+  gap: 2.25rem; /* uniform horizontal spacing */
+  align-items: end;
+}
+
+.form-row input[type='date'] {
+  padding-right: 0.9rem !important; /* neutralize extra icon space */
+}
+
+/* Ensure all form controls line up visually */
+.form-row input,
+.form-row select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-row > div {
+  width: 100%;
+}
+
+/* ===== AM/PM Badge Adjustment ===== */
+.time-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ampm-badge.fixed {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, #2563eb, #1e3a8a, #f97316);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.3px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.45), 0 0 12px rgba(249, 115, 22, 0.3);
+  pointer-events: none;
+  animation: glowPulse 3s ease-in-out infinite;
+  transform: translateY(-50%) translateX(-1.8rem); /* shift left */
+}
+
+/* Make dropdown menus fit theme */
+select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+/* ============================================================
+   CLEAN FIX — DARK GLASS DROPDOWNS (NO BLUE EDGE)
+   ============================================================ */
+
+/* Remove unwanted gradient that caused blue lines */
+.form-row select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: rgba(17, 24, 39, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  color: #f8fafc;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  width: 100%;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+/* Hover/focus glow */
+.form-row select:hover,
+.form-row select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35),
+    0 0 12px rgba(249, 115, 22, 0.25);
+  outline: none;
+}
+
+/* Dropdown list */
+.form-row select option {
+  background: rgba(17, 24, 39, 0.98);
+  color: #f8fafc;
+  font-weight: 600;
+  padding: 0.6rem 0.75rem;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.form-row select option:hover {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: #fff;
+}
+/* ===== Fix Equal Spacing Between Fields ===== */
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem; /* equal spacing for all pairs */
+  width: 100%;
+}
+
+.form-row > div {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== UTA-Themed Selected Room Card ===== */
+.room-card {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.room-card:hover {
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+  transform: translateY(-2px);
+}
+
+.room-card.selected {
+  border: 1px solid rgba(37, 99, 235, 0.8);
+  background: radial-gradient(
+    circle at top left,
+    rgba(37, 99, 235, 0.2) 0%,
+    rgba(17, 24, 39, 0.85) 70%
+  );
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.3), 0 0 35px rgba(59, 130, 246, 0.25);
+  transform: translateY(-2px);
+}
+
+/* Optional: make selected card text subtly glow */
+.room-card.selected h4,
+.room-card.selected p {
+  color: #e2e8f0;
+  text-shadow: 0 0 6px rgba(37, 99, 235, 0.45);
+}
+
+/* On open, create floating glass panel effect */
+select:focus-visible,
+select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35),
+    0 0 18px rgba(249, 115, 22, 0.25);
+}
+
+/* Ensure dropdown height is usable for kiosk touch */
+select {
+  min-height: 2.5rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* Webkit pseudo dropdown container (for Safari) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #2563eb, #f97316);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 /* =================================
    9. RESPONSIVE MEDIA QUERIES (Updated to fix double scrollbar)
    ==================================*/
+/* --- True kiosk vertical layout for narrow/tall screens --- */
+@media (max-width: 1200px) {
+  html,
+  body {
+    overflow: hidden; /* ✅ Removes unwanted scrollbars */
+  }
+
+  .app-layout {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* ✅ Perfectly center vertically */
+    gap: 1rem;
+    padding: 64px 1.5rem 0; /* header space only */
+    height: 100vh;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  #map-container {
+    width: 88%;
+    max-width: 900px;
+    height: 40vh;
+    min-height: 280px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #auth-section {
+    width: 100%;
+    flex: none;
+  }
+
+  .form-container {
+    width: 100%;
+    transform: none;
+    margin: 0;
+  }
+}
 
 /* Tablet/Small Desktop Breakpoint (1100px) - Dashboard */
 @media (max-width: 1100px) {
@@ -1045,19 +1934,42 @@ input.input-field:-webkit-autofill {
 /* Large Mobile/Vertical Layout Breakpoint (900px) - App Layout & Header */
 @media (max-width: 900px) {
   .app-layout {
+    display: flex;
     flex-direction: column;
-    /* FIX: Set height to auto and remove hard overflow settings to let the content scroll the body */
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-    padding-top: 64px; /* Space for the 64px fixed header */
+    align-items: center;
+    justify-content: center; /* ✅ vertically center everything */
+    height: calc(100vh - 64px); /* fill screen minus header */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-top: 64px; /* keeps header gap */
+    box-sizing: border-box;
+  }
 
-    /* FIX: When the app-layout grows, we ensure the background pseudo-elements also grow */
-    &::before,
-    &::after {
-      min-height: 100%;
-      height: auto; /* Allow height to adapt to the content */
-    }
+  #map-container {
+    width: 90%;
+    max-width: 900px;
+    height: 40vh; /* map takes top 40% */
+    min-height: 280px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #auth-section {
+    width: 100%;
+    max-width: 480px;
+    flex: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 2rem; /* space below form */
+  }
+
+  .form-container {
+    width: 100%;
+    transform: none;
+    margin: 0 auto;
   }
 
   /* Header */
