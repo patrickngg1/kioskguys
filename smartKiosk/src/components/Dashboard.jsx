@@ -1,11 +1,13 @@
-// Dashboard.jsx (Scrollable Supplies Modal version)
-// - Keeps Firebase auth/profile logic
-// - Modal: Reserve Conference Room (Room A/B) with availability check
-// - Modal: Request Supplies (one long scroll with categories + image cards)
-// - localStorage persistence for reservations & supply selections
-// - 3s auto-fade confirmation overlay
+// Dashboard.jsx — Smart Kiosk (Category-specific Popular + Clean Modal)
+// --------------------------------------------------------------------
+// - Firebase auth/profile (dev mode friendly)
+// - Reserve modal with AM/PM toggles + conflict check
+// - Supplies modal with category-specific "Frequently Requested"
+// - Hides "Frequently Requested" until there is real history
+// - Clears selection on modal open; live count + glow on submit
+// - Persists request history; recomputes per-category popularity on submit
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import KioskMap from './KioskMap';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -15,50 +17,52 @@ import { auth, db } from '../firebase-config';
 const APP_ID = 'kiosk-room-booking-v1';
 const DEV_MODE = true;
 
-// ---------- Small helpers ----------
 const nowISO = () => new Date().toISOString();
 const readJSON = (k, fallback) => {
   try {
-    return JSON.parse(localStorage.getItem(k)) ?? fallback;
+    const raw = localStorage.getItem(k);
+    return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
   }
 };
-const writeJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-
-// Time overlap check (HH:MM 24h)
-function timesOverlap(aStart, aEnd, bStart, bEnd) {
-  return aStart < bEnd && bStart < aEnd;
-}
-function isRoomReserved(reservations, room, date, start, end) {
-  return reservations.some(
+const writeJSON = (k, v) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {}
+};
+const timesOverlap = (aStart, aEnd, bStart, bEnd) =>
+  aStart < bEnd && bStart < aEnd;
+const isRoomReserved = (reservations, room, date, start, end) =>
+  reservations.some(
     (r) =>
       r.room === room &&
       r.date === date &&
       timesOverlap(start, end, r.start, r.end)
   );
-}
 
-// ---------- Banner ----------
-function Banner({ item }) {
+// Banner
+function Banner({ item, onReserveClick, onSuppliesClick }) {
   if (!item) return null;
+
+  const handleClick = () => {
+    if (item.cta?.href === '#reserve') onReserveClick?.();
+    if (item.cta?.href === '#supplies') onSuppliesClick?.();
+  };
+
   return (
     <div className='card banner-block'>
-      <img
-        className='banner-img'
-        src={item.image}
-        alt={item.alt || 'Announcement'}
-      />
+      <img className='banner-img' src={item.image} alt={item.alt || 'Banner'} />
       {item.cta && (
-        <a className='btn btn-primary banner-cta' href={item.cta.href}>
+        <button className='btn btn-primary banner-cta' onClick={handleClick}>
           {item.cta.label}
-        </a>
+        </button>
       )}
     </div>
   );
 }
 
-// ---------- Confirmation overlay (auto-fades in 3s) ----------
+// Toast
 function ConfirmToast({ message, onDone }) {
   useEffect(() => {
     const id = setTimeout(onDone, 3000);
@@ -79,7 +83,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
 
-  // ---------- Auth ----------
+  // Auth
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (DEV_MODE && (!u || !u.email)) {
@@ -128,7 +132,7 @@ export default function Dashboard() {
       'https://api.dicebear.com/7.x/thumbs/svg?seed=uta&backgroundType=gradientLinear&shapeColor=1d4ed8,2563eb',
   };
 
-  // ---------- Banner rotation ----------
+  // Banners
   const [bannerIdx, setBannerIdx] = useState(0);
   const banners = [
     {
@@ -152,32 +156,45 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, []);
 
-  // ---------- Modals + toasts ----------
+  // Modals + Toast
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [showSuppliesModal, setShowSuppliesModal] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // ---------- Reservations ----------
+  // Reservations
   const [reservations, setReservations] = useState(() =>
     readJSON('reservations', [])
   );
   const [reservationData, setReservationData] = useState({
     room: '',
     date: '',
-    start: '',
-    end: '',
+    startHour: '',
+    startMin: '',
+    startPeriod: 'AM',
+    endHour: '',
+    endMin: '',
+    endPeriod: 'AM',
   });
 
   const submitReservation = (e) => {
     e.preventDefault();
-    const { room, date, start, end } = reservationData;
-    if (!room || !date || !start || !end) return;
-
+    const {
+      room,
+      date,
+      startHour,
+      startMin,
+      startPeriod,
+      endHour,
+      endMin,
+      endPeriod,
+    } = reservationData;
+    const start = `${startHour}:${startMin} ${startPeriod}`;
+    const end = `${endHour}:${endMin} ${endPeriod}`;
+    if (!room || !date || !startHour || !endHour) return;
     if (isRoomReserved(reservations, room, date, start, end)) {
-      setToast('⚠️ That time is already reserved. Please choose another time.');
+      setToast('⚠️ That time is already reserved. Please choose another slot.');
       return;
     }
-
     const updated = [
       ...reservations,
       { room, date, start, end, createdAt: nowISO() },
@@ -188,94 +205,115 @@ export default function Dashboard() {
     setToast(`Room ${room} reserved on ${date} from ${start} to ${end}.`);
   };
 
-  const roomStatus = (room, date, start, end) => {
-    if (!room || !date || !start || !end) return 'neutral';
-    return isRoomReserved(reservations, room, date, start, end)
-      ? 'busy'
-      : 'free';
-  };
-
-  // ---------- Supplies (Scrollable) ----------
-  // Categories and items (based on your screenshot)
+  // Supplies — verified item lists (from your spreadsheet), simplified where needed
   const STORAGE_CLOSET = [
-    'Pens',
-    'Pencils',
-    'Highlighters',
-    'Dry Erase Markers',
-    'Erasers',
-    'Whiteboard Cleaner',
-    'Sticky Notes',
-    'Sticky Tabs',
-    'Notepad',
-    'Printer Paper',
-    'Folders',
-    'Binders',
-    'Binder Clips',
-    'Paper Clips',
-    'Stapler',
-    'Tape Dispenser',
+    'Kleenex',
+    'AA Batteries',
+    'Ultra Fine Point Permanent Marker',
+    'Regular Permanent Marker',
+    'Finepoint Permanent Marker',
+    'Black Ballpoint Pen',
+    'Blue Ballpoint Pen',
+    'Standard Paper Clips',
+    'Jumbo Paper Clips',
+    'Staples',
+    'Blue Dry Erase Markers',
+    'Red Dry Erase Markers',
+    'Black Dry Erase Markers',
+    'Staplers',
+    'Whiteboard Spray',
     'Scissors',
-    'Ruler',
-    'Glue Stick',
-    'Index Cards',
-    'Extension Cord',
-    'HDMI Cable',
-    'DisplayPort Cable',
-    'USB-C Adapter',
-    'USB Drive',
-    'Charging Cable',
-    'Mouse',
-    'Keyboard',
-    'Laser Pointer',
-    'Cleaning Wipes',
-    'Batteries AA',
-    'Batteries AAA',
+    'Yellow Highlighters',
+    'Orange Highlighters',
+    'Pink Highlighters',
+    'Microfiber Cloth',
+    'Micro Binder Clips',
+    'Medium Binder Clips',
+    'Large Binder Clips',
+    'Rubber Bands',
+    'Pencils',
+    'Mechanical Pencil Lead',
+    'Spray Bottles',
+    'All Purpose Cleaner',
+    'Dry Eraser',
+    'Copy Paper',
+    'Dolly',
   ];
+
   const BREAK_ROOM = [
     'Coffee Cups',
     'Coffee Lids',
-    'Stirrers',
+    'Stir Sticks',
     'Sugar Packets',
-    'Creamer',
+    'Sugar Container',
+    'Coffee Creamer',
     'Napkins',
     'Plates',
-    'Bowls',
+    'Trash Bags',
+    'Small Trash Bags',
     'Plastic Spoons',
     'Plastic Forks',
-    'Paper Towels',
-    'Kleenex',
-    'Trash Bags',
+    'Plastic Knives',
+    'Paper Roll',
+    'Water Filters',
+    'All Purpose Cleaner',
     'Dish Soap',
-    'Sponge',
   ];
+
   const K_CUPS = [
-    'Donut Shop',
+    'Cafe Bustelo',
+    'Dark Magic',
     'Breakfast Blend',
-    'French Roast',
-    'Hazelnut',
-    'Vanilla',
-    'Colombian',
-    'Decaf',
+    'Breakfast Blend Decaf',
     'Green Tea',
-    'Earl Grey',
-    'Hot Cocoa',
   ];
 
-  // Popular items (float to top within each section)
-  const POPULAR = new Set([
-    'HDMI Cable',
-    'USB-C Adapter',
-    'Dry Erase Markers',
-    'Erasers',
-    'Coffee Cups',
-    'Kleenex',
-    'Sugar Packets',
-    'Donut Shop',
-  ]);
+  const categorizeItem = (item) => {
+    if (STORAGE_CLOSET.includes(item)) return 'closet';
+    if (BREAK_ROOM.includes(item)) return 'break';
+    if (K_CUPS.includes(item)) return 'kcup';
+    return 'other';
+  };
 
-  const [selectedSupplies, setSelectedSupplies] = useState(() =>
-    readJSON('supplySelected', [])
-  );
+  const computePopularByCategory = (history) => {
+    const freq = { closet: {}, break: {}, kcup: {} };
+    history.forEach((req) => {
+      req.items.forEach((item) => {
+        const cat = categorizeItem(item);
+        if (!freq[cat]) return;
+        freq[cat][item] = (freq[cat][item] || 0) + 1;
+      });
+    });
+
+    const toTop6Set = (obj) =>
+      new Set(
+        Object.entries(obj)
+          .sort((a, b) => b[1] - a[1])
+          .map(([i]) => i)
+          .slice(0, 6)
+      );
+
+    return {
+      closet: toTop6Set(freq.closet), // may be empty if no history
+      break: toTop6Set(freq.break),
+      kcup: toTop6Set(freq.kcup),
+    };
+  };
+
+  const [popularByCategory, setPopularByCategory] = useState(() => {
+    const history = readJSON('supplyRequests', []);
+    return computePopularByCategory(history);
+  });
+
+  const [selectedSupplies, setSelectedSupplies] = useState([]);
+
+  useEffect(() => {
+    if (showSuppliesModal) {
+      setSelectedSupplies([]);
+      localStorage.removeItem('supplySelected');
+    }
+  }, [showSuppliesModal]);
+
   const toggleSupply = (name) => {
     setSelectedSupplies((prev) => {
       const has = prev.includes(name);
@@ -296,11 +334,11 @@ export default function Dashboard() {
       { items: selectedSupplies, createdAt: nowISO() },
     ];
     writeJSON('supplyRequests', updatedHistory);
+    setPopularByCategory(computePopularByCategory(updatedHistory)); // updates for next open
     setShowSuppliesModal(false);
     setToast(`Supply request sent: ${selectedSupplies.join(', ')}`);
   };
 
-  // UI helpers
   const supplyCard = (name) => (
     <div
       key={name}
@@ -313,6 +351,7 @@ export default function Dashboard() {
       onKeyDown={(e) => (e.key === 'Enter' ? toggleSupply(name) : null)}
       aria-label={`Select ${name}`}
     >
+      {/* Replace src with your generated asset path when ready */}
       <img
         src={`https://via.placeholder.com/160?text=${encodeURIComponent(name)}`}
         alt={name}
@@ -321,126 +360,113 @@ export default function Dashboard() {
     </div>
   );
 
-  const renderSection = (title, items) => {
-    const popular = items.filter((i) => POPULAR.has(i));
-    const rest = items.filter((i) => !POPULAR.has(i));
+  const renderSection = (title, items, categoryKey) => {
+    const popularSet =
+      categoryKey === 'closet'
+        ? popularByCategory.closet
+        : categoryKey === 'break'
+        ? popularByCategory.break
+        : popularByCategory.kcup;
+
+    const popular = items.filter((i) => popularSet.has(i));
+    const rest = items.filter((i) => !popularSet.has(i));
+
     return (
       <section className='supply-section' key={title}>
         <h3 className='supply-title'>{title}</h3>
+
         {popular.length > 0 && (
           <>
             <div className='supply-subtitle'>Frequently Requested</div>
             <div className='supply-grid'>{popular.map(supplyCard)}</div>
           </>
         )}
+
         <div className='supply-grid'>{rest.map(supplyCard)}</div>
       </section>
     );
   };
 
-  const generateTimes = () => {
-    const times = [];
-    let hour = 8,
-      minute = 0;
-    while (hour < 21) {
-      // 8:00 AM to 8:00 PM
-      const hh = hour.toString().padStart(2, '0');
-      const mm = minute.toString().padStart(2, '0');
-      const period = hour < 12 ? 'AM' : 'PM';
-      const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-      times.push(`${displayHour}:${mm} ${period}`);
-      minute += 15;
-      if (minute === 60) {
-        minute = 0;
-        hour++;
-      }
-    }
-    return times;
-  };
-
-  // ---------- Render ----------
   return (
     <div className='app-layout dashboard-view'>
       <div className='dashboard-grid'>
-        {/* LEFT */}
-        <aside className='dash-left'>
-          <div className='card user-card'>
-            <div className='user-row'>
-              <img className='user-avatar' src={display.avatar} alt='' />
-              <div>
-                <div className='user-name'>{display.name}</div>
-                <div className='user-id'>User ID: {display.id}</div>
-              </div>
-            </div>
-            <div className='user-meta'>{display.role}</div>
-            <div className='user-links'>
-              <a href={`mailto:${display.email}`} className='pill-link'>
-                Email
-              </a>
-              <a href='https://www.uta.edu/maps' className='pill-link'>
-                UTA Map
-              </a>
-              <a href='https://www.uta.edu/alerts' className='pill-link'>
-                Alerts
-              </a>
-            </div>
-            <div style={{ marginTop: '0.75rem' }}>
-              <button onClick={handleLogout} className='auth-button'>
-                Sign Out
-              </button>
+        {/* User Card (dash-left content) */}
+        <div
+          className='card user-card action-card'
+          style={{ gridArea: 'user' }}
+        >
+          <div className='user-row'>
+            <img className='user-avatar' src={display.avatar} alt='' />
+            <div>
+              <div className='user-name'>{display.name}</div>
+              <div className='user-id'>User ID: {display.id}</div>
             </div>
           </div>
-        </aside>
-
-        {/* CENTER */}
-        <section className='dash-center'>
-          <Banner item={banners[bannerIdx]} />
-          <div className='card map-card'>
-            <div style={{ height: '50vh' }}>
-              <KioskMap />
-            </div>
+          <div className='user-meta'>{display.role}</div>
+          <div className='user-links'>
+            <a href={`mailto:${display.email}`} className='pill-link'>
+              Email
+            </a>
+            <a href='https://www.uta.edu/maps' className='pill-link'>
+              UTA Map
+            </a>
+            <a href='https://www.uta.edu/alerts' className='pill-link'>
+              Alerts
+            </a>
           </div>
-        </section>
-
-        {/* RIGHT */}
-        <aside className='dash-right'>
-          <div className='card action-card'>
-            <div className='action-head'>
-              <div className='action-title'>Reserve Conference Room</div>
-              <span className='action-check' aria-hidden>
-                ✓
-              </span>
-            </div>
-            <p className='action-copy'>Book a meeting space by date & time.</p>
-            <button
-              onClick={() => setShowReserveModal(true)}
-              className='btn btn-primary w-full'
-            >
-              Open Scheduler
+          <div style={{ marginTop: '0.75rem' }}>
+            <button onClick={handleLogout} className='auth-button'>
+              Sign Out
             </button>
           </div>
+        </div>
 
-          <div className='card action-card'>
-            <div className='action-head'>
-              <div className='action-title'>Request Supplies</div>
-              <span className='action-check' aria-hidden>
-                ✓
-              </span>
-            </div>
-            <p className='action-copy'>
-              Tap pictures to select items you need.
-            </p>
-            <button
-              onClick={() => setShowSuppliesModal(true)}
-              className='btn btn-primary w-full'
-            >
-              Open Request Form
-            </button>
+        {/* Banner (dash-center content, first item) - Banner component already has the banner-block class */}
+        <Banner
+          item={banners[bannerIdx]}
+          onReserveClick={() => setShowReserveModal(true)}
+          onSuppliesClick={() => setShowSuppliesModal(true)}
+        />
+
+        {/* Map (dash-center content, second item) */}
+        <div className='card map-card' style={{ gridArea: 'map' }}>
+          <div style={{ height: '50vh' }}>
+            <KioskMap />
           </div>
-        </aside>
+        </div>
+
+        {/* Reserve Action Card (dash-right content, first item) */}
+        <div className='card action-card' style={{ gridArea: 'reserve' }}>
+          <div className='action-head'>
+            <div className='action-title'>Reserve Conference Room</div>
+            <span className='action-check'>✓</span>
+          </div>
+          <p className='action-copy'>Book a meeting space by date & time.</p>
+          <button
+            onClick={() => setShowReserveModal(true)}
+            className='btn btn-primary w-full'
+          >
+            Open Scheduler
+          </button>
+        </div>
+
+        {/* Supplies Action Card (dash-right content, second item) */}
+        <div className='card action-card' style={{ gridArea: 'supplies' }}>
+          <div className='action-head'>
+            <div className='action-title'>Request Supplies</div>
+            <span className='action-check'>✓</span>
+          </div>
+          <p className='action-copy'>Tap pictures to select items you need.</p>
+          <button
+            onClick={() => setShowSuppliesModal(true)}
+            className='btn btn-primary w-full'
+          >
+            Open Request Form
+          </button>
+        </div>
       </div>
 
-      {/* ---------- Reserve Room Modal ---------- */}
+      {/* Reserve Room Modal */}
       {showReserveModal && (
         <div
           className='modal-overlay'
@@ -461,12 +487,6 @@ export default function Dashboard() {
             <div className='rooms-row'>
               {['A', 'B'].map((letter) => {
                 const r = `Room ${letter}`;
-                const status = roomStatus(
-                  r,
-                  reservationData.date,
-                  reservationData.start,
-                  reservationData.end
-                );
                 return (
                   <div
                     key={r}
@@ -478,13 +498,6 @@ export default function Dashboard() {
                     }
                   >
                     <div className='room-name'>{r}</div>
-                    <div className={`room-status ${status}`}>
-                      {status === 'free'
-                        ? '🟢 Available'
-                        : status === 'busy'
-                        ? '🔴 Reserved'
-                        : '—'}
-                    </div>
                     <div className='room-meta'>Capacity: 8 · Screen · HDMI</div>
                   </div>
                 );
@@ -492,7 +505,6 @@ export default function Dashboard() {
             </div>
 
             <form onSubmit={submitReservation} className='reserve-form'>
-              {/* Row 1 — Date + Room */}
               <div className='form-row'>
                 <div>
                   <label>Date</label>
@@ -508,6 +520,7 @@ export default function Dashboard() {
                     }
                   />
                 </div>
+
                 <div>
                   <label>Room</label>
                   <select
@@ -527,33 +540,60 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Row 2 — Start + End Time */}
               <div className='form-row'>
                 <div>
                   <label>Start Time</label>
                   <div className='time-picker'>
                     <select
                       required
-                      value={reservationData.start}
+                      value={reservationData.startHour}
                       onChange={(e) =>
                         setReservationData((d) => ({
                           ...d,
-                          start: e.target.value,
+                          startHour: e.target.value,
                         }))
                       }
                     >
-                      <option value=''>Select Start Time</option>
-                      {generateTimes().map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
+                      <option value=''>Hour</option>
+                      {[...Array(12)].map((_, i) => {
+                        const h = i + 1;
+                        return (
+                          <option key={h} value={h}>
+                            {h}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <select
+                      required
+                      value={reservationData.startMin}
+                      onChange={(e) =>
+                        setReservationData((d) => ({
+                          ...d,
+                          startMin: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value=''>Min</option>
+                      {['00', '15', '30', '45'].map((m) => (
+                        <option key={m}>{m}</option>
                       ))}
                     </select>
-                    {reservationData.start && (
-                      <span className='ampm-badge fixed'>
-                        {reservationData.start.includes('AM') ? 'AM' : 'PM'}
-                      </span>
-                    )}
+                    <span
+                      className={`ampm-badge ${
+                        reservationData.startPeriod === 'PM'
+                          ? 'pm-active'
+                          : 'am-active'
+                      }`}
+                      onClick={() =>
+                        setReservationData((d) => ({
+                          ...d,
+                          startPeriod: d.startPeriod === 'AM' ? 'PM' : 'AM',
+                        }))
+                      }
+                    >
+                      {reservationData.startPeriod || 'AM'}
+                    </span>
                   </div>
                 </div>
 
@@ -562,26 +602,54 @@ export default function Dashboard() {
                   <div className='time-picker'>
                     <select
                       required
-                      value={reservationData.end}
+                      value={reservationData.endHour}
                       onChange={(e) =>
                         setReservationData((d) => ({
                           ...d,
-                          end: e.target.value,
+                          endHour: e.target.value,
                         }))
                       }
                     >
-                      <option value=''>Select End Time</option>
-                      {generateTimes().map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
+                      <option value=''>Hour</option>
+                      {[...Array(12)].map((_, i) => {
+                        const h = i + 1;
+                        return (
+                          <option key={h} value={h}>
+                            {h}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <select
+                      required
+                      value={reservationData.endMin}
+                      onChange={(e) =>
+                        setReservationData((d) => ({
+                          ...d,
+                          endMin: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value=''>Min</option>
+                      {['00', '15', '30', '45'].map((m) => (
+                        <option key={m}>{m}</option>
                       ))}
                     </select>
-                    {reservationData.end && (
-                      <span className='ampm-badge fixed'>
-                        {reservationData.end.includes('AM') ? 'AM' : 'PM'}
-                      </span>
-                    )}
+                    <span
+                      className={`ampm-badge ${
+                        reservationData.endPeriod === 'PM'
+                          ? 'pm-active'
+                          : 'am-active'
+                      }`}
+                      onClick={() =>
+                        setReservationData((d) => ({
+                          ...d,
+                          endPeriod: d.endPeriod === 'AM' ? 'PM' : 'AM',
+                        }))
+                      }
+                    >
+                      {reservationData.endPeriod || 'AM'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -594,7 +662,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ---------- Supplies Modal (Single Scrollable Page) ---------- */}
+      {/* Supplies Modal */}
       {showSuppliesModal && (
         <div
           className='modal-overlay'
@@ -613,21 +681,24 @@ export default function Dashboard() {
               appear first.
             </p>
 
-            {renderSection('Storage Closet', STORAGE_CLOSET)}
-            {renderSection('Break Room', BREAK_ROOM)}
-            {renderSection('K-Cups', K_CUPS)}
+            {renderSection('Storage Closet', STORAGE_CLOSET, 'closet')}
+            {renderSection('Break Room', BREAK_ROOM, 'break')}
+            {renderSection('K-Cups', K_CUPS, 'kcup')}
 
             <button
               onClick={submitSupplies}
-              className='btn btn-primary w-full mt-2'
+              className={`btn btn-primary w-full mt-2 ${
+                selectedSupplies.length > 0 ? 'active-glow' : ''
+              }`}
             >
-              Submit Request
+              {selectedSupplies.length > 0
+                ? `Submit Request (${selectedSupplies.length})`
+                : 'Submit Request'}
             </button>
           </div>
         </div>
       )}
 
-      {/* ---------- Confirmation Toast ---------- */}
       {toast && <ConfirmToast message={toast} onDone={() => setToast(null)} />}
     </div>
   );
