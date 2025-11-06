@@ -1,10 +1,10 @@
 # The Kiosk Guys Backend Django + Vite App
 
-Hello fellow Kiosk Guy — it is I, **Scrum Master**, here to guide you through running this thing. 🧙‍♂️
+Hello fellow Kiosk Guy — it is I, **Scrum Master**, here to guide you through running this thing.
 
 ---
 
-## 🏁 How to Run the Server
+## How to Run the Server
 
 ### 1. Navigate to the project folder
 Make sure you’re in the right place — the folder that contains both `package.json` and `requirements.txt`.
@@ -23,7 +23,7 @@ This installs everything the Django backend needs.
 pip install -r requirements.txt
 ```
 
-✅ **Tip:** If you get permission or environment errors, use a virtual environment:
+**Tip:** If you get permission or environment errors, use a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate   # Mac/Linux
@@ -89,15 +89,15 @@ npm run dev
 
 ---
 
-## 🧭 Navigating To Pages
+## Navigating To Pages
 Currently, there are two pages available:
 
-### Login Page
+### [Login Page](http://localhost:5173/)
 - Map
 - Login
 - Sign Up
 
-### Home Page
+### [Home Page](http://localhost:5173/#/dashboard)
 - Slideshow
 - Sign Out
 - Room Reservation
