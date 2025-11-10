@@ -13,6 +13,8 @@ import KioskMap from './KioskMap';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase-config';
+import '../styles/Dashboard.css';
+import '../styles/App.css';
 
 const APP_ID = 'kiosk-room-booking-v1';
 const DEV_MODE = true;
@@ -20,13 +22,15 @@ const DEV_MODE = true;
 // Load every .png and .jpg in /src/assets as URLs at build time
 const assetPng = import.meta.glob('../assets/*.png', {
   eager: true,
-  as: 'url',
-});
-const assetJpg = import.meta.glob('../assets/*.jpg', {
-  eager: true,
-  as: 'url',
+  query: '?url',
+  import: 'default',
 });
 
+const assetJpg = import.meta.glob('../assets/*.jpg', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+});
 // Helper: get image for an item name, falling back to Kleenex.png
 const getSupplyImg = (name) =>
   assetPng[`../assets/${name}.png`] ||
@@ -79,16 +83,27 @@ function Banner({ item, onReserveClick, onSuppliesClick }) {
 }
 
 // Toast
-function ConfirmToast({ message, onDone }) {
+function ConfirmToast({ message = '', onDone }) {
   useEffect(() => {
     const id = setTimeout(onDone, 3000);
     return () => clearTimeout(id);
   }, [onDone]);
+
+  const formatted =
+    typeof message === 'string'
+      ? message
+          .replace(/(Total)/g, '<strong>$1</strong>')
+          .replace(/(\$[0-9,]+)/g, '<span class="highlight-time">$1</span>')
+      : '';
+
   return (
     <div className='confirm-toast'>
       <div className='confirm-card'>
-        <div className='confirm-emoji'>✅</div>
-        <div className='confirm-text'>{message}</div>
+        <div className='confirm-emoji'>💎</div>
+        <div
+          className='confirm-text'
+          dangerouslySetInnerHTML={{ __html: formatted }}
+        ></div>
       </div>
     </div>
   );
@@ -164,13 +179,6 @@ export default function Dashboard() {
       cta: { href: '#supplies', label: 'Request Supplies' },
     },
   ];
-  useEffect(() => {
-    const id = setInterval(
-      () => setBannerIdx((i) => (i + 1) % banners.length),
-      7000
-    );
-    return () => clearInterval(id);
-  }, []);
 
   // Modals + Toast
   const [showReserveModal, setShowReserveModal] = useState(false);
@@ -194,6 +202,8 @@ export default function Dashboard() {
 
   const submitReservation = (e) => {
     e.preventDefault();
+
+    // 1. Destructure all required fields from the state
     const {
       room,
       date,
@@ -204,23 +214,58 @@ export default function Dashboard() {
       endMin,
       endPeriod,
     } = reservationData;
+
+    // 2. Basic form validation
+    if (!room || !date || !startHour || !startMin || !endHour || !endMin) {
+      console.error('Reservation form is incomplete');
+      return;
+    }
+
+    // 3. Convert AM/PM times to minutes since midnight for comparison
+    const toMinutes = (h, m, period) => {
+      let hour = parseInt(h, 10) % 12;
+      if (period === 'PM') hour += 12;
+      return hour * 60 + parseInt(m, 10);
+    };
+
+    const startMins = toMinutes(startHour, startMin, startPeriod);
+    const endMins = toMinutes(endHour, endMin, endPeriod);
+
+    // 4. Validate that end time is after start time
+    if (endMins <= startMins) {
+      setToast('⚠️ End time must be after start time.');
+      return;
+    }
+
+    // 5. Format the start and end times for saving
     const start = `${startHour}:${startMin} ${startPeriod}`;
     const end = `${endHour}:${endMin} ${endPeriod}`;
-    if (!room || !date || !startHour || !endHour) return;
+
+    // 6. Check for conflicts with existing reservations
     if (isRoomReserved(reservations, room, date, start, end)) {
       setToast('⚠️ That time is already reserved. Please choose another slot.');
       return;
     }
-    const updated = [
-      ...reservations,
-      { room, date, start, end, createdAt: nowISO() },
-    ];
+
+    // 7. Create and save the new reservation
+    const newReservation = {
+      room,
+      date,
+      start,
+      end,
+      createdAt: nowISO(),
+    };
+
+    const updated = [...reservations, newReservation];
     setReservations(updated);
     writeJSON('reservations', updated);
+
+    // 8. Close modal and show success message
     setShowReserveModal(false);
-    setToast(`Room ${room} reserved on ${date} from ${start} to ${end}.`);
+    setToast(`✅ Room ${room} reserved on ${date} from ${start} to ${end}.`);
   };
 
+  // Supplies — verified item lists (from your spreadsheet), simplified where needed
   // Supplies — verified item lists (from your spreadsheet), simplified where needed
   const STORAGE_CLOSET = [
     'Kleenex',
@@ -232,11 +277,10 @@ export default function Dashboard() {
     'Blue Ballpoint Pen',
     'Standard Paper Clips',
     'Jumbo Paper Clips',
-    'Staples',
+    'Staplers',
     'Blue Dry Erase Markers',
     'Red Dry Erase Markers',
     'Black Dry Erase Markers',
-    'Staplers',
     'Whiteboard Spray',
     'Scissors',
     'Yellow Highlighters',
@@ -324,11 +368,13 @@ export default function Dashboard() {
   const [selectedSupplies, setSelectedSupplies] = useState([]);
 
   useEffect(() => {
-    if (showSuppliesModal) {
-      setSelectedSupplies([]);
-      localStorage.removeItem('supplySelected');
-    }
-  }, [showSuppliesModal]);
+    if (showReserveModal || showSuppliesModal) return; // pause while modal open
+    const id = setInterval(
+      () => setBannerIdx((i) => (i + 1) % banners.length),
+      7000
+    );
+    return () => clearInterval(id);
+  }, [showReserveModal, showSuppliesModal]);
 
   const toggleSupply = (name) => {
     setSelectedSupplies((prev) => {
@@ -402,7 +448,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className='app-layout dashboard-view'>
+    <div className='dashboard-view app-layout'>
       <div className='dashboard-grid'>
         {/* User Card (dash-left content) */}
         <div
@@ -417,36 +463,41 @@ export default function Dashboard() {
             </div>
           </div>
           <div className='user-meta'>{display.role}</div>
-          <div className='user-links'>
-            <a href={`mailto:${display.email}`} className='pill-link'>
-              Email
-            </a>
-            <a href='https://www.uta.edu/maps' className='pill-link'>
-              UTA Map
-            </a>
-            <a href='https://www.uta.edu/alerts' className='pill-link'>
-              Alerts
-            </a>
-          </div>
+
           <div style={{ marginTop: '0.75rem' }}>
-            <button onClick={handleLogout} className='auth-button'>
+            <button onClick={handleLogout} className='btn btn-primary wl-ful'>
               Sign Out
             </button>
           </div>
         </div>
 
         {/* Banner (dash-center content, first item) - Banner component already has the banner-block class */}
-        <Banner
-          item={banners[bannerIdx]}
-          onReserveClick={() => setShowReserveModal(true)}
-          onSuppliesClick={() => setShowSuppliesModal(true)}
-        />
+        <div className='banner-block'>
+          {banners.map((b, i) => (
+            <img
+              key={i}
+              src={b.image}
+              alt={b.alt}
+              className={`banner-img ${i === bannerIdx ? 'active' : ''}`}
+            />
+          ))}
+
+          {/* CTA buttons now open modals dynamically */}
+          <button
+            className='banner-cta btn btn-primary'
+            onClick={() => {
+              const href = banners[bannerIdx].cta.href;
+              if (href === '#reserve') setShowReserveModal(true);
+              if (href === '#supplies') setShowSuppliesModal(true);
+            }}
+          >
+            {banners[bannerIdx].cta.label}
+          </button>
+        </div>
 
         {/* Map (dash-center content, second item) */}
-        <div className='card map-card' style={{ gridArea: 'map' }}>
-          <div style={{ height: '50vh' }}>
-            <KioskMap />
-          </div>
+        <div className='card map-card iframe' style={{ gridArea: 'map' }}>
+          <KioskMap />
         </div>
 
         {/* Reserve Action Card (dash-right content, first item) */}
@@ -458,7 +509,7 @@ export default function Dashboard() {
           <p className='action-copy'>Book a meeting space by date & time.</p>
           <button
             onClick={() => setShowReserveModal(true)}
-            className='btn btn-primary w-full'
+            className='btn btn-primary wl-ful'
           >
             Open Scheduler
           </button>

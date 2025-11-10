@@ -1,0 +1,1259 @@
+/* =======================================================================
+   dashboard.css - DASHBOARD PAGE STYLES
+   ======================================================================= */
+
+/* =================================
+   1. DASHBOARD VIEW STYLES
+   ==================================*/
+.dashboard-view {
+  position: relative;
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  overflow-y: auto; /* ✅ enable internal scroll */
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  z-index: 1;
+  padding-top: 0rem;
+}
+
+.dashboard-view .dashboard-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    'user banner'
+    'reserve map'
+    'supplies map';
+  gap: 1.5rem;
+  width: min(1400px, 95vw);
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+
+/* User + Action cards — same premium shell */
+.dashboard-view .user-card,
+.dashboard-view .card.action-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  text-align: left;
+
+  border-radius: 1.5rem;
+  padding: 1.8rem 1.6rem 2rem;
+  box-sizing: border-box;
+
+  /* Dark glass with subtle aurora */
+  background: radial-gradient(
+      circle at 20% -10%,
+      rgba(59, 130, 246, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 120% 10%,
+      rgba(249, 115, 22, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(135deg, rgba(17, 24, 39, 0.92), rgba(15, 23, 42, 0.86));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+
+  /* Depth + ambient color glow */
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35), 0 0 28px rgba(37, 99, 235, 0.22),
+    inset 0 1px 4px rgba(255, 255, 255, 0.1);
+
+  /* Keep the soft breathing you already use on action cards */
+  animation: glowBreath 5s ease-in-out infinite;
+  transition: transform 0.35s ease, box-shadow 0.35s ease, filter 0.35s ease;
+}
+
+/* Unified hover state (slightly lifted, brighter, stronger glow) */
+.dashboard-view .user-card:hover,
+.dashboard-view .card.action-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  filter: brightness(1.06);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4), 0 0 36px rgba(59, 130, 246, 0.45),
+    0 0 24px rgba(249, 115, 22, 0.28), inset 0 1px 5px rgba(255, 255, 255, 0.14);
+}
+
+/* Avatar */
+.dashboard-view .user-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(135deg, #2563eb, #f97316);
+  box-shadow: 0 0 18px rgba(37, 99, 235, 0.25);
+  margin-bottom: 1rem;
+}
+
+/* Text */
+.dashboard-view .user-name {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #0f172a;
+}
+.dashboard-view .user-id {
+  font-size: 0.85rem;
+  color: #475569;
+}
+.dashboard-view .user-meta {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #ea580c;
+  padding: 0.4rem;
+}
+
+/* Pills */
+.pill-link {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  border-radius: 9999px;
+  padding: 0.3rem 0.75rem;
+  transition: all 0.25s ease;
+}
+.pill-link:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+}
+
+/* Button (Dashboard specific override) */
+.dashboard-view .auth-button {
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.35);
+}
+.dashboard-view .auth-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(37, 99, 235, 0.45), 0 0 15px rgba(249, 115, 22, 0.3);
+}
+
+/* ===== Final Tuned Banner Image and Button Layout ===== */
+.dashboard-view .banner-block {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  height: 340px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 38px rgba(37, 99, 235, 0.25),
+    0 0 26px rgba(249, 115, 22, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.6s ease, box-shadow 0.6s ease;
+}
+
+.dashboard-view .banner-block:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 45px rgba(37, 99, 235, 0.35),
+    0 0 30px rgba(249, 115, 22, 0.25);
+}
+
+/* Image crossfade effect for slideshow */
+.dashboard-view .banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  border-radius: inherit;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: opacity 1.2s ease-in-out, transform 8s ease-out;
+  transform: scale(1.05); /* slight zoom for depth */
+}
+
+/* The active slide fades in smoothly */
+.dashboard-view .banner-img.active {
+  opacity: 1;
+  z-index: 2;
+  transform: scale(1);
+}
+
+/* Optional: subtle gradient overlay for text contrast */
+.dashboard-view .banner-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.4)
+  );
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Request Supplies button positioning */
+/* Request Supplies / Reserve Room button — always visible above slideshow */
+.dashboard-view .banner-cta {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 5; /* ensures it stays above images and overlay */
+  padding: 0.7rem 1.4rem;
+  font-size: 0.95rem;
+  border-radius: 0.7rem;
+  background: linear-gradient(135deg, #5aa2ff 0%, #2563eb 45%, #1d4ed8 100%);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transition: all 0.25s ease;
+}
+
+.dashboard-view .banner-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.45),
+    0 0 18px rgba(249, 115, 22, 0.25);
+}
+
+.map-card {
+  position: relative;
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  overflow: hidden;
+  transition: transform 0.6s ease, box-shadow 0.6s ease;
+}
+.map-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.1),
+    rgba(249, 115, 22, 0.1)
+  );
+  mix-blend-mode: overlay;
+}
+.map-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 45px rgba(37, 99, 235, 0.35),
+    0 0 30px rgba(249, 115, 22, 0.25);
+}
+
+.map-card iframe {
+  display: block;
+}
+
+/* ============================================================
+   FINAL POLISHED PRIME REACT ACTION CARDS FIX
+   (Reserve Conference Room + Request Supplies)
+   ============================================================ */
+.dashboard-view .card.action-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  text-align: left;
+  border-radius: 1.5rem;
+  padding: 1.8rem 1.6rem 2rem;
+  box-sizing: border-box;
+  color: #1e293b;
+
+  /* Elegant frosted glass look */
+  background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.9),
+      rgba(240, 244, 255, 0.95)
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(37, 99, 235, 0.12),
+      transparent 70%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.4),
+    0 10px 26px rgba(0, 0, 0, 0.25), 0 0 28px rgba(37, 99, 235, 0.18);
+  transition: all 0.35s ease;
+}
+
+.dashboard-view .card.action-card:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 0 25px rgba(37, 99, 235, 0.35),
+    0 0 18px rgba(249, 115, 22, 0.25);
+  transition: box-shadow 0.35s ease;
+  filter: brightness(1.03);
+}
+
+/* Titles & content spacing */
+.dashboard-view .card.action-card .action-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+.dashboard-view .card.action-card .action-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.45);
+}
+.dashboard-view .card.action-card .action-copy {
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.55;
+  margin-bottom: 1.75rem;
+}
+
+/* Buttons inside the card */
+.dashboard-view .card.action-card .btn-primary {
+  display: inline-block;
+  width: 100%;
+  border: none;
+  border-radius: 0.8rem;
+  padding: 0.9rem 0;
+  font-weight: 800;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(135deg, #5aa2ff 0%, #2563eb 45%, #1d4ed8 100%);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.dashboard-view .card.action-card .btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.55),
+    0 0 18px rgba(249, 115, 22, 0.25);
+}
+
+/* Add breathing animation for premium effect */
+.dashboard-view .card.action-card {
+  animation: cardEntrance 0.8s ease-out both;
+}
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ===============================
+   2. DASHBOARD MODALS
+   =============================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal-box {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  padding: 2rem;
+  border-radius: 1.5rem;
+  width: min(400px, 90%);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(59, 130, 246, 0.2);
+  animation: slideUp 0.3s ease;
+}
+
+.modal-box h2 {
+  padding-bottom: 1rem;
+  color: #f97316;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(249, 115, 22, 0.4);
+}
+
+.modal-box form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-box input,
+.modal-box select {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #ccc;
+}
+
+.modal-box label {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.btn.btn-primary:not(.banner-cta),
+.btn.btn-primary.w-full.mt-2 {
+  width: 100%;
+  height: 52px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.35);
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+.btn.btn-primary:not(.banner-cta)::before,
+.btn.btn-primary.w-full.mt-2::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  transform: skewX(-20deg);
+  transition: left 0.45s ease;
+  z-index: 1;
+}
+
+.btn.btn-primary:not(.banner-cta):hover::before,
+.btn.btn-primary.w-full.mt-2:hover::before {
+  left: 125%;
+}
+
+.btn.btn-primary.w-full.mt-2:hover {
+  background: linear-gradient(90deg, #1e40af, #1d4ed8);
+  transform: translateY(-2px);
+  box-shadow: 0 0 22px rgba(37, 99, 235, 0.55);
+}
+
+/* New class added dynamically by React when any items are selected */
+.btn.btn-primary.active-glow:not(.banner-cta),
+.btn.btn-primary.w-full.mt-2.active-glow {
+  background: linear-gradient(90deg, #1e40af, #1d4ed8);
+  box-shadow: 0 0 25px rgba(249, 115, 22, 0.65);
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   PREMIUM GLOW PULSE EFFECT — Reserve & Supplies Cards
+   ============================================================ */
+
+/* Soft ambient pulse (always on) */
+.dashboard-view .card.action-card {
+  animation: glowBreath 5s ease-in-out infinite;
+}
+
+@keyframes glowBreath {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgba(37, 99, 235, 0.25),
+      0 0 12px rgba(249, 115, 22, 0.15);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(37, 99, 235, 0.4),
+      0 0 20px rgba(249, 115, 22, 0.25);
+    filter: brightness(1.05);
+  }
+}
+
+/* Slight intensity boost on hover without killing the glow */
+.dashboard-view .card.action-card:hover {
+  animation: none; /* freeze the cycle */
+  box-shadow: 0 0 32px rgba(37, 99, 235, 0.55), 0 0 22px rgba(249, 115, 22, 0.3);
+  filter: brightness(1.07);
+  transition: transform 0.6s ease, box-shadow 0.6s ease;
+}
+
+/* ============================================================
+   UTA DARK THEME — PREMIUM KIOSK STYLE
+   ============================================================ */
+
+/* ---------- Modal Background ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at 30% 10%,
+    rgba(30, 58, 138, 0.35),
+    rgba(7, 12, 24, 0.95)
+  );
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  animation: fadeIn 0.3s ease;
+}
+
+/* ---------- Modal Box (Glass Shell) ---------- */
+.modal-box {
+  position: relative;
+  background: linear-gradient(
+    to bottom right,
+    rgba(17, 24, 39, 0.85),
+    rgba(10, 15, 26, 0.9)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1.75rem;
+  padding: 2rem 2.5rem 2.25rem;
+  box-shadow: 0 0 35px rgba(0, 0, 0, 0.55), 0 0 35px rgba(37, 99, 235, 0.25);
+  color: #e5e7eb;
+  max-width: 900px;
+  width: 92%;
+  animation: slideUp 0.3s ease;
+  margin-top: 3rem;
+}
+
+.modal-box h2 {
+  text-align: center;
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #60a5fa, #f97316);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1.25rem;
+}
+
+/* ---------- Close Button ---------- */
+.close-btn {
+  position: absolute;
+  top: 14px;
+  right: 20px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.close-btn:hover {
+  transform: scale(1.1);
+  opacity: 1;
+  color: #f97316;
+}
+
+/* --- Conference Room Cards --- */
+.rooms-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 1.25rem;
+  margin: 1rem 0 1.25rem;
+}
+
+/* Each room card */
+.room-card {
+  flex: 1 1 45%;
+  max-width: 340px;
+  background: linear-gradient(
+    to bottom right,
+    rgba(30, 41, 59, 0.75),
+    rgba(15, 23, 42, 0.9)
+  );
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.room-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+/*
+  THIS IS THE FIX:
+  We are replacing the old .room-card.selected rule (with the
+  bright orange/purple gradient) with this new "energized glass"
+  style that matches your kiosk's theme.
+*/
+.room-card.selected {
+  position: relative;
+  /* New "energized" dark glass that matches your theme */
+  background: radial-gradient(
+      circle at center,
+      rgba(37, 99, 235, 0.3) 0%,
+      /* Bright blue center */ rgba(30, 58, 138, 0.2) 40%,
+      /* Fades to dark blue */ transparent 70%
+    ),
+    linear-gradient(
+      /* Original dark glass */ to bottom right,
+      rgba(30, 41, 59, 0.75),
+      rgba(15, 23, 42, 0.9)
+    );
+  color: #ffffff;
+  /* New "lit edge" border with UTA Orange */
+  border: 2px solid rgba(249, 115, 22, 0.7);
+  border-radius: 1.25rem; /* Matched to original .room-card */
+  /* New "Spectacular" multi-layered glow */
+  box-shadow: 0 0 35px rgba(37, 99, 235, 0.55),
+    /* Main blue glow */ 0 0 25px rgba(249, 115, 22, 0.35),
+    /* Orange glow */ 0 6px 18px rgba(0, 0, 0, 0.45); /* Original depth shadow */
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  transform: translateY(-3px); /* Match the :hover transform */
+  transition: all 0.3s ease;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/*
+  FIX: Removed the conflicting ".room-option.active" rules
+  that were pasted in and overriding the text color.
+*/
+
+/* ----- Typography inside Room Cards ----- */
+.room-card .room-name {
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.3px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 0, 0, 0.35);
+}
+
+.room-card .room-meta {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 0 6px rgba(0, 0, 0, 0.45);
+  transition: color 0.3s ease;
+}
+
+.room-card.selected .room-name {
+  color: #ffffff;
+  font-weight: 800;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75), 0 0 12px rgba(0, 0, 0, 0.55);
+}
+
+.room-card.selected .room-meta {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.55);
+}
+
+/* This .room-name rule was orphaned and incorrect, I removed it */
+
+.room-status {
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+.room-status.free {
+  color: #22c55e;
+}
+.room-status.busy {
+  color: #ef4444;
+}
+
+/* ---------- Form Fields ---------- */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.75rem;
+}
+.grid-2 label {
+  font-weight: 700;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+.grid-2 input,
+.grid-2 select {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s ease;
+}
+.grid-2 input:focus,
+.grid-2 select:focus {
+  border-color: #60a5fa;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+/* ---------- Gradient Buttons ---------- */
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1e3a8a, #ea580c);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.9rem;
+  padding: 0.85rem 1.25rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  background-size: 220%;
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.3);
+}
+.btn-primary:hover {
+  background-position: right;
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.5), 0 0 15px rgba(249, 115, 22, 0.4);
+}
+
+.reserve-form button {
+  margin-top: 1.5rem !important; /* adds clean separation */
+}
+
+/* ---------- Supplies Modal ---------- */
+.modal-box.large {
+  width: min(940px, 96%);
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.supply-hint {
+  text-align: center;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  margin-bottom: 1rem;
+}
+
+.supply-section {
+  margin-bottom: 1.5rem;
+}
+.supply-title {
+  font-weight: 800;
+  color: #f8fafc;
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+  padding-bottom: 0.25rem;
+}
+.supply-subtitle {
+  font-weight: 700;
+  color: #f97316;
+  margin-bottom: 0.25rem;
+}
+
+.supply-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1.25rem; /* uniform horizontal + vertical spacing */
+  justify-items: center;
+  align-items: center;
+  padding: 1rem 0;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.supply-item {
+  width: 150px;
+  height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(
+    to bottom right,
+    rgba(31, 41, 55, 0.9),
+    rgba(15, 23, 42, 0.95)
+  );
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease,
+    border-color 0.25s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.supply-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(105, 159, 247, 0.45);
+}
+.supply-item.selected {
+  border: 2px solid transparent;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.95)
+  );
+  box-shadow: 0 0 24px rgba(37, 99, 235, 0.45),
+    0 0 20px rgba(249, 115, 22, 0.35);
+  color: #000;
+}
+.supply-item.selected span {
+  color: #000;
+  font-weight: 600;
+}
+
+.supply-item img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  margin-bottom: 0.4rem;
+  pointer-events: none;
+
+  /* THIS IS THE FIX:
+    The old gradient went to dark 'rgba(0, 0, 0, 0.8)'.
+    This new "spotlight" gradient goes from a soft light (10% white) 
+    to fully transparent, making the item "pop".
+  */
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+
+  /* This filter combo brightens the image slightly and adds contrast.
+    (I removed the duplicate 'filter: brightness(0.88)' that was here)
+  */
+  filter: brightness(1.8) contrast(1);
+  border-radius: 10px;
+}
+.supply-item span {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f8fafc;
+  text-align: center;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+@media (max-width: 768px) {
+  .supply-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+  }
+  .supply-item {
+    width: 120px;
+    height: 120px;
+  }
+}
+/* ---------- Confirmation Toast ---------- */
+.confirm-toast {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 6000;
+  pointer-events: none;
+  animation: fadeIn 0.25s ease;
+}
+/* ===========================================================
+   CINEMATIC TOTAL MESSAGE — Premium Aurora Glass
+   =========================================================== */
+.confirm-card {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(22, 24, 36, 0.9),
+    /* darker base for dashboard background */ rgba(32, 34, 48, 0.92)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.2rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.3px;
+
+  /* ✨ stronger blur & separation shadow */
+  backdrop-filter: blur(28px) saturate(240%);
+  -webkit-backdrop-filter: blur(28px) saturate(240%);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(80, 130, 255, 0.25),
+    inset 0 0 10px rgba(255, 255, 255, 0.05);
+}
+
+/* ✨ Soft ambient gradient halo */
+.confirm-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(0, 0, 0, 0.25) 100%
+  );
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+/* 💫 Moving sheen reflection */
+.confirm-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    70deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: sheenMove 14s linear infinite;
+  pointer-events: none;
+}
+
+/* 🔆 Text styling */
+.confirm-text {
+  position: relative;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ffdba5, #82b4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7), 0 0 15px rgba(255, 255, 255, 0.15);
+  line-height: 1.4;
+}
+
+/* ⭐ Emphasized numbers / totals */
+.confirm-text strong {
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255, 180, 90, 0.6), 0 0 12px rgba(255, 180, 90, 0.4);
+}
+
+/* 💎 Highlighted currency or key values */
+.confirm-text .highlight-time {
+  color: #a8d3ff;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(100, 160, 255, 0.55), 0 0 15px rgba(0, 0, 0, 0.45);
+}
+
+/* ✨ Emoji pop */
+.confirm-emoji {
+  font-size: 1.9rem;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6))
+    drop-shadow(0 0 20px rgba(255, 180, 90, 0.5));
+  animation: emojiPop 0.5s ease;
+}
+
+/* ⚡ Keyframes reused from previous version */
+@keyframes sheenMove {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ===== Time Picker Layout Fix ===== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem 1.25rem;
+  align-items: end;
+}
+
+/* ---------- Time Picker AM/PM Buttons (raised glass style) ---------- */
+.time-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ampm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.06),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s ease;
+}
+
+.ampm-badge:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* When active, make them pop like real buttons */
+.ampm-badge.am-active {
+  background: linear-gradient(145deg, #1d4ed8, #2563eb);
+  color: #fff;
+  border-color: rgba(147, 197, 253, 0.5);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.7),
+    inset 0 0 6px rgba(59, 130, 246, 0.5);
+}
+
+.ampm-badge.pm-active {
+  background: linear-gradient(145deg, #c2410c, #ea580c);
+  color: #fff;
+  border-color: rgba(251, 146, 60, 0.4);
+  box-shadow: 0 0 12px rgba(251, 146, 60, 0.6),
+    inset 0 0 6px rgba(251, 146, 60, 0.4);
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(37, 99, 235, 0.45),
+      0 0 12px rgba(249, 115, 22, 0.3);
+    opacity: 0.95;
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.55),
+      0 0 24px rgba(249, 115, 22, 0.4);
+    opacity: 1;
+  }
+}
+
+/* Mobile stacking */
+@media (max-width: 600px) {
+  .rooms-row {
+    flex-direction: column;
+    align-items: center;
+  }
+  .room-card {
+    width: 90%;
+    max-width: 500px;
+  }
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes toastPop {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ===== Improved Reservation Form Layout ===== */
+.reserve-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 1rem;
+  box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.05);
+}
+
+.form-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.form-row > div {
+  flex: 1 1 45%;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row label {
+  font-weight: 700;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.form-row input,
+.form-row select {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(17, 24, 39, 0.85);
+  color: #f8fafc;
+  font-size: 0.95rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: all 0.25s ease;
+}
+
+.form-row input:focus,
+.form-row select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+  outline: none;
+}
+/* Make dropdown list show fewer items at once */
+.form-row select {
+  max-height: 2.7rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: rgba(17, 24, 39, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  color: #f8fafc;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  width: 100%;
+  overflow-y: auto;
+}
+
+/* Limit visible height of open dropdown (browser-supported) */
+.form-row select option {
+  line-height: 1.8;
+}
+
+select::-webkit-scrollbar {
+  width: 8px;
+}
+select::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #2563eb, #f97316);
+  border-radius: 6px;
+}
+
+/* ============================================================
+   PERFECT COLUMN ALIGNMENT FOR RESERVATION FORM
+   ============================================================ */
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* equal width */
+  gap: 2.25rem; /* uniform horizontal spacing */
+  align-items: end;
+}
+
+.form-row input[type='date'] {
+  padding-right: 0.9rem !important; /* neutralize extra icon space */
+}
+
+/* Ensure all form controls line up visually */
+.form-row input,
+.form-row select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-row > div {
+  width: 100%;
+}
+
+/* ---------- Time Picker AM/PM Badge Styling ---------- */
+.time-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 5.2rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.ampm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.25s ease;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.1) inset;
+  color: #d1d5db;
+}
+
+.ampm-badge:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Blue glow for AM */
+.ampm-badge.am-active {
+  background: linear-gradient(145deg, #1e3a8a, #2563eb);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+}
+
+/* Orange glow for PM */
+.ampm-badge.pm-active {
+  background: linear-gradient(145deg, #b45309, #ea580c);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(234, 88, 12, 0.6);
+}
+
+/* Make dropdown menus fit theme */
+select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../App.css';
+import '../styles/App.css';
 
 export default function StartOverlay({ onStart }) {
   const [fadeOut, setFadeOut] = useState(false);

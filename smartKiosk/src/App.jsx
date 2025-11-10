@@ -11,7 +11,28 @@ import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import Header from './components/Header';
 import StartOverlay from './components/StartOverlay';
-import './App.css';
+import './styles/App.css';
+
+/**
+ * NEW: This component conditionally wraps your pages.
+ * - LoginPage gets '.app-layout' (for flex centering).
+ * - Dashboard gets '.dashboard-layout' (for scrolling).
+ */
+function PageLayout() {
+  const location = useLocation();
+  const isDashboard = location.pathname.includes('dashboard');
+
+  const layoutClass = isDashboard ? 'dashboard-layout' : 'app-layout';
+
+  return (
+    <div className={layoutClass}>
+      <Routes>
+        <Route path='/' element={<LoginPage />} />
+        <Route path='/dashboard' element={<Dashboard />} />
+      </Routes>
+    </div>
+  );
+}
 
 function AppContent() {
   const [started, setStarted] = useState(false);
@@ -48,14 +69,8 @@ function AppContent() {
     <>
       {!started && <StartOverlay onStart={() => setStarted(true)} />}
       {started && <Header />}
-      {started && (
-        <div className='app-layout'>
-          <Routes>
-            <Route path='/' element={<LoginPage />} />
-            <Route path='/dashboard' element={<Dashboard />} />
-          </Routes>
-        </div>
-      )}
+      {/* UPDATED: Use the new PageLayout component instead of a hard-coded <div> */}
+      {started && <PageLayout />}
     </>
   );
 }
