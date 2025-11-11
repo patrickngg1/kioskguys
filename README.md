@@ -105,5 +105,30 @@ Currently, there are two pages available:
 
 ---
 
+## Database Connection
+We are currently using TiDB for our database connection where we will store our tables. Performing queries will access that data. I currently have it connected to the /kiosk backend app as opposed to the frontend app Prakash has made. It utilizes a certificate to verify the connection called [isrgrootx1.pem](https://github.com/patrickngg1/kioskguys/blob/main/kiosks/isrgrootx1.pem). Lastly, it has all the settings needed to utilize the database under [settings.py](https://github.com/patrickngg1/kioskguys/blob/main/kiosks/kiosks/settings.py) under the `DATABASES = {}` clause. 
+
+### Verifying Connection
+You can verify database connection by running the following:
+```bash
+python manage shell
+```
+
+Then:
+```bash
+from django.db import connection
+with connection.cursor() as cursor:
+    cursor.execute("SHOW SESSION STATUS LIKE 'Ssl_version';")
+    print(cursor.fetchall())
+```
+You should see the following output to console:
+
+```bash
+[('Ssl_version', 'TLSv1.3')]
+```
+
+
+---
+
 That’s it for now, y’all. Hope you enjoyed.  
 **Scrum Master out.** 🫡
