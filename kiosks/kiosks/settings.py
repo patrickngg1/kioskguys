@@ -97,9 +97,11 @@ DATABASES = {
         'HOST': 'gateway01.us-east-1.prod.aws.tidbcloud.com',
         'PORT': 4000,
         'OPTIONS': {
-            'ssl_mode': 'VERIFY_IDENTITY',
-            'ssl': {'ca': str(BASE_DIR / 'isrgrootx1.pem')}
-        }
+            'ssl': {
+                'ca': str(BASE_DIR / 'isrgrootx1.pem'),
+                'ssl_mode': 'VERIFY_IDENTITY',
+            },
+        },
     },
 }
 
