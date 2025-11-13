@@ -1,227 +1,134 @@
-# The Kiosk Guys Backend DJango App
+# The Kiosk Guys Backend Django + Vite App
 
-Hello fellow Kiosk Guy, it is I Scrum Master here to guide you through running this thing. 
+Hello fellow Kiosk Guy — it is I, **Scrum Master**, here to guide you through running this thing.
+
+---
 
 ## How to Run the Server
 
-### 1. Navigate to 
-```bash
-cd kioskguys/kiosks
-```
-Make sure this folder contains the manage.py file.
-<br />
-<br />
+### 1. Navigate to the project folder
+Make sure you’re in the right place — the folder that contains both `package.json` and `requirements.txt`.
 
-### 2. Create a Virtual Environment (Or Don't)
 ```bash
-python -m venv venv
-venv\Scripts\activate
+cd kioskguys/smartKiosk
 ```
-Again, you don't need this I was able to run it not using a venv, so it's up to you
-<br />
-<br />
+You should see files like `vite.config.js` and `requirements.txt` inside.
 
-### 3. Install dependencies
+---
+
+### 2. Install Python dependencies
+This installs everything the Django backend needs.
+
 ```bash
 pip install -r requirements.txt
 ```
-Again, make sure you're in the right folder, you'll see the requirements.txt file
-<br />
-<br />
 
-### 4. Apply Migrations
+**Tip:** If you get permission or environment errors, use a virtual environment:
 ```bash
-python manage.py migrate
-```
-<br />
-
-### 5. Run Dev Server
-```bash
-python manage.py runserver
+python -m venv venv
+source venv/bin/activate   # Mac/Linux
+venv\Scripts\activate      # Windows
 ```
 
-Then open your browser and visit:
-http://127.0.0.1:8000/
+---
 
-## Admin Panel Access
-To access the Django admin panel:
+### 3. Update Node.js and npm
 
-### 1. Create a Superuser
+Since this project runs the frontend with **Vite**, you’ll need Node.js version **24.11.0** and npm **11.6.2**.
+
+#### a) Install NVM
+If you don’t have Node Version Manager (nvm), install it using this command (for Linux/macOS/WSL):
+
 ```bash
-python manage.py createsuperuser
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 ```
-<br />
-
-### 2. Start the Server
+Then close and reopen your terminal, or run:
 ```bash
-python manage.py runserver
+source ~/.bashrc
 ```
-<br />
 
-### 3. Navigate to
+#### b) Install Node.js 24 and use it
+```bash
+nvm install 24
+nvm use 24
+```
 
-http://127.0.0.1:8000/admin
+#### c) Verify versions
+```bash
+node -v
+npm -v
+```
+Expected output:
+```
+v24.11.0
+11.6.2
+```
 
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-That's it for now yall, hope you enjoyed,
-<br />
-<br />
-Scrum Master out 🫡
+#### d) Update npm (optional but recommended)
+```bash
+npm install -g npm@latest
+```
+
+---
+
+### 4. Install frontend dependencies
+Now that Node is ready, install the frontend packages:
+
+```bash
+npm install --legacy-peer-deps
+```
+
+---
+
+### 5. Run the dev server
+Once everything is installed and Node is at `v24.11.0`, run:
+
+```bash
+npm run dev
+```
+
+---
+
+## Navigating To Pages
+Currently, there are two pages available:
+
+### [Login Page](http://localhost:5173/)
+- Map
+- Login
+- Sign Up
+
+### [Home Page](http://localhost:5173/#/dashboard)
+- Slideshow
+- Sign Out
+- Room Reservation
+- Supply Request
+
+---
+
+## Database Connection
+We are currently using TiDB for our database connection where we will store our tables. Performing queries will access that data. I currently have it connected to the /kiosk backend app as opposed to the frontend app Prakash has made. It utilizes a certificate to verify the connection called [isrgrootx1.pem](https://github.com/patrickngg1/kioskguys/blob/main/kiosks/isrgrootx1.pem). Lastly, it has all the settings needed to utilize the database under [settings.py](https://github.com/patrickngg1/kioskguys/blob/main/kiosks/kiosks/settings.py) under the `DATABASES = {}` clause. 
+
+### Verifying Connection
+You can verify database connection by running the following:
+```bash
+python manage shell
+```
+
+Then:
+```bash
+from django.db import connection
+with connection.cursor() as cursor:
+    cursor.execute("SHOW SESSION STATUS LIKE 'Ssl_version';")
+    print(cursor.fetchall())
+```
+You should see the following output to console:
+
+```bash
+[('Ssl_version', 'TLSv1.3')]
+```
+
+
+---
+
+That’s it for now, y’all. Hope you enjoyed.  
+**Scrum Master out.** 🫡

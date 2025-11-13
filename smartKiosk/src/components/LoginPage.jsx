@@ -2,7 +2,8 @@
 import React from 'react';
 import KioskMap from './KioskMap';
 import AuthScreen from './AuthScreen';
-import '../App.css'; // ensure global styles load
+import '../styles/Login.css';
+import '../styles/App.css';
 
 export default function LoginPage() {
   return (

@@ -11,14 +11,10 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  /* FIX: Ensure only one scrollbar (vertical) and hide horizontal overflow */
-  overflow-x: hidden !important;
-  /* FIX: Only show vertical scrollbar if content overflows */
   overflow-y: auto;
-  /* CRITICAL FIX: Ensure no background color obscures the fixed pseudo-element */
+  overflow-x: hidden;
   background: transparent !important;
   scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* --- CRITICAL FIX: The entire background (Image, Blur, Vignette, Animation) is moved to a single fixed element on the body. --- */
@@ -938,8 +934,36 @@ input.input-field:-webkit-autofill {
   width: 100vw;
   display: flex;
   justify-content: center;
+  flex-direction: column;
+  overflow-y: auto; /* ✅ enable internal scroll */
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
+  z-index: 1;
+  padding-top: 2rem;
+}
+
+/* --- Auth Screen Scroll Fix (same behavior as dashboard) --- */
+.auth-screen,
+.auth-wrapper,
+.auth-card {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-top: 5rem; /* matches header height */
+  padding-bottom: 2rem;
+  z-index: 1;
+}
+
+/* Add breathing space below fixed header */
+.auth-screen {
+  padding-top: 4rem;
+  padding-bottom: 2rem;
 }
 
 .dashboard-view .dashboard-grid {
@@ -1662,6 +1686,7 @@ input.input-field:-webkit-autofill {
     linear-gradient(135deg, #1e3a8a, #2563eb, #ea580c) border-box;
   box-shadow: 0 0 24px rgba(37, 99, 235, 0.45),
     0 0 20px rgba(249, 115, 22, 0.35);
+  color: #000;
 }
 .supply-item.selected span {
   color: #000;
@@ -1672,11 +1697,16 @@ input.input-field:-webkit-autofill {
   width: 80%;
   height: 80%;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
   margin-bottom: 0.4rem;
   pointer-events: none;
   filter: brightness(0.88);
+  background: radial-gradient(
+    circle at top,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(0, 0, 0, 0.8) 90%
+  );
+  filter: brightness(1.2) contrast(1.1);
+  border-radius: 10px;
 }
 .supply-item span {
   display: block;

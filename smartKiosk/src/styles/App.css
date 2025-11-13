@@ -1,0 +1,596 @@
+/* =======================================================================
+   app.css - SHARED & GLOBAL STYLES
+   ======================================================================= */
+
+/* =================================
+   1. GLOBAL RESET & BASE LAYOUT (FIXED & CONSOLIDATED)
+   ==================================*/
+
+/*
+  FIX #1: Removed 'height: 100%' and 'overflow-y: auto'.
+  This lets our new layouts control the height and scrolling,
+  preventing conflicts and the "missing scrollbar" problem.
+*/
+@property --scrollbar-thumb-color {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: rgba(85, 85, 85, 0); /* Start transparent */
+}
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background: transparent !important;
+  scroll-behavior: smooth;
+  .scrolling-element {
+    /* Transition the custom property, not the scrollbar */
+    transition: --scrollbar-thumb-color 0.3s ease-in-out;
+  }
+
+  .scrolling-element:hover {
+    /* On hover, change the variable's value */
+    --scrollbar-thumb-color: rgba(85, 85, 85, 1); /* Fade to opaque */
+  }
+
+  /* Style the scrollbar to use the variable */
+  .scrolling-element::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .scrolling-element::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color); /* Use the variable */
+    border-radius: 5px;
+  }
+
+  .scrolling-element::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* --- CRITICAL FIX: The entire background (Image, Blur, Vignette, Animation) is moved to a single fixed element on the body. --- */
+body {
+  position: relative;
+  /* Ensure the body itself is transparent so the fixed pseudo-elements can show */
+  background: transparent !important;
+}
+
+body::before {
+  content: '';
+  /* Ensure it covers the entire viewport and stays fixed during scroll */
+  position: fixed;
+  inset: 0;
+  /* 1. Image and linear gradient glaze */
+  background-image: linear-gradient(
+      115deg,
+      rgba(0, 0, 0, 0.313),
+      rgba(0, 0, 0, 0.313)
+    ),
+    url('https://utamavs.com/images/2021/5/20/UT_Arlington_Campus_Tower_Entrance_Sign.jpg');
+  background-size: cover;
+  background-position: center;
+  /* Fallback color if image fails. This element is Z-indexed low. */
+  background-color: #111827;
+  /* 2. Blur, Scale, and Animation */
+  filter: blur(8px) brightness(0.75);
+  transform: scale(1.03);
+  animation: slowZoom 20s ease-in-out infinite;
+  /* 3. Z-Index below content/vignette (using -2 as -1 is used for vignette) */
+  z-index: -2;
+}
+
+/* Vignette effect (applied over the blurred image layer) */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at 65% 50%,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(0, 0, 0, 0.45) 90%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Remove image from HTML to prevent layering conflicts */
+html {
+  background: none;
+  z-index: auto;
+}
+
+@keyframes slowZoom {
+  0% {
+    transform: scale(1.06);
+    filter: blur(8px) brightness(0.75);
+  }
+  50% {
+    transform: scale(1.08);
+    filter: blur(9px) brightness(0.72);
+  }
+  100% {
+    transform: scale(1.06);
+    filter: blur(8px) brightness(0.75);
+  }
+}
+
+/* --- Scrollbar Aesthetics (Applied globally for sleek kiosk look) --- */
+*::-webkit-scrollbar {
+  width: 6px;
+  background-color: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  /* UTA Theme: Use a blue-to-orange gradient */
+  background: linear-gradient(180deg, #2563eb, #f97316);
+  border-radius: 10px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  /* UTA Theme: Use brighter shades on hover */
+  background: linear-gradient(180deg, #60a5fa, #fb923c);
+}
+/*
+  FIX #2: .app-layout (FOR LOGIN PAGE)
+  - 'padding' is now 0 3rem. This REMOVES the '84px' gap.
+  - This rule will now perfectly center your login form vertically
+    and horizontally on the screen, solving the "too much gap" problem.
+*/
+.app-layout {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  gap: 3rem;
+  flex-direction: row;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+  isolation: isolate;
+  background: transparent !important;
+  align-items: center; /* vertically centers */
+  justify-content: center; /* horizontally centers */
+  padding: 0 3rem; /* UPDATED: Removed 84px top padding */
+  z-index: 1;
+}
+
+/*
+  FIX #3: .dashboard-layout (FOR DASHBOARD PAGE)
+  - This rule is unchanged, but will now work correctly
+    because 'html, body, #root' are no longer conflicting.
+  - This layout will be the main scrolling container for the dashboard.
+*/
+.dashboard-layout {
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
+  padding-top: 84px; /* Keeps content below header (68px + 16px) */
+  overflow-y: auto; /* ✅ This will now create the main scrollbar */
+  overflow-x: hidden;
+  z-index: 1;
+}
+
+/* =================================
+   2. TAP TO BEGIN OVERLAY
+   ==================================*/
+.start-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+      circle at center,
+      rgba(0, 0, 0, 0.75) 0%,
+      rgba(0, 0, 0, 0.85) 80%
+    ),
+    url('https://utamavs.com/images/2021/5/20/UT_Arlington_Campus_Tower_Entrance_Sign.jpg');
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5000;
+  animation: overlayPulse 6s ease-in-out infinite;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.start-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(1.05);
+}
+
+.start-text {
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f97316; /* solid orange */
+  text-align: center;
+  text-shadow: 0 0 8px rgba(37, 99, 235, 0.4), 0 0 16px rgba(37, 99, 235, 0.5),
+    0 0 28px rgba(37, 99, 235, 0.4), 0 0 40px rgba(37, 99, 235, 0.35);
+  animation: glowTapBlue 2.5s ease-in-out infinite;
+  user-select: none;
+}
+
+@keyframes glowTapBlue {
+  0%,
+  100% {
+    text-shadow: 0 0 8px rgba(37, 99, 235, 0.4), 0 0 16px rgba(37, 99, 235, 0.5),
+      0 0 28px rgba(37, 99, 235, 0.4), 0 0 40px rgba(37, 99, 235, 0.35);
+    transform: scale(1);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(37, 99, 235, 0.7),
+      0 0 20px rgba(37, 99, 235, 0.6), 0 0 32px rgba(37, 99, 235, 0.6),
+      0 0 50px rgba(37, 99, 235, 0.45);
+    transform: scale(1.05);
+  }
+}
+
+/* --- Fade In Animation for Tap to Begin Overlay --- */
+.start-overlay.fade-in {
+  opacity: 0;
+  animation: overlayFadeIn 0.8s ease-out forwards;
+}
+
+@keyframes overlayFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(1.05);
+    filter: brightness(0.7) blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1) blur(0);
+  }
+}
+
+@keyframes overlayPulse {
+  0%,
+  100% {
+    filter: brightness(0.9);
+  }
+  50% {
+    filter: brightness(1.1);
+  }
+}
+
+.uta-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.2));
+  border-radius: 8px;
+  transition: transform 0.8s ease, filter 0.8s ease;
+}
+.uta-logo:hover {
+  transform: rotate(6deg) scale(1.05);
+  filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.4))
+    drop-shadow(0 0 16px rgba(37, 99, 235, 0.3));
+}
+
+/* =================================
+   3. HEADER (Kiosk Header)
+   ==================================*/
+.kiosk-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 22px;
+  z-index: 1200;
+  background: linear-gradient(
+    180deg,
+    rgba(17, 24, 39, 0.75),
+    rgba(17, 24, 39, 0.55)
+  );
+  backdrop-filter: blur(10px) saturate(130%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  animation: headerFadeIn 650ms ease-out both;
+}
+
+@keyframes headerFadeIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Animated accent strip under header */
+.kiosk-accent {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 1195;
+  background: linear-gradient(90deg, #f97316 0%, #2563eb 60%, #f97316 100%);
+  background-size: 200% 100%;
+  animation: accentFlow 9s linear infinite;
+  opacity: 0.95;
+}
+@keyframes accentFlow {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+}
+.logo-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0.95),
+    rgba(36, 64, 170, 0.95)
+  );
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.25);
+}
+/* ===== Minimal Animated Title (Color Shift Only) ===== */
+.brand-text .brand-title {
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #f97316, #2563eb, #f97316);
+  background-size: 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: titleColorFlow 8s linear infinite;
+}
+
+/* Smooth gradient color flow */
+@keyframes titleColorFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.brand-text .brand-sub {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.78);
+  opacity: 0.95;
+  margin-top: 2px;
+}
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  pointer-events: none;
+  opacity: 0.95;
+}
+.welcome-msg {
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+.brand-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 140px;
+  gap: 2px;
+}
+.kiosk-date {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+.kiosk-time {
+  font-size: 1.06rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+/* =================================
+   4. SHARED BUTTONS
+   ==================================*/
+
+/* --- Blue Auth Button (Sign In CTA) --- */
+.auth-button {
+  position: relative;
+  width: 100%;
+  text-align: center;
+  border: none;
+  border-radius: 0.8rem;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  background: linear-gradient(135deg, #60a5fa 0%, #2563eb 45%, #1d4ed8 100%);
+  box-shadow: 0 0 18px rgba(37, 99, 235, 0.35),
+    inset 0 1px 3px rgba(255, 255, 255, 0.3);
+  transition: all 0.25s ease;
+  animation: pulseBlue 4s ease-in-out infinite;
+}
+
+@keyframes pulseBlue {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(37, 99, 235, 0.55);
+  }
+}
+
+/* Hover — soft pop and brighter glow */
+.auth-button:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 28px rgba(59, 130, 246, 0.55),
+    0 0 18px rgba(249, 115, 22, 0.25), inset 0 1px 3px rgba(255, 255, 255, 0.3);
+  filter: brightness(1.1);
+}
+
+/* Active — pressed glass look, no border */
+.auth-button:active {
+  transform: translateY(1px) scale(0.98);
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 45%, #172554 100%);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5),
+    inset 0 0 15px rgba(59, 130, 246, 0.6), 0 0 22px rgba(37, 99, 235, 0.45);
+  filter: brightness(1.05);
+}
+@keyframes pulseBlue {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgba(37, 99, 235, 0.35),
+      inset 0 1px 3px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(59, 130, 246, 0.55),
+      0 0 18px rgba(249, 115, 22, 0.25),
+      inset 0 1px 3px rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Subtle light sweep on hover */
+.auth-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  transition: left 0.45s ease;
+}
+.auth-button:hover::before {
+  left: 130%;
+}
+
+/* =================================
+   5. ANIMATIONS & IDLE EFFECTS
+   ==================================*/
+
+/* Idle “breathing” effect for kiosk screens (apply to container via class) */
+@keyframes idlePulse {
+  0%,
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(1.1);
+    transform: scale(1.015);
+  }
+}
+.idle {
+  animation: idlePulse 6s ease-in-out infinite;
+}
+
+/* =================================
+   6. RESPONSIVE MEDIA QUERIES
+   ==================================*/
+/* --- True kiosk vertical layout for narrow/tall screens --- */
+@media (max-width: 1200px) {
+  /*
+    FIX #4: Allow 'html, body' to scroll on smaller desktops.
+  */
+  html,
+  body {
+    overflow-y: auto;
+  }
+
+  /*
+    FIX #5: 'app-layout' (Login) on tablets.
+    - 'justify-content: flex-start' to align content to the top.
+    - 'padding: 84px 1.5rem 1.5rem' to add space below header.
+  */
+  .app-layout {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start; /* UPDATED */
+    gap: 1rem;
+    padding: 84px 1.5rem 1.5rem; /* UPDATED */
+    height: auto;
+    min-height: 100vh;
+    box-sizing: border-box;
+    overflow-y: auto; /* UPDATED */
+  }
+
+  /* 'dashboard-layout' (Dashboard) on tablets */
+  .dashboard-layout {
+    padding-top: 84px;
+  }
+}
+
+/* Large Mobile/Vertical Layout Breakpoint (900px) - App Layout & Header */
+@media (max-width: 900px) {
+  /* 'app-layout' (Login) on mobile */
+  .app-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start; /* UPDATED */
+    min-height: 100vh;
+    height: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 80px 1rem 1rem; /* UPDATED: 64px header + 16px margin */
+    box-sizing: border-box;
+  }
+
+  /* 'dashboard-layout' (Dashboard) on mobile */
+  .dashboard-layout {
+    padding-top: 80px; /* 64px header + 16px margin */
+  }
+
+  /* Header */
+  .brand-left {
+    min-width: 180px;
+  }
+  .header-center {
+    display: none; /* Hide center message on narrow screens */
+  }
+  .brand-right {
+    align-items: center;
+    min-width: 110px;
+  }
+
+  /* HIDE the accent strip on mobile to remove the unwanted bar */
+  .kiosk-accent {
+    display: none;
+  }
+}
