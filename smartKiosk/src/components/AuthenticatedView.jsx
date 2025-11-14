@@ -2,18 +2,21 @@ import React from 'react';
 
 /**
  * Displays the successful login screen with user details and a logout button.
- * @param {object} props - The component props.
- * @param {object} props.user - The Firebase user object.
- * @param {object} props.profile - The Firestore user profile data (contains fullName).
+ * @param {object} props
+ * @param {object} props.user - User object from backend (or legacy Firebase).
  * @param {function} props.handleLogout - Function to sign the user out.
  */
-const AuthenticatedView = ({ user, profile, handleLogout }) => {
+const AuthenticatedView = ({ user, handleLogout }) => {
   const containerClasses =
     'w-full max-w-md bg-white p-8 rounded-xl form-container text-center';
   const buttonClass =
     'auth-button bg-red-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-600 transition mt-8';
 
-  const displayName = profile?.fullName || user?.email || 'Kiosk User';
+  // Support both Django user object and old Firebase shape
+  const fullName =
+    user?.fullName || user?.first_name || user?.firstName || 'Kiosk User';
+  const email = user?.email || user?.username || '';
+  const userId = user?.id || user?.uid || '';
 
   return (
     <div id='authenticated-view' className={containerClasses}>
@@ -35,15 +38,17 @@ const AuthenticatedView = ({ user, profile, handleLogout }) => {
         You are successfully authenticated as:
       </p>
 
-      {/* Display user's name (from profile) and email (from Firebase user) */}
       <p
         id='user-email-display'
         className='text-xl font-mono text-blue-600 mt-3 break-words'
       >
-        {displayName} ({user?.email})<br />
-        <span className='text-sm font-light text-gray-400'>
-          User ID: {user?.uid}
-        </span>
+        {fullName} {email && `(${email})`}
+        {userId && <br />}
+        {userId && (
+          <span className='text-sm font-light text-gray-400'>
+            User ID: {userId}
+          </span>
+        )}
       </p>
 
       <p className='text-sm text-gray-500 mt-4'>
