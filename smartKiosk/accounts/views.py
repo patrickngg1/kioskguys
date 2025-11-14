@@ -15,14 +15,14 @@ def is_uta_email(email: str) -> bool:
     return parts[1].lower() in ALLOWED_DOMAINS
 
 
-def validate_password(password: str):
+def validate_password_strength(password: str):
     """
     Must be:
       - at least 8 chars
       - contain 1 uppercase
       - contain 1 digit
       - contain 1 special character
-    Returns list of error strings (empty = ok).
+    Returns a list of error messages (empty list = OK).
     """
     pw = password or ""
     errors = []
@@ -37,7 +37,7 @@ def validate_password(password: str):
     return errors
 
 
-@csrf_exempt
+@csrf_exempt  # TODO: handle CSRF properly in production
 def register_api(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST allowed."}, status=405)
@@ -49,39 +49,45 @@ def register_api(request):
 
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
-    full_name = (data.get("fullName") or "").strip()
 
-    if not full_name:
-        return JsonResponse({"error": "Full name is required."}, status=400)
+    # accept multiple possible keys for the name field
+    full_name = (
+        data.get("fullName")
+        or data.get("full_name")
+        or data.get("name")
+        or ""
+    ).strip()
+
+    if not email or not password:
+        return JsonResponse({"error": "Email and password are required."}, status=400)
 
     if not is_uta_email(email):
         return JsonResponse(
-            {
-                "error": "Registration email must end with @uta.edu or @mavs.uta.edu."
-            },
+            {"error": "Email must end with @uta.edu or @mavs.uta.edu."},
             status=400,
         )
 
-    pw_errors = validate_password(password)
+    pw_errors = validate_password_strength(password)
     if pw_errors:
         return JsonResponse({"error": pw_errors[0]}, status=400)
 
     if User.objects.filter(email__iexact=email).exists():
         return JsonResponse(
-            {"error": "This email is already registered. Try signing in."}, status=400
+            {"error": "This email is already registered. Try logging in."},
+            status=400,
         )
 
-    # use email as username (simple)
+    # use email as username
     username = email
 
     user = User(username=username, email=email)
-    # You can split full_name into first/last if you want; for now store in first_name:
-    user.first_name = full_name
+    # store name if provided
+    if full_name:
+        user.first_name = full_name
     user.set_password(password)
     user.is_active = True  # no verification yet
-    user.save()
+    user.save()            # <-- writes to DB
 
-    # Optional: log them in immediately
     login(request, user)
 
     return JsonResponse(
@@ -111,15 +117,13 @@ def login_api(request):
     password = data.get("password") or ""
 
     if not email or not password:
-        return JsonResponse(
-            {"error": "Email and password are required."}, status=400
-        )
+        return JsonResponse({"error": "Email and password are required."}, status=400)
 
-    # We stored username = email
     user = authenticate(request, username=email, password=password)
     if user is None:
         return JsonResponse(
-            {"error": "Invalid email or password."}, status=401
+            {"error": "Invalid email or password."},
+            status=401,
         )
 
     login(request, user)
