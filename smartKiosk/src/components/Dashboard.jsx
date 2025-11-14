@@ -15,6 +15,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase-config';
 import '../styles/Dashboard.css';
 import '../styles/App.css';
+import banner1 from '../assets/banner1.png';
+import banner2 from '../assets/banner2.png';
 
 const APP_ID = 'kiosk-room-booking-v1';
 const DEV_MODE = true;
@@ -85,7 +87,7 @@ function Banner({ item, onReserveClick, onSuppliesClick }) {
 // Toast
 function ConfirmToast({ message = '', onDone }) {
   useEffect(() => {
-    const id = setTimeout(onDone, 3000);
+    const id = setTimeout(onDone, 4800);
     return () => clearTimeout(id);
   }, [onDone]);
 
@@ -100,6 +102,7 @@ function ConfirmToast({ message = '', onDone }) {
     <div className='confirm-toast'>
       <div className='confirm-card'>
         <div className='confirm-emoji'>💎</div>
+        <span className='confirm-icon'>✅</span>
         <div
           className='confirm-text'
           dangerouslySetInnerHTML={{ __html: formatted }}
@@ -167,14 +170,12 @@ export default function Dashboard() {
   const [bannerIdx, setBannerIdx] = useState(0);
   const banners = [
     {
-      image:
-        'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1200&auto=format&fit=crop',
-      alt: 'Welcome to ERSA — Smart Kiosk',
+      image: banner1,
+      alt: 'UTA Campus Entrance',
       cta: { href: '#reserve', label: 'Reserve a Room' },
     },
     {
-      image:
-        'https://images.unsplash.com/photo-1472224371017-08207f84aaae?q=80&w=1200&auto=format&fit=crop',
+      image: banner2,
       alt: 'Need markers or adapters?',
       cta: { href: '#supplies', label: 'Request Supplies' },
     },
@@ -218,6 +219,14 @@ export default function Dashboard() {
     // 2. Basic form validation
     if (!room || !date || !startHour || !startMin || !endHour || !endMin) {
       console.error('Reservation form is incomplete');
+      return;
+    }
+
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      setToast('⚠️ You cannot reserve rooms for past dates.');
       return;
     }
 
@@ -316,7 +325,6 @@ export default function Dashboard() {
     'Plastic Knives',
     'Paper Roll',
     'Water Filters',
-    'All Purpose Cleaner',
     'Dish Soap',
   ];
 
@@ -380,7 +388,6 @@ export default function Dashboard() {
     setSelectedSupplies((prev) => {
       const has = prev.includes(name);
       const next = has ? prev.filter((x) => x !== name) : [...prev, name];
-      writeJSON('supplySelected', next);
       return next;
     });
   };
@@ -448,7 +455,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className='dashboard-view app-layout'>
+    <div className='dashboard-view'>
       <div className='dashboard-grid'>
         {/* User Card (dash-left content) */}
         <div
@@ -488,7 +495,10 @@ export default function Dashboard() {
             onClick={() => {
               const href = banners[bannerIdx].cta.href;
               if (href === '#reserve') setShowReserveModal(true);
-              if (href === '#supplies') setShowSuppliesModal(true);
+              if (href === '#supplies') {
+                setSelectedSupplies([]); // 🔄 Clear selections when opened via banner
+                setShowSuppliesModal(true);
+              }
             }}
           >
             {banners[bannerIdx].cta.label}
@@ -496,7 +506,7 @@ export default function Dashboard() {
         </div>
 
         {/* Map (dash-center content, second item) */}
-        <div className='card map-card iframe' style={{ gridArea: 'map' }}>
+        <div className='map-container' style={{ gridArea: 'map' }}>
           <KioskMap />
         </div>
 
@@ -504,11 +514,22 @@ export default function Dashboard() {
         <div className='card action-card' style={{ gridArea: 'reserve' }}>
           <div className='action-head'>
             <div className='action-title'>Reserve Conference Room</div>
-            <span className='action-check'>✓</span>
           </div>
           <p className='action-copy'>Book a meeting space by date & time.</p>
           <button
-            onClick={() => setShowReserveModal(true)}
+            onClick={() => {
+              setReservationData({
+                room: '',
+                date: '',
+                startHour: '',
+                startMin: '',
+                startPeriod: 'AM',
+                endHour: '',
+                endMin: '',
+                endPeriod: 'AM',
+              }); // 🔄 reset reservation form
+              setShowReserveModal(true);
+            }}
             className='btn btn-primary wl-ful'
           >
             Open Scheduler
@@ -519,11 +540,13 @@ export default function Dashboard() {
         <div className='card action-card' style={{ gridArea: 'supplies' }}>
           <div className='action-head'>
             <div className='action-title'>Request Supplies</div>
-            <span className='action-check'>✓</span>
           </div>
           <p className='action-copy'>Tap pictures to select items you need.</p>
           <button
-            onClick={() => setShowSuppliesModal(true)}
+            onClick={() => {
+              setSelectedSupplies([]); // 🔄 Clear previous selections
+              setShowSuppliesModal(true);
+            }}
             className='btn btn-primary w-full'
           >
             Open Request Form
@@ -576,6 +599,7 @@ export default function Dashboard() {
                   <input
                     type='date'
                     required
+                    min={new Date().toISOString().split('T')[0]}
                     value={reservationData.date}
                     onChange={(e) =>
                       setReservationData((d) => ({
@@ -733,7 +757,25 @@ export default function Dashboard() {
           className='modal-overlay'
           onClick={() => setShowSuppliesModal(false)}
         >
-          <div className='modal-box large' onClick={(e) => e.stopPropagation()}>
+          <div
+            className='modal-box large'
+            onClick={(e) => e.stopPropagation()} // <-- prevent modal close on item click
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const stickyBar = el.querySelector('.submit-request-sticky');
+              if (!stickyBar) return;
+
+              const atTop = el.scrollTop === 0;
+              const atBottom =
+                el.scrollHeight - el.scrollTop <= el.clientHeight + 1;
+
+              if (!atTop && !atBottom) {
+                stickyBar.classList.add('scrolling');
+              } else {
+                stickyBar.classList.remove('scrolling');
+              }
+            }}
+          >
             <button
               className='close-btn'
               onClick={() => setShowSuppliesModal(false)}
@@ -750,16 +792,20 @@ export default function Dashboard() {
             {renderSection('Break Room', BREAK_ROOM, 'break')}
             {renderSection('K-Cups', K_CUPS, 'kcup')}
 
-            <button
-              onClick={submitSupplies}
-              className={`btn btn-primary w-full mt-2 ${
-                selectedSupplies.length > 0 ? 'active-glow' : ''
-              }`}
-            >
-              {selectedSupplies.length > 0
-                ? `Submit Request (${selectedSupplies.length})`
-                : 'Submit Request'}
-            </button>
+            <div className='submit-request-sticky'>
+              <button
+                onClick={submitSupplies}
+                className={`btn btn-primary w-full mt-2 ${
+                  selectedSupplies.length > 0 ? 'active-glow' : ''
+                }`}
+              >
+                {selectedSupplies.length > 0
+                  ? `Submit Request (${selectedSupplies.length} item${
+                      selectedSupplies.length > 1 ? 's' : ''
+                    })`
+                  : 'Submit Request'}
+              </button>
+            </div>
           </div>
         </div>
       )}

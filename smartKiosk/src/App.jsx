@@ -14,14 +14,13 @@ import StartOverlay from './components/StartOverlay';
 import './styles/App.css';
 
 /**
- * NEW: This component conditionally wraps your pages.
- * - LoginPage gets '.app-layout' (for flex centering).
- * - Dashboard gets '.dashboard-layout' (for scrolling).
+ * PageLayout:
+ * - Applies 'app-layout' on login
+ * - Applies 'dashboard-layout' on dashboard
  */
 function PageLayout() {
   const location = useLocation();
   const isDashboard = location.pathname.includes('dashboard');
-
   const layoutClass = isDashboard ? 'dashboard-layout' : 'app-layout';
 
   return (
@@ -37,40 +36,44 @@ function PageLayout() {
 function AppContent() {
   const [started, setStarted] = useState(false);
   const inactivityTimer = useRef(null);
-  const location = useLocation(); // ✅ works with HashRouter too
+  const location = useLocation();
 
-  // --- Inactivity Timer (overlay only for home screen) ---
+  const onDashboard = location.pathname.includes('dashboard');
+  // ✅ Render content if user has started OR we’re on dashboard
+  const allowContent = started || onDashboard;
+
+  // ✅ Inactivity overlay only on login route (never blank the dashboard)
   useEffect(() => {
-    if (!started) return;
-
-    // ✅ Only activate idle overlay when NOT on dashboard
-    const isDashboard = location.pathname.includes('dashboard');
-    if (isDashboard) return;
+    if (onDashboard) return; // do nothing on dashboard
+    if (!started) return; // only run timer when overlay is dismissed
 
     const resetTimer = () => {
       clearTimeout(inactivityTimer.current);
       inactivityTimer.current = setTimeout(() => {
-        setStarted(false);
-      }, 60000); // 60 seconds
+        setStarted(false); // bring overlay back on login
+      }, 60000); // 1 minute
     };
 
     const events = ['click', 'mousemove', 'keydown', 'touchstart'];
-    events.forEach((event) => window.addEventListener(event, resetTimer));
-
+    events.forEach((ev) => window.addEventListener(ev, resetTimer));
     resetTimer();
 
     return () => {
       clearTimeout(inactivityTimer.current);
-      events.forEach((event) => window.removeEventListener(event, resetTimer));
+      events.forEach((ev) => window.removeEventListener(ev, resetTimer));
     };
-  }, [started, location.pathname]);
+  }, [started, onDashboard]);
 
   return (
     <>
-      {!started && <StartOverlay onStart={() => setStarted(true)} />}
-      {started && <Header />}
-      {/* UPDATED: Use the new PageLayout component instead of a hard-coded <div> */}
-      {started && <PageLayout />}
+      {/* 🟧 Overlay only on login (never on dashboard) */}
+      {!started && !onDashboard && (
+        <StartOverlay onStart={() => setStarted(true)} />
+      )}
+
+      {/* 🟩 Header + content render when started OR on dashboard */}
+      {allowContent && <Header />}
+      {allowContent && <PageLayout />}
     </>
   );
 }

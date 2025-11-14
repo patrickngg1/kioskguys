@@ -7,17 +7,17 @@
    ==================================*/
 .dashboard-view {
   position: relative;
-  min-height: 100vh;
+  min-height: 90vh;
   width: 100vw;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   flex-direction: column;
   overflow-y: auto; /* ✅ enable internal scroll */
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
   z-index: 1;
-  padding-top: 0rem;
 }
 
 .dashboard-view .dashboard-grid {
@@ -166,6 +166,7 @@
   position: absolute;
   top: 0;
   left: 0;
+  filter: brightness(1.25);
   transition: opacity 1.2s ease-in-out, transform 8s ease-out;
   transform: scale(1.05); /* slight zoom for depth */
 }
@@ -192,7 +193,6 @@
   z-index: 3;
 }
 
-/* Request Supplies button positioning */
 /* Request Supplies / Reserve Room button — always visible above slideshow */
 .dashboard-view .banner-cta {
   position: absolute;
@@ -212,40 +212,8 @@
 
 .dashboard-view .banner-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.45),
-    0 0 18px rgba(249, 115, 22, 0.25);
-}
-
-.map-card {
-  position: relative;
-  border: 1px solid rgba(37, 99, 235, 0.15);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-  overflow: hidden;
-  transition: transform 0.6s ease, box-shadow 0.6s ease;
 }
-.map-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(
-    135deg,
-    rgba(37, 99, 235, 0.1),
-    rgba(249, 115, 22, 0.1)
-  );
-  mix-blend-mode: overlay;
-}
-.map-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 45px rgba(37, 99, 235, 0.35),
-    0 0 30px rgba(249, 115, 22, 0.25);
-}
-
-.map-card iframe {
-  display: block;
-}
-
 /* ============================================================
    FINAL POLISHED PRIME REACT ACTION CARDS FIX
    (Reserve Conference Room + Request Supplies)
@@ -288,7 +256,7 @@
   filter: brightness(1.03);
 }
 
-/* Titles & content spacing */
+/* ∂s & content spacing */
 .dashboard-view .card.action-card .action-head {
   display: flex;
   align-items: center;
@@ -350,40 +318,81 @@
 /* ===============================
    2. DASHBOARD MODALS
    =============================== */
+/* ===========================================================
+   MODAL OVERLAY — EVEN TOP/BOTTOM MARGIN, ALWAYS BELOW HEADER
+   =========================================================== */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  /* Equal top + bottom padding for all screen sizes */
+  padding-top: var(--header-offset, 5rem);
+  padding-bottom: var(--header-offset, 5rem);
+  background: radial-gradient(
+    circle at 30% 10%,
+    rgba(30, 58, 138, 0.35),
+    rgba(7, 12, 24, 0.95)
+  );
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
   z-index: 5000;
-  animation: fadeIn 0.3s ease-in-out;
+  animation: fadeIn 0.3s ease;
 }
 
+/* ============================================================
+   UNIFIED MODAL BOX — DARK GLASS, RESPONSIVE, AND SAFE BELOW HEADER
+   ============================================================ */
 .modal-box {
-  background: rgba(255, 255, 255, 0.92);
-  color: #111;
-  padding: 2rem;
-  border-radius: 1.5rem;
-  width: min(400px, 90%);
-  backdrop-filter: blur(14px) saturate(140%);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(59, 130, 246, 0.2);
+  position: relative;
+  background: linear-gradient(
+    to bottom right,
+    rgba(17, 24, 39, 0.85),
+    rgba(10, 15, 26, 0.9)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1.75rem;
+  box-shadow: 0 0 35px rgba(0, 0, 0, 0.55), 0 0 35px rgba(37, 99, 235, 0.25);
+  color: #e5e7eb;
+  width: min(900px, 92%);
+  max-height: calc(85vh - 2rem); /* ✅ gives a safe gap from bottom */
+  padding: 2rem 2.5rem 2.25rem;
+  overflow-y: auto;
+  margin-top: auto;
+  margin-bottom: auto; /* ✅ allows flex to center vertically between overlay padding */
   animation: slideUp 0.3s ease;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
-.modal-box h2 {
-  padding-bottom: 1rem;
-  color: #f97316;
-  font-weight: 700;
-  text-shadow: 0 0 8px rgba(249, 115, 22, 0.4);
+/* Larger modals inherit the same styles */
+.modal-box.large {
+  width: min(940px, 96%);
+}
+
+/* Responsive adjustments for shorter or smaller screens */
+@media (max-height: 700px) {
+  .modal-box,
+  .modal-box.large {
+    margin-top: 3.5rem;
+    max-height: 90vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-box,
+  .modal-box.large {
+    width: 95%;
+    padding: 1.5rem 1.25rem 1.5rem;
+    border-radius: 1.25rem;
+  }
 }
 
 .modal-box form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .modal-box input,
@@ -447,7 +456,8 @@
 .btn.btn-primary.active-glow:not(.banner-cta),
 .btn.btn-primary.w-full.mt-2.active-glow {
   background: linear-gradient(90deg, #1e40af, #1d4ed8);
-  box-shadow: 0 0 25px rgba(249, 115, 22, 0.65);
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.65);
+  /* box-shadow: 0 0 10px #f97316, 0 0 15px #f97316; */
   transform: translateY(-2px);
   filter: brightness(1.1);
 }
@@ -507,52 +517,15 @@
    UTA DARK THEME — PREMIUM KIOSK STYLE
    ============================================================ */
 
-/* ---------- Modal Background ---------- */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(
-    circle at 30% 10%,
-    rgba(30, 58, 138, 0.35),
-    rgba(7, 12, 24, 0.95)
-  );
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 5000;
-  animation: fadeIn 0.3s ease;
-}
-
-/* ---------- Modal Box (Glass Shell) ---------- */
-.modal-box {
-  position: relative;
-  background: linear-gradient(
-    to bottom right,
-    rgba(17, 24, 39, 0.85),
-    rgba(10, 15, 26, 0.9)
-  );
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 1.75rem;
-  padding: 2rem 2.5rem 2.25rem;
-  box-shadow: 0 0 35px rgba(0, 0, 0, 0.55), 0 0 35px rgba(37, 99, 235, 0.25);
-  color: #e5e7eb;
-  max-width: 900px;
-  width: 92%;
-  animation: slideUp 0.3s ease;
-  margin-top: 3rem;
-}
-
 .modal-box h2 {
   text-align: center;
   font-weight: 900;
   font-size: 1.6rem;
   letter-spacing: 0.5px;
-  background: linear-gradient(90deg, #60a5fa, #f97316);
+  background: linear-gradient(90deg, #d0661b, #e0772c);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 1.25rem;
+  margin-bottom: 2rem;
 }
 
 /* ---------- Close Button ---------- */
@@ -562,7 +535,7 @@
   right: 20px;
   font-size: 1.6rem;
   font-weight: 800;
-  color: #e2e8f0;
+  color: #80b1ff;
   background: none;
   border: none;
   cursor: pointer;
@@ -739,14 +712,6 @@
   margin-top: 1.5rem !important; /* adds clean separation */
 }
 
-/* ---------- Supplies Modal ---------- */
-.modal-box.large {
-  width: min(940px, 96%);
-  max-height: 85vh;
-  overflow-y: auto;
-  position: relative;
-}
-
 .supply-hint {
   text-align: center;
   font-size: 0.95rem;
@@ -774,10 +739,10 @@
 .supply-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1.25rem; /* uniform horizontal + vertical spacing */
+  gap: 3rem; /* uniform horizontal + vertical spacing */
   justify-items: center;
   align-items: center;
-  padding: 1rem 0;
+  padding: 1rem 0rem 2rem 0rem;
 }
 @keyframes fadeIn {
   from {
@@ -799,12 +764,12 @@
   align-items: center;
   background: linear-gradient(
     to bottom right,
-    rgba(31, 41, 55, 0.9),
+    rgba(36, 46, 61, 0.9),
     rgba(15, 23, 42, 0.95)
   );
   border: 2px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
-  padding: 0.75rem;
+  padding: 1rem;
   text-align: center;
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease,
@@ -813,30 +778,23 @@
 }
 
 .supply-item:hover {
-  transform: translateY(-1px);
+  transform: translateY(-3px);
   border-color: rgba(105, 159, 247, 0.45);
 }
 .supply-item.selected {
   border: 2px solid transparent;
-  background: linear-gradient(
-    to bottom right,
-    rgba(255, 255, 255, 0.9),
-    rgba(255, 255, 255, 0.95)
-  );
-  box-shadow: 0 0 24px rgba(37, 99, 235, 0.45),
-    0 0 20px rgba(249, 115, 22, 0.35);
-  color: #000;
+  box-shadow: 0 0 10px #f97316, 0 0 15px #f97316;
 }
 .supply-item.selected span {
-  color: #000;
-  font-weight: 600;
+  color: white;
+  font-weight: 800;
 }
 
 .supply-item img {
   width: 80%;
   height: 80%;
   object-fit: contain;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
   pointer-events: none;
 
   /* THIS IS THE FIX:
@@ -853,7 +811,7 @@
   /* This filter combo brightens the image slightly and adds contrast.
     (I removed the duplicate 'filter: brightness(0.88)' that was here)
   */
-  filter: brightness(1.8) contrast(1);
+  filter: brightness(1.25) contrast(1);
   border-radius: 10px;
 }
 .supply-item span {
@@ -876,115 +834,256 @@
     height: 120px;
   }
 }
-/* ---------- Confirmation Toast ---------- */
+/* ===========================================================
+   CENTER TOAST — TRUE GLIDE-UP + CLEAN EMOJI + LOCAL GLOW
+   =========================================================== */
+
+/* Viewport overlay that only handles opacity (no transforms) */
 .confirm-toast {
   position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: 6000;
-  pointer-events: none;
-  animation: fadeIn 0.25s ease;
-}
-/* ===========================================================
-   CINEMATIC TOTAL MESSAGE — Premium Aurora Glass
-   =========================================================== */
-.confirm-card {
-  position: relative;
-  background: linear-gradient(
-    135deg,
-    rgba(22, 24, 36, 0.9),
-    /* darker base for dashboard background */ rgba(32, 34, 48, 0.92)
-  );
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 1.25rem;
-  padding: 1.2rem 2rem;
+  inset: 0; /* full viewport */
   display: flex;
   align-items: center;
-  gap: 1rem;
-  color: #fff;
-  font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: 0.3px;
+  justify-content: center;
+  z-index: 99999;
+  pointer-events: none;
+  opacity: 0;
 
-  /* ✨ stronger blur & separation shadow */
-  backdrop-filter: blur(28px) saturate(240%);
-  -webkit-backdrop-filter: blur(28px) saturate(240%);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(80, 130, 255, 0.25),
-    inset 0 0 10px rgba(255, 255, 255, 0.05);
+  /* ⏱ Fade in first, fade-out slightly delayed for visible drift */
+  animation: toastFadeIn 0.6s ease-out forwards,
+    toastFadeOut 1.4s ease-in-out 3.4s forwards;
 }
 
-/* ✨ Soft ambient gradient halo */
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes toastFadeOut {
+  from {
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+/* ---------- The floating glass card (handles all motion) ---------- */
+.confirm-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+
+  min-width: 440px;
+  max-width: 560px;
+  padding: 1rem 2rem;
+  border-radius: 1.1rem;
+  text-align: center;
+
+  backdrop-filter: blur(28px) saturate(220%);
+  -webkit-backdrop-filter: blur(28px) saturate(220%);
+  background: linear-gradient(
+    160deg,
+    rgba(17, 24, 39, 0.9),
+    rgba(15, 23, 42, 0.95)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 24px rgba(59, 130, 246, 0.18);
+
+  color: #f1f5f9;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.25px;
+  overflow: hidden;
+  opacity: 0.98;
+
+  /* 🎬 One timeline = scale in → hold → drift up */
+  animation: cardMotion 4.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* ✨ Local glow halo (no fullscreen vignette) */
 .confirm-card::before {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -20px;
   border-radius: inherit;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(0, 0, 0, 0.25) 100%
+  background: radial-gradient(
+    circle at center,
+    rgba(59, 130, 246, 0.25) 0%,
+    rgba(59, 130, 246, 0.08) 65%,
+    transparent 100%
   );
-  mix-blend-mode: overlay;
+  filter: blur(24px);
+  opacity: 0;
+  animation: haloFade 4.4s ease forwards;
   pointer-events: none;
 }
-/* 💫 Moving sheen reflection */
+
+@keyframes haloFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1);
+  } /* during enter */
+  72% {
+    opacity: 1;
+    transform: scale(1);
+  } /* hold */
+  100% {
+    opacity: 0;
+    transform: scale(1.03);
+  } /* fade with exit */
+}
+
+/* 🧭 Card motion: enter → hold → visible drift up */
+@keyframes cardMotion {
+  /* 0.0s  */
+  0% {
+    transform: scale(0.92) translateY(10px);
+  }
+  /* 0.6s  */
+  14% {
+    transform: scale(1) translateY(0);
+  }
+  /* Hold (toast fully visible) */
+  70% {
+    transform: scale(1) translateY(0);
+  }
+  /* 👇 Upward drift visible before fade-out */
+  100% {
+    transform: scale(1) translateY(-45px);
+  }
+}
+
+/* ✨ Moving sheen across glass */
 .confirm-card::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   background: linear-gradient(
-    70deg,
-    transparent,
-    rgba(255, 255, 255, 0.08),
-    transparent
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
   );
-  transform: translateX(-100%);
-  animation: sheenMove 14s linear infinite;
-  pointer-events: none;
+  transform: translateX(-120%);
+  animation: sheenMove 6s ease-in-out infinite;
 }
 
-/* 🔆 Text styling */
+@keyframes sheenMove {
+  0% {
+    transform: translateX(-120%);
+  }
+  50% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* 💎 Diamond — color preserved, no box edges */
+.confirm-emoji {
+  font-size: 2rem;
+  line-height: 1;
+  background: transparent !important;
+  color: inherit;
+  filter: none;
+  isolation: isolate;
+  mix-blend-mode: screen;
+  text-shadow: 0 0 4px rgba(59, 130, 246, 0.4), 0 0 8px rgba(59, 130, 246, 0.5),
+    0 0 12px rgba(59, 130, 246, 0.3);
+  animation: emojiPulse 3.5s ease-in-out infinite;
+}
+
+@keyframes emojiPulse {
+  0%,
+  100% {
+    opacity: 0.95;
+    text-shadow: 0 0 4px rgba(59, 130, 246, 0.4),
+      0 0 8px rgba(59, 130, 246, 0.5), 0 0 12px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 6px rgba(59, 130, 246, 0.6),
+      0 0 14px rgba(59, 130, 246, 0.5), 0 0 18px rgba(59, 130, 246, 0.4);
+  }
+}
+
+/* ✅ Tick or icon next to text */
+.confirm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #93c5fd; /* light blue tick color */
+  margin-right: 0.35rem;
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))
+    drop-shadow(0 0 8px rgba(147, 197, 253, 0.4));
+  animation: iconGlow 3s ease-in-out infinite;
+}
+
+@keyframes iconGlow {
+  0%,
+  100% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.4))
+      drop-shadow(0 0 8px rgba(147, 197, 253, 0.5));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))
+      drop-shadow(0 0 14px rgba(147, 197, 253, 0.6));
+  }
+}
+
+/* 💬 Shimmer text */
 .confirm-text {
-  position: relative;
-  font-weight: 700;
-  background: linear-gradient(90deg, #ffdba5, #82b4ff);
+  background: linear-gradient(90deg, #fbbf24, #60a5fa, #fbbf24);
+  background-size: 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7), 0 0 15px rgba(255, 255, 255, 0.15);
+  font-weight: 700;
+  animation: shimmerText 6s linear infinite;
+  white-space: normal;
   line-height: 1.4;
 }
 
-/* ⭐ Emphasized numbers / totals */
-.confirm-text strong {
-  color: #fff;
-  text-shadow: 0 0 8px rgba(255, 180, 90, 0.6), 0 0 12px rgba(255, 180, 90, 0.4);
-}
-
-/* 💎 Highlighted currency or key values */
-.confirm-text .highlight-time {
-  color: #a8d3ff;
-  font-weight: 800;
-  text-shadow: 0 0 10px rgba(100, 160, 255, 0.55), 0 0 15px rgba(0, 0, 0, 0.45);
-}
-
-/* ✨ Emoji pop */
-.confirm-emoji {
-  font-size: 1.9rem;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6))
-    drop-shadow(0 0 20px rgba(255, 180, 90, 0.5));
-  animation: emojiPop 0.5s ease;
-}
-
-/* ⚡ Keyframes reused from previous version */
-@keyframes sheenMove {
+@keyframes shimmerText {
   0% {
-    transform: translateX(-100%);
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
   }
   100% {
-    transform: translateX(100%);
+    background-position: 0% 50%;
   }
+}
+
+.confirm-text strong {
+  color: #fff;
+  font-weight: 800;
+  -webkit-text-fill-color: #fff;
+}
+
+.confirm-text .highlight-time {
+  color: #a5c9ff;
+  font-weight: 700;
 }
 
 /* ===== Time Picker Layout Fix ===== */
@@ -1256,4 +1355,113 @@ select::-webkit-scrollbar-thumb {
 select option {
   background-color: #0f172a;
   color: #f8fafc;
+}
+
+/* ===========================================================
+   STICKY SUBMIT BUTTON — APPLE-STYLE LIFT & SPRING RELEASE
+   =========================================================== */
+.submit-request-sticky {
+  position: sticky;
+  bottom: 0;
+  background: rgba(17, 24, 39, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 1rem 1.25rem 1.25rem;
+  z-index: 25;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 15px;
+
+  /* resting state */
+  transform: translateY(0);
+  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1),
+    /* smoother spring-like drop */ background 0.3s ease;
+  will-change: transform;
+}
+
+/* ✅ Lift while actively scrolling */
+.submit-request-sticky.scrolling {
+  transform: translateY(-6px);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); /* faster, crisp lift */
+}
+
+/* 🌐 Responsive lift strength */
+@media (min-width: 1200px) {
+  .submit-request-sticky.scrolling {
+    transform: translateY(-8px);
+  }
+}
+@media (max-width: 600px) {
+  .submit-request-sticky.scrolling {
+    transform: translateY(-4px);
+  }
+}
+
+/* Optional: gentle gradient separator above bar */
+.submit-request-sticky::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    to top,
+    rgba(15, 23, 42, 0.9) 80%,
+    rgba(15, 23, 42, 0.5) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ===========================================================
+  RESPONSIVE DASHBOARD LAYOUT FIXES
+===========================================================*/
+
+@media (max-width: 1100px) {
+  .dashboard-view .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1rem;
+  }
+
+  /* Make cards and map full-width but centered */
+  .dashboard-view .user-card,
+  .dashboard-view .card.action-card,
+  .dashboard-view .banner-block,
+  .dashboard-view .map-container {
+    width: 95%;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* Adjust slideshow for smaller screens */
+  .dashboard-view .banner-block img {
+    height: 220px;
+    object-fit: cover;
+    border-radius: 1rem;
+  }
+
+  /* Center CTA button */
+  .dashboard-view .banner-cta {
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  /* Fix modal sizing on mobile */
+  .modal-box.large {
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Toast stays centered */
+  .confirm-toast {
+    bottom: 2rem;
+  }
+  .dashboard-view .dashboard-grid > * {
+    transition: transform 0.4s ease, opacity 0.4s ease;
+  }
+  .dashboard-view .dashboard-grid > *:hover {
+    transform: translateY(-4px);
+  }
 }

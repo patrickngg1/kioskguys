@@ -11,11 +11,7 @@
   This lets our new layouts control the height and scrolling,
   preventing conflicts and the "missing scrollbar" problem.
 */
-@property --scrollbar-thumb-color {
-  syntax: '<color>';
-  inherits: false;
-  initial-value: rgba(85, 85, 85, 0); /* Start transparent */
-}
+
 html,
 body,
 #root {
@@ -24,29 +20,7 @@ body,
   overflow-x: hidden;
   background: transparent !important;
   scroll-behavior: smooth;
-  .scrolling-element {
-    /* Transition the custom property, not the scrollbar */
-    transition: --scrollbar-thumb-color 0.3s ease-in-out;
-  }
-
-  .scrolling-element:hover {
-    /* On hover, change the variable's value */
-    --scrollbar-thumb-color: rgba(85, 85, 85, 1); /* Fade to opaque */
-  }
-
-  /* Style the scrollbar to use the variable */
-  .scrolling-element::-webkit-scrollbar {
-    width: 10px;
-  }
-
-  .scrolling-element::-webkit-scrollbar-thumb {
-    background-color: var(--scrollbar-thumb-color); /* Use the variable */
-    border-radius: 5px;
-  }
-
-  .scrolling-element::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  --header-offset: 6rem;
 }
 
 /* --- CRITICAL FIX: The entire background (Image, Blur, Vignette, Animation) is moved to a single fixed element on the body. --- */
