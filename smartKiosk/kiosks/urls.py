@@ -17,8 +17,20 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+# NEW
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
+)
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('main.urls')),
     path("", include("accounts.urls")),
+
+    # 🔥 NEW: JWT endpoints (do NOT replace existing ones)
+    path("api/auth/jwt/login/", TokenObtainPairView.as_view(), name="jwt_login"),
+    path("api/auth/jwt/refresh/", TokenRefreshView.as_view(), name="jwt_refresh"),
+    path("api/auth/jwt/verify/", TokenVerifyView.as_view(), name="jwt_verify"),
 ]
