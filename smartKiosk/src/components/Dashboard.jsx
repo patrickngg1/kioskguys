@@ -1,14 +1,4 @@
-// src/components/Dashboard.jsx
-// --------------------------------------------------------------------
-// - Django session auth (no Firebase)
-// - Reads user either from navigation state or /api/auth/me/
-// - User card (top-left) shows logged-in user's info
-// - Reserve modal with AM/PM toggles + conflict check (localStorage-only)
-// - Supplies modal with category-specific "Frequently Requested"
-// - Clears selection on modal open; live count + glow on submit
-// - Persists request history in localStorage; recomputes popularity on submit
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import KioskMap from './KioskMap';
 import '../styles/Dashboard.css';
@@ -96,6 +86,15 @@ export default function Dashboard() {
   const [user, setUser] = useState(null); // Django user: { id, email, fullName, ... }
   const [profile, setProfile] = useState(null); // future extension (roles, etc.)
 
+  // ---------------- Inactivity Warning Modal State ----------------
+  const [showInactivityModal, setShowInactivityModal] = useState(false);
+  const [countdown, setCountdown] = useState(30); // 30-second warning window
+  const countdownRef = useRef(null);
+
+  const INACTIVITY_LIMIT = 10 * 1000; // 3 minutes
+  const WARNING_TIME = 30; // 30 seconds countdown
+  const inactivityTimer = useRef(null);
+
   // ---------- Auth: load user from navigation or Django session ----------
   useEffect(() => {
     const navUser = location.state?.user || null;
@@ -129,6 +128,61 @@ export default function Dashboard() {
 
     initUser();
   }, [location.state, navigate]);
+
+  // ---------- Inactivity Auto-Logout (3 min + 30s warning modal) ----------
+  useEffect(() => {
+    if (!user) return; // only start after user is loaded
+
+    const startWarningCountdown = () => {
+      setShowInactivityModal(true);
+      setCountdown(WARNING_TIME);
+
+      countdownRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === 1) {
+            clearInterval(countdownRef.current);
+            logoutSession().finally(() => navigate('/'));
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
+    const resetInactivityTimer = () => {
+      // close warning modal if it’s open
+      setShowInactivityModal(false);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+
+      // reset inactivity timer
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = setTimeout(
+        startWarningCountdown,
+        INACTIVITY_LIMIT
+      );
+    };
+
+    const events = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'touchmove',
+    ];
+
+    events.forEach((e) => window.addEventListener(e, resetInactivityTimer));
+
+    // start timer the first time
+    resetInactivityTimer();
+
+    return () => {
+      events.forEach((e) =>
+        window.removeEventListener(e, resetInactivityTimer)
+      );
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [user]); // <-- IMPORTANT FIX
 
   const handleLogout = async () => {
     try {
@@ -777,6 +831,68 @@ export default function Dashboard() {
                       selectedSupplies.length > 1 ? 's' : ''
                     })`
                   : 'Submit Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inactivity Warning Modal */}
+      {showInactivityModal && (
+        <div className='modal-overlay' style={{ zIndex: 9999 }}>
+          <div
+            className='modal-box'
+            style={{ maxWidth: '420px', textAlign: 'center' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className='close-btn'
+              onClick={() => {
+                setShowInactivityModal(false);
+                if (countdownRef.current) clearInterval(countdownRef.current);
+              }}
+            >
+              ✕
+            </button>
+
+            <h2>Are you still here?</h2>
+            <p style={{ marginTop: '0.75rem', fontSize: '1.1rem' }}>
+              You will be signed out in
+            </p>
+
+            <div
+              style={{
+                fontSize: '2.5rem',
+                fontWeight: '900',
+                marginTop: '0.5rem',
+                color: '#2563eb',
+              }}
+            >
+              {countdown}s
+            </div>
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <button
+                className='btn btn-primary w-full'
+                style={{ marginBottom: '0.75rem' }}
+                onClick={() => {
+                  setShowInactivityModal(false);
+                  if (countdownRef.current) clearInterval(countdownRef.current);
+                }}
+              >
+                Stay Signed In
+              </button>
+
+              <button
+                className='btn btn-primary w-full'
+                style={{ background: '#d72638' }}
+                onClick={async () => {
+                  if (countdownRef.current) clearInterval(countdownRef.current);
+                  await logoutSession();
+                  navigate('/');
+                }}
+              >
+                Sign Out Now
               </button>
             </div>
           </div>
