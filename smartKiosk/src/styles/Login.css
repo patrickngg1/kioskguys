@@ -398,11 +398,11 @@ input.input-field:-webkit-autofill {
   width: 100%;
 }
 .input-field.with-eye {
-  padding-right: 2.6rem;
+  padding-right: 2.5rem;
 }
 .eye-btn {
   position: absolute;
-  right: 0.6rem;
+  right: 0px;
   top: 50%;
   transform: translateY(-50%);
   width: 34px;
@@ -412,9 +412,10 @@ input.input-field:-webkit-autofill {
   cursor: pointer;
   z-index: 20;
   border-radius: 9999px;
+  opacity: 0.7;
 }
 .eye-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
+  opacity: 1;
 }
 .eye-btn::before {
   content: '';
@@ -569,6 +570,123 @@ input.input-field:-webkit-autofill {
   50% {
     opacity: 1;
     filter: blur(6px) brightness(1.3);
+  }
+}
+
+.input-check-wrap {
+  position: relative;
+}
+.input-wrap input:focus {
+  outline-offset: -1px;
+}
+/* Blue glow on valid fields */
+.valid-field input {
+  border-color: #4d9aff !important;
+  box-shadow: 0 0 6px rgba(77, 154, 255, 0.7);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* Green checkmark */
+.checkmark {
+  position: absolute;
+  right: 45px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #27ae60; /* deeper, premium green */
+  font-size: 17px;
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+/* Inline error */
+.inline-error {
+  color: #d63031; /* deeper, modern red */
+  font-size: 0.78rem;
+  margin-top: 4px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+/* Disable button */
+.auth-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Shake animation */
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-5px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.shake {
+  animation: shake 0.4s ease;
+}
+
+/* Password strength UI */
+.pw-strength-container {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.25s ease;
+}
+
+.pw-strength-bar {
+  width: 100px;
+  height: 6px;
+  border-radius: 4px;
+  background: #ddd;
+  transition: background 0.3s ease, width 0.3s ease;
+}
+.pw-strength-bar.level-1 {
+  width: 40px;
+  background: #e74c3c;
+}
+
+.pw-strength-bar.level-2 {
+  width: 60px;
+  background: #ff9933;
+}
+
+.pw-strength-bar.level-3 {
+  width: 80px;
+  background: #4d9aff;
+}
+
+.pw-strength-bar.level-4 {
+  width: 100px;
+  background: #2ecc71;
+}
+
+.pw-strength-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2ecc71; /* clean green */
+  margin-left: 6px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

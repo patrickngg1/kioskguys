@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { loginWithSession, registerWithSession } from '../api/authApi';
 import AuthToast from './AuthToast';
 
-/* Helpers */
+/* ===== Helpers ===== */
 function validateEmailDomain(email) {
   const domain = email.substring(email.lastIndexOf('@'));
   return domain === '@mavs.uta.edu' || domain === '@uta.edu';
@@ -17,6 +17,22 @@ function validatePassword(password) {
   return null;
 }
 
+function getPasswordStrength(password) {
+  let score = 0;
+
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++; // symbol bonus
+
+  if (score === 0) return { label: '', level: 0 };
+  if (score === 1) return { label: 'Weak', level: 1 };
+  if (score === 2) return { label: 'Okay', level: 2 };
+  if (score === 3) return { label: 'Good', level: 3 };
+  return { label: 'Strong', level: 4 };
+}
+
+/* Password input with show/hide eye */
 function PasswordInput({
   value,
   onChange,
@@ -57,11 +73,99 @@ export default function AuthForm({ onLoginSuccess }) {
   const [fullName, setFullName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [errors, setErrors] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const [shake, setShake] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    label: '',
+    level: 0,
+  });
+
+  /* ===== Live validation helpers (inside component so they see state) ===== */
+  const validateFullNameLive = (value) => {
+    const v = value.trim();
+    if (!v) return 'Name is required.';
+    if (v.length < 3) return 'Enter a valid full name.';
+    return '';
+  };
+
+  const validateEmailLive = (value) => {
+    const v = value.trim();
+    if (!v) return 'Email is required.';
+    if (!validateEmailDomain(v)) return 'Must be @mavs.uta.edu or @uta.edu';
+    return '';
+  };
+
+  const validatePasswordLive = (value) => {
+    if (!value) return 'Password required.';
+    const rule = validatePassword(value);
+    return rule ? rule : '';
+  };
+
+  const validateConfirmPasswordLive = (value, pwd) => {
+    if (!value) return 'Confirm password.';
+    if (value !== pwd) return 'Passwords do not match.';
+    return '';
+  };
+
+  const triggerShake = () => {
+    setShake(true);
+    setTimeout(() => setShake(false), 400);
+  };
+
+  /* Derived flag for Register button */
+  const isRegisterValid =
+    fullName.trim() &&
+    email.trim() &&
+    password &&
+    confirmPassword &&
+    !errors.fullName &&
+    !errors.email &&
+    !errors.password &&
+    !errors.confirmPassword;
+
+  /* ===== Login handler ===== */
   async function handleLogin(e) {
     e.preventDefault();
 
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    // ===== FRONTEND VALIDATION BEFORE API CALL =====
+    if (!trimmedEmail && !trimmedPassword) {
+      showToast('error', 'Email and password are required.');
+      triggerShake();
+      return;
+    }
+
+    if (!trimmedEmail) {
+      showToast('error', 'Email is required.');
+      triggerShake();
+      return;
+    }
+
+    if (!trimmedPassword) {
+      showToast('error', 'Password is required.');
+      triggerShake();
+      return;
+    }
+
+    // Optional: Enforce UTA domain
+    if (!validateEmailDomain(trimmedEmail)) {
+      showToast('error', 'Must use @mavs.uta.edu or @uta.edu email.');
+      triggerShake();
+      return;
+    }
+
+    // ===== BACKEND LOGIN =====
     try {
-      const user = await loginWithSession(email, password);
+      const user = await loginWithSession(trimmedEmail, trimmedPassword);
+
       showToast('success', 'Welcome back! Redirecting…');
 
       setTimeout(() => {
@@ -74,63 +178,74 @@ export default function AuthForm({ onLoginSuccess }) {
           ? 'Server unreachable. Try again.'
           : 'Invalid email or password.'
       );
+      triggerShake();
     }
   }
 
+  /* ===== Register handler ===== */
   async function handleRegister(e) {
     e.preventDefault();
 
-    // 1️⃣ Full Name required
-    if (!fullName.trim()) {
-      showToast('error', 'Please enter your full name.');
+    // Run the same logic used for live errors, but in a strict order
+    const fullNameErr = validateFullNameLive(fullName);
+    const emailErr = validateEmailLive(email);
+    const passwordErr = validatePasswordLive(password);
+    const confirmErr = validateConfirmPasswordLive(confirmPassword, password);
+
+    // Sync errors state so UI reflects them
+    setErrors({
+      fullName: fullNameErr,
+      email: emailErr,
+      password: passwordErr,
+      confirmPassword: confirmErr,
+    });
+
+    // Priority toast + shake
+    if (fullNameErr) {
+      showToast('error', fullNameErr);
+      triggerShake();
+      return;
+    }
+    if (emailErr) {
+      showToast('error', emailErr);
+      triggerShake();
+      return;
+    }
+    if (passwordErr) {
+      showToast('error', passwordErr);
+      triggerShake();
+      return;
+    }
+    if (confirmErr) {
+      showToast('error', confirmErr);
+      triggerShake();
       return;
     }
 
-    // 2️⃣ Email required
-    if (!email.trim()) {
-      showToast('error', 'Please enter your UTA email.');
-      return;
-    }
-
-    // 3️⃣ Email domain check
-    if (!validateEmailDomain(email)) {
-      showToast('error', 'Use a valid UTA or Mavs email.');
-      return;
-    }
-
-    // 4️⃣ Password required
-    if (!password) {
-      showToast('error', 'Please enter a password.');
-      return;
-    }
-
-    // 5️⃣ Password confirm required
-    if (!confirmPassword) {
-      showToast('error', 'Please confirm your password.');
-      return;
-    }
-
-    // 6️⃣ Password match
-    if (password !== confirmPassword) {
-      showToast('error', 'Passwords do not match.');
-      return;
-    }
-
-    // 7️⃣ Password rules
+    // Double-check with helper (defensive)
     const pwErr = validatePassword(password);
     if (pwErr) {
       showToast('error', pwErr);
+      triggerShake();
       return;
     }
 
-    // 8️⃣ Attempt registration
     try {
       await registerWithSession(email, password, fullName);
 
       showToast('success', 'Account created! Please sign in.');
       setView('login');
+
+      // Reset sensitive fields & validation
       setPassword('');
       setConfirmPassword('');
+      setPasswordStrength({ label: '', level: 0 });
+      setErrors({
+        fullName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+      });
     } catch (err) {
       showToast(
         'error',
@@ -138,19 +253,16 @@ export default function AuthForm({ onLoginSuccess }) {
           ? 'This email is already registered.'
           : 'Registration failed.'
       );
+      triggerShake();
     }
   }
 
   return (
     <div id='auth-container' className='form-container'>
-      {/* ===== 1. TOAST & BLUR OVERLAY ===== */}
-      {/* These are now rendered on top when 'toast' exists */}
+      {/* ===== Toast overlay + blur ===== */}
       {toast && (
         <>
-          {/* This div is the blur/darken effect */}
           <div className='auth-blur-overlay' />
-
-          {/* This div centers the toast */}
           <div className='auth-toast-center'>
             <AuthToast
               type={toast.type}
@@ -161,13 +273,13 @@ export default function AuthForm({ onLoginSuccess }) {
         </>
       )}
 
-      {/* ===== 2. CARD CONTENT ===== */}
-      {/* This new wrapper gets blurred when the toast is active */}
+      {/* Card content that blurs when toast is active */}
       <div className={toast ? 'blurred-card' : ''}>
         <h1 className='kiosk-title'>KIOSK ACCESS</h1>
 
         <div className='tab-bar'>
           <button
+            type='button'
             className={`tab-button ${view === 'login' ? 'active' : ''}`}
             onClick={() => setView('login')}
           >
@@ -175,6 +287,7 @@ export default function AuthForm({ onLoginSuccess }) {
           </button>
 
           <button
+            type='button'
             className={`tab-button ${view === 'register' ? 'active' : ''}`}
             onClick={() => setView('register')}
           >
@@ -182,8 +295,9 @@ export default function AuthForm({ onLoginSuccess }) {
           </button>
         </div>
 
-        <div className='form-body'>
+        <div className={`form-body ${shake ? 'shake' : ''}`}>
           {view === 'login' ? (
+            /* ========== LOGIN FORM ========== */
             <form onSubmit={handleLogin}>
               <div className='form-group'>
                 <label>Email</label>
@@ -193,6 +307,7 @@ export default function AuthForm({ onLoginSuccess }) {
                   placeholder='email@uta.edu'
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete='username'
                 />
               </div>
 
@@ -210,52 +325,155 @@ export default function AuthForm({ onLoginSuccess }) {
               <button className='auth-button'>Sign In</button>
             </form>
           ) : (
+            /* ========== REGISTER FORM ========== */
             <form onSubmit={handleRegister}>
+              {/* Full Name */}
               <div className='form-group'>
                 <label>Full Name</label>
-                <input
-                  className='input-field'
-                  type='text'
-                  placeholder='Jane Doe'
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
+                <div
+                  className={`input-check-wrap ${
+                    !errors.fullName && fullName.trim() ? 'valid-field' : ''
+                  }`}
+                >
+                  <input
+                    className='input-field'
+                    type='text'
+                    placeholder='Jane Doe'
+                    value={fullName}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFullName(v);
+                      setErrors((prev) => ({
+                        ...prev,
+                        fullName: validateFullNameLive(v),
+                      }));
+                    }}
+                    autoComplete='name'
+                  />
+                  {!errors.fullName && fullName.trim() && (
+                    <span className='checkmark'>✔</span>
+                  )}
+                </div>
+                {errors.fullName && (
+                  <div className='inline-error'>{errors.fullName}</div>
+                )}
               </div>
 
+              {/* UTA Email */}
               <div className='form-group'>
                 <label>UTA Email</label>
-                <input
-                  className='input-field'
-                  type='email'
-                  placeholder='email@mavs.uta.edu'
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <div
+                  className={`input-check-wrap ${
+                    !errors.email && email.trim() ? 'valid-field' : ''
+                  }`}
+                >
+                  <input
+                    className='input-field'
+                    type='email'
+                    placeholder='email@mavs.uta.edu'
+                    value={email}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEmail(v);
+                      setErrors((prev) => ({
+                        ...prev,
+                        email: validateEmailLive(v),
+                      }));
+                    }}
+                    autoComplete='email'
+                  />
+                  {!errors.email && email.trim() && (
+                    <span className='checkmark'>✔</span>
+                  )}
+                </div>
+                {errors.email && (
+                  <div className='inline-error'>{errors.email}</div>
+                )}
               </div>
 
+              {/* Password */}
               <div className='form-group'>
                 <label>Password</label>
-                <PasswordInput
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder='Min. 8 characters, 1 uppercase, 1 number'
-                  inputClass='input-field'
-                  autoComplete='new-password'
-                />
+                <div
+                  className={`input-check-wrap ${
+                    !errors.password && password ? 'valid-field' : ''
+                  }`}
+                >
+                  <PasswordInput
+                    value={password}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPassword(v);
+                      setErrors((prev) => ({
+                        ...prev,
+                        password: validatePasswordLive(v),
+                      }));
+                      setPasswordStrength(getPasswordStrength(v));
+                    }}
+                    placeholder='Min. 8 chars, 1 uppercase, 1 number'
+                    inputClass='input-field'
+                    autoComplete='new-password'
+                  />
+                  {!errors.password && password && (
+                    <span className='checkmark'>✔</span>
+                  )}
+                </div>
+                {errors.password && (
+                  <div className='inline-error'>{errors.password}</div>
+                )}
+
+                {/* Password strength meter */}
+                {password && (
+                  <div className='pw-strength-container'>
+                    <div
+                      className={`pw-strength-bar level-${passwordStrength.level}`}
+                    />
+                    <span className='pw-strength-label'>
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                )}
               </div>
 
+              {/* Confirm Password */}
               <div className='form-group'>
                 <label>Confirm Password</label>
-                <PasswordInput
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder='Confirm your password'
-                  inputClass='input-field'
-                  autoComplete='new-password'
-                />
+                <div
+                  className={`input-check-wrap ${
+                    !errors.confirmPassword && confirmPassword
+                      ? 'valid-field'
+                      : ''
+                  }`}
+                >
+                  <PasswordInput
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setConfirmPassword(v);
+                      setErrors((prev) => ({
+                        ...prev,
+                        confirmPassword: validateConfirmPasswordLive(
+                          v,
+                          password
+                        ),
+                      }));
+                    }}
+                    placeholder='Confirm your password'
+                    inputClass='input-field'
+                    autoComplete='new-password'
+                  />
+                  {!errors.confirmPassword && confirmPassword && (
+                    <span className='checkmark'>✔</span>
+                  )}
+                </div>
+                {errors.confirmPassword && (
+                  <div className='inline-error'>{errors.confirmPassword}</div>
+                )}
               </div>
 
-              <button className='auth-button'>Register</button>
+              <button className='auth-button' disabled={!isRegisterValid}>
+                Register
+              </button>
             </form>
           )}
         </div>
