@@ -17,6 +17,16 @@ function validatePassword(password) {
   return null;
 }
 
+function formatFullName(value) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ') // collapses multiple spaces
+    .split(' ')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function getPasswordStrength(password) {
   let score = 0;
 
@@ -89,8 +99,25 @@ export default function AuthForm({ onLoginSuccess }) {
   /* ===== Live validation helpers (inside component so they see state) ===== */
   const validateFullNameLive = (value) => {
     const v = value.trim();
-    if (!v) return 'Name is required.';
-    if (v.length < 3) return 'Enter a valid full name.';
+
+    if (!v) return 'Full name is required.';
+
+    // Split normalized parts
+    const parts = v.split(/\s+/);
+
+    // Must have at least 2 words (first + last)
+    if (parts.length < 2) {
+      return 'Enter your first and last name.';
+    }
+
+    // Check each part for length OR valid initial "A."
+    for (const p of parts) {
+      const cleaned = p.replace('.', ''); // allow initials like A.
+      if (cleaned.length < 2) {
+        return 'Each name must be at least 2 letters.';
+      }
+    }
+
     return '';
   };
 
@@ -341,11 +368,16 @@ export default function AuthForm({ onLoginSuccess }) {
                     placeholder='Jane Doe'
                     value={fullName}
                     onChange={(e) => {
-                      const v = e.target.value;
-                      setFullName(v);
+                      const raw = e.target.value;
+
+                      // Auto-format on the fly
+                      const formatted = formatFullName(raw);
+
+                      setFullName(formatted);
+
                       setErrors((prev) => ({
                         ...prev,
-                        fullName: validateFullNameLive(v),
+                        fullName: validateFullNameLive(formatted),
                       }));
                     }}
                     autoComplete='name'

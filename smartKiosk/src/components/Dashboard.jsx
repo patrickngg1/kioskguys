@@ -1,26 +1,22 @@
-// Dashboard.jsx — Smart Kiosk (Category-specific Popular + Clean Modal)
+// src/components/Dashboard.jsx
 // --------------------------------------------------------------------
-// - Firebase auth/profile (dev mode friendly)
-// - Reserve modal with AM/PM toggles + conflict check
+// - Django session auth (no Firebase)
+// - Reads user either from navigation state or /api/auth/me/
+// - User card (top-left) shows logged-in user's info
+// - Reserve modal with AM/PM toggles + conflict check (localStorage-only)
 // - Supplies modal with category-specific "Frequently Requested"
-// - Hides "Frequently Requested" until there is real history
 // - Clears selection on modal open; live count + glow on submit
-// - Persists request history; recomputes per-category popularity on submit
+// - Persists request history in localStorage; recomputes popularity on submit
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import KioskMap from './KioskMap';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase-config';
 import '../styles/Dashboard.css';
 import '../styles/App.css';
 import banner1 from '../assets/banner1.png';
 import banner2 from '../assets/banner2.png';
-import DashboardToast from './DashboardToast';
-
-const APP_ID = 'kiosk-room-booking-v1';
-const DEV_MODE = true;
+import DashboardToast from './DashboardToast'; // still available if you want to use later
+import { getSessionUser, logoutSession } from '../api/authApi';
 
 // Load every .png and .jpg in /src/assets as URLs at build time
 const assetPng = import.meta.glob('../assets/*.png', {
@@ -34,6 +30,7 @@ const assetJpg = import.meta.glob('../assets/*.jpg', {
   query: '?url',
   import: 'default',
 });
+
 // Helper: get image for an item name, falling back to Kleenex.png
 const getSupplyImg = (name) =>
   assetPng[`../assets/${name}.png`] ||
@@ -64,28 +61,7 @@ const isRoomReserved = (reservations, room, date, start, end) =>
       timesOverlap(start, end, r.start, r.end)
   );
 
-// Banner
-function Banner({ item, onReserveClick, onSuppliesClick }) {
-  if (!item) return null;
-
-  const handleClick = () => {
-    if (item.cta?.href === '#reserve') onReserveClick?.();
-    if (item.cta?.href === '#supplies') onSuppliesClick?.();
-  };
-
-  return (
-    <div className='card banner-block'>
-      <img className='banner-img' src={item.image} alt={item.alt || 'Banner'} />
-      {item.cta && (
-        <button className='btn btn-primary banner-cta' onClick={handleClick}>
-          {item.cta.label}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// Toast
+// Toast used for reservation/supplies confirm
 function ConfirmToast({ message = '', onDone }) {
   useEffect(() => {
     const id = setTimeout(onDone, 4800);
@@ -115,59 +91,65 @@ function ConfirmToast({ message = '', onDone }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const location = useLocation();
 
-  // Auth
+  const [user, setUser] = useState(null); // Django user: { id, email, fullName, ... }
+  const [profile, setProfile] = useState(null); // future extension (roles, etc.)
+
+  // ---------- Auth: load user from navigation or Django session ----------
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (DEV_MODE && (!u || !u.email)) {
-        setUser({ email: 'dev@uta.edu', uid: 'DEVUSER12345' });
-        setProfile({ fullName: 'Developer Mode User' });
+    const navUser = location.state?.user || null;
+
+    async function initUser() {
+      // 1. If user was passed via navigate('/dashboard', { state: { user } })
+      if (navUser) {
+        setUser(navUser);
+        setProfile({
+          fullName: navUser.fullName,
+          email: navUser.email,
+        });
         return;
       }
-      if (!u || !u.email) {
+
+      // 2. Fallback: fetch via session cookie
+      const sessionUser = await getSessionUser();
+
+      if (!sessionUser) {
+        // Not authenticated -> back to login screen
         navigate('/');
         return;
       }
-      setUser(u);
-      try {
-        const ref = doc(
-          db,
-          'artifacts',
-          APP_ID,
-          'users',
-          u.uid,
-          'user_profiles',
-          u.uid
-        );
-        const snap = await getDoc(ref);
-        setProfile(snap.exists() ? snap.data() : null);
-      } catch {
-        setProfile(null);
-      }
-    });
-    return () => unsub();
-  }, [navigate]);
+
+      setUser(sessionUser);
+      setProfile({
+        fullName: sessionUser.fullName,
+        email: sessionUser.email,
+      });
+    }
+
+    initUser();
+  }, [location.state, navigate]);
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await logoutSession();
     } finally {
       navigate('/');
     }
   };
 
   const display = {
-    name: profile?.fullName || user?.email || 'Kiosk User',
-    id: user?.uid?.slice(0, 10) || '—',
-    role: DEV_MODE ? 'Developer Mode' : 'Authenticated User',
+    name: profile?.fullName || user?.fullName || user?.email || 'Kiosk User',
+    id: user?.id ?? '—',
+    role: 'Authenticated User', // you can change to user.role later
     email: user?.email || '—',
     avatar:
-      'https://api.dicebear.com/7.x/thumbs/svg?seed=uta&backgroundType=gradientLinear&shapeColor=1d4ed8,2563eb',
+      'https://api.dicebear.com/7.x/thumbs/svg?seed=' +
+      encodeURIComponent(user?.email || 'uta') +
+      '&backgroundType=gradientLinear&shapeColor=1d4ed8,2563eb',
   };
 
-  // Banners
+  // ---------- Banners ----------
   const [bannerIdx, setBannerIdx] = useState(0);
   const banners = [
     {
@@ -182,12 +164,12 @@ export default function Dashboard() {
     },
   ];
 
-  // Modals + Toast
+  // ---------- Modals + Toast ----------
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [showSuppliesModal, setShowSuppliesModal] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // Reservations
+  // ---------- Reservations ----------
   const [reservations, setReservations] = useState(() =>
     readJSON('reservations', [])
   );
@@ -205,7 +187,6 @@ export default function Dashboard() {
   const submitReservation = (e) => {
     e.preventDefault();
 
-    // 1. Destructure all required fields from the state
     const {
       room,
       date,
@@ -217,7 +198,6 @@ export default function Dashboard() {
       endPeriod,
     } = reservationData;
 
-    // 2. Basic form validation
     if (!room || !date || !startHour || !startMin || !endHour || !endMin) {
       console.error('Reservation form is incomplete');
       return;
@@ -231,7 +211,6 @@ export default function Dashboard() {
       return;
     }
 
-    // 3. Convert AM/PM times to minutes since midnight for comparison
     const toMinutes = (h, m, period) => {
       let hour = parseInt(h, 10) % 12;
       if (period === 'PM') hour += 12;
@@ -241,23 +220,19 @@ export default function Dashboard() {
     const startMins = toMinutes(startHour, startMin, startPeriod);
     const endMins = toMinutes(endHour, endMin, endPeriod);
 
-    // 4. Validate that end time is after start time
     if (endMins <= startMins) {
       setToast('⚠️ End time must be after start time.');
       return;
     }
 
-    // 5. Format the start and end times for saving
     const start = `${startHour}:${startMin} ${startPeriod}`;
     const end = `${endHour}:${endMin} ${endPeriod}`;
 
-    // 6. Check for conflicts with existing reservations
     if (isRoomReserved(reservations, room, date, start, end)) {
       setToast('⚠️ That time is already reserved. Please choose another slot.');
       return;
     }
 
-    // 7. Create and save the new reservation
     const newReservation = {
       room,
       date,
@@ -270,13 +245,11 @@ export default function Dashboard() {
     setReservations(updated);
     writeJSON('reservations', updated);
 
-    // 8. Close modal and show success message
     setShowReserveModal(false);
     setToast(`✅ Room ${room} reserved on ${date} from ${start} to ${end}.`);
   };
 
-  // Supplies — verified item lists (from your spreadsheet), simplified where needed
-  // Supplies — verified item lists (from your spreadsheet), simplified where needed
+  // ---------- Supplies ----------
   const STORAGE_CLOSET = [
     'Kleenex',
     'AA Batteries',
@@ -363,7 +336,7 @@ export default function Dashboard() {
       );
 
     return {
-      closet: toTop6Set(freq.closet), // may be empty if no history
+      closet: toTop6Set(freq.closet),
       break: toTop6Set(freq.break),
       kcup: toTop6Set(freq.kcup),
     };
@@ -404,7 +377,7 @@ export default function Dashboard() {
       { items: selectedSupplies, createdAt: nowISO() },
     ];
     writeJSON('supplyRequests', updatedHistory);
-    setPopularByCategory(computePopularByCategory(updatedHistory)); // updates for next open
+    setPopularByCategory(computePopularByCategory(updatedHistory));
     setShowSuppliesModal(false);
     setToast(`Supply request sent: ${selectedSupplies.join(', ')}`);
   };
@@ -421,9 +394,7 @@ export default function Dashboard() {
       onKeyDown={(e) => (e.key === 'Enter' ? toggleSupply(name) : null)}
       aria-label={`Select ${name}`}
     >
-      {/* Replace src with your generated asset path when ready */}
       <img src={getSupplyImg(name)} alt={name} />
-
       <span>{name}</span>
     </div>
   );
@@ -458,7 +429,7 @@ export default function Dashboard() {
   return (
     <div className='dashboard-view'>
       <div className='dashboard-grid'>
-        {/* User Card (dash-left content) */}
+        {/* User Card (top-left) */}
         <div
           className='card user-card action-card'
           style={{ gridArea: 'user' }}
@@ -472,6 +443,8 @@ export default function Dashboard() {
           </div>
           <div className='user-meta'>{display.role}</div>
 
+          <div className='user-email'>{display.email}</div>
+
           <div style={{ marginTop: '0.75rem' }}>
             <button onClick={handleLogout} className='btn btn-primary wl-ful'>
               Sign Out
@@ -479,7 +452,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Banner (dash-center content, first item) - Banner component already has the banner-block class */}
+        {/* Banner */}
         <div className='banner-block'>
           {banners.map((b, i) => (
             <img
@@ -490,14 +463,13 @@ export default function Dashboard() {
             />
           ))}
 
-          {/* CTA buttons now open modals dynamically */}
           <button
             className='banner-cta btn btn-primary'
             onClick={() => {
               const href = banners[bannerIdx].cta.href;
               if (href === '#reserve') setShowReserveModal(true);
               if (href === '#supplies') {
-                setSelectedSupplies([]); // 🔄 Clear selections when opened via banner
+                setSelectedSupplies([]);
                 setShowSuppliesModal(true);
               }
             }}
@@ -506,12 +478,12 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Map (dash-center content, second item) */}
+        {/* Map */}
         <div className='map-container' style={{ gridArea: 'map' }}>
           <KioskMap />
         </div>
 
-        {/* Reserve Action Card (dash-right content, first item) */}
+        {/* Reserve Action Card */}
         <div className='card action-card' style={{ gridArea: 'reserve' }}>
           <div className='action-head'>
             <div className='action-title'>Reserve Conference Room</div>
@@ -528,7 +500,7 @@ export default function Dashboard() {
                 endHour: '',
                 endMin: '',
                 endPeriod: 'AM',
-              }); // 🔄 reset reservation form
+              });
               setShowReserveModal(true);
             }}
             className='btn btn-primary wl-ful'
@@ -537,7 +509,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Supplies Action Card (dash-right content, second item) */}
+        {/* Supplies Action Card */}
         <div className='card action-card' style={{ gridArea: 'supplies' }}>
           <div className='action-head'>
             <div className='action-title'>Request Supplies</div>
@@ -545,7 +517,7 @@ export default function Dashboard() {
           <p className='action-copy'>Tap pictures to select items you need.</p>
           <button
             onClick={() => {
-              setSelectedSupplies([]); // 🔄 Clear previous selections
+              setSelectedSupplies([]);
               setShowSuppliesModal(true);
             }}
             className='btn btn-primary w-full'
@@ -760,7 +732,7 @@ export default function Dashboard() {
         >
           <div
             className='modal-box large'
-            onClick={(e) => e.stopPropagation()} // <-- prevent modal close on item click
+            onClick={(e) => e.stopPropagation()}
             onScroll={(e) => {
               const el = e.currentTarget;
               const stickyBar = el.querySelector('.submit-request-sticky');

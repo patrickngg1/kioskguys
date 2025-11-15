@@ -1,3 +1,5 @@
+// src/api/authApi.js
+
 const BASE_URL = 'http://127.0.0.1:8000'; // Django backend URL
 
 // ------- Session-based login (for kiosk) -------
@@ -15,7 +17,7 @@ export async function loginWithSession(email, password) {
     throw new Error(data.error || 'Login failed');
   }
 
-  return data.user; // return user object
+  return data.user; // { id, email, fullName, ... }
 }
 
 // ------- Registration (for kiosk) -------
@@ -51,4 +53,29 @@ export async function loginWithJwt(email, password) {
   }
 
   return data; // { access, refresh }
+}
+
+// ------- Get current user via session cookie (for kiosk/dashboard) -------
+export async function getSessionUser() {
+  const res = await fetch(`${BASE_URL}/api/auth/me/`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    // 401/403 means "not logged in"
+    return null;
+  }
+
+  const data = await res.json();
+  return data.user || null; // { id, email, fullName, ... } or null
+}
+
+// ------- Logout session (for kiosk) -------
+export async function logoutSession() {
+  // We don't really care about the response body; just fire and forget
+  await fetch(`${BASE_URL}/api/auth/logout/`, {
+    method: 'POST',
+    credentials: 'include',
+  });
 }

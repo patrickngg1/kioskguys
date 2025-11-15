@@ -1,6 +1,9 @@
+// src/components/LoginForm.jsx
+// Simple login form using Django session-based auth
+// NOTE: New kiosk flow uses AuthForm.jsx, but this stays compatible.
+
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase-config';
+import { loginWithSession } from '../api/authApi';
 
 const LoginForm = ({ displayMessage }) => {
   const [email, setEmail] = useState('');
@@ -9,15 +12,36 @@ const LoginForm = ({ displayMessage }) => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail && !trimmedPassword) {
+      displayMessage('Email and password are required.', 'error');
+      return;
+    }
+    if (!trimmedEmail) {
+      displayMessage('Email is required.', 'error');
+      return;
+    }
+    if (!trimmedPassword) {
+      displayMessage('Password is required.', 'error');
+      return;
+    }
+
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // Success is handled by the AuthScreen's onAuthStateChanged listener
+      const user = await loginWithSession(trimmedEmail, trimmedPassword);
+      // You could also pass user back if needed:
+      // displayMessage(`Welcome, ${user.fullName}!`, 'success');
       displayMessage('Login successful!', 'success');
       setEmail('');
       setPassword('');
     } catch (error) {
-      displayMessage('Login failed. Check your email and password.', 'error');
+      displayMessage(
+        error.message || 'Login failed. Check your email and password.',
+        'error'
+      );
     } finally {
       setLoading(false);
     }
