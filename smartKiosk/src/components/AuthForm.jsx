@@ -369,15 +369,18 @@ export default function AuthForm({ onLoginSuccess }) {
                     value={fullName}
                     onChange={(e) => {
                       const raw = e.target.value;
-
-                      // Auto-format on the fly
-                      const formatted = formatFullName(raw);
-
-                      setFullName(formatted);
-
+                      setFullName(raw);
                       setErrors((prev) => ({
                         ...prev,
-                        fullName: validateFullNameLive(formatted),
+                        fullName: validateFullNameLive(raw),
+                      }));
+                    }}
+                    onBlur={(e) => {
+                      const cleaned = formatFullName(e.target.value);
+                      setFullName(cleaned);
+                      setErrors((prev) => ({
+                        ...prev,
+                        fullName: validateFullNameLive(cleaned),
                       }));
                     }}
                     autoComplete='name'
