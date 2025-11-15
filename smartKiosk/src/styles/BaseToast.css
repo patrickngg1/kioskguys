@@ -1,0 +1,108 @@
+/* ==========================
+   Shared Base Toast Styling
+   ========================== */
+
+.toast-container {
+  position: fixed;
+  z-index: 99999;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* Position Variants */
+.pos-top {
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: toastDrop 0.35s ease-out forwards;
+}
+
+.pos-bottom-right {
+  bottom: 24px;
+  right: 24px;
+  justify-content: flex-end;
+  animation: toastRise 0.35s ease-out forwards;
+}
+
+/* Animations */
+@keyframes toastDrop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0px);
+  }
+}
+
+@keyframes toastRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Toast Card */
+.toast-card {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  padding: 12px 20px;
+  border-radius: 14px;
+  min-width: 300px;
+  max-width: 420px;
+
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  font-weight: 600;
+  color: white;
+  pointer-events: auto;
+}
+
+/* Color Variants */
+.toast-success {
+  background: rgba(79, 140, 255, 0.32);
+}
+
+.toast-error {
+  background: rgba(255, 102, 102, 0.32);
+}
+
+.toast-info {
+  background: rgba(255, 171, 71, 0.32);
+}
+
+/* Elements */
+.toast-icon {
+  font-size: 1.2rem;
+}
+
+.toast-text {
+  flex: 1;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: 0.2s ease;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}

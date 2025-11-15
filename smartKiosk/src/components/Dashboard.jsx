@@ -17,6 +17,7 @@ import '../styles/Dashboard.css';
 import '../styles/App.css';
 import banner1 from '../assets/banner1.png';
 import banner2 from '../assets/banner2.png';
+import DashboardToast from './DashboardToast';
 
 const APP_ID = 'kiosk-room-booking-v1';
 const DEV_MODE = true;

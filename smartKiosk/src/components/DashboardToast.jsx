@@ -1,14 +1,14 @@
-// src/components/AuthToast.jsx
 import React from 'react';
 import BaseToast from './BaseToast';
 
-export default function AuthToast({ type, message, onClose }) {
+export default function DashboardToast({ type, message, onClose }) {
   return (
     <BaseToast
       type={type}
       message={message}
       onClose={onClose}
-      duration={3600}
+      position='bottom-right'
+      duration={3800}
     />
   );
 }

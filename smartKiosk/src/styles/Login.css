@@ -219,6 +219,75 @@
   }
 }
 
+/* Full page wrapper for centering card */
+.auth-page-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Wrapper that fences off blur so map NEVER gets blurred */
+.auth-card-wrapper {
+  position: relative;
+  width: 450px; /* matches your card width */
+  margin: 0 auto; /* center horizontally */
+}
+
+/* THE LOGIN CARD */
+.auth-card {
+  position: relative;
+  width: 440px;
+  padding: 32px 40px 40px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 22px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  transition: filter 0.25s ease-out;
+  z-index: 10;
+}
+
+/* Blurred card when toast shows */
+.blurred-card {
+  filter: blur(6px) brightness(0.88);
+  pointer-events: none;
+}
+
+/* STRIPE-STYLE BLUR OVERLAY */
+/* STRIPE-STYLE BLUR OVERLAY */
+.auth-blur-overlay {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(12px) brightness(0.86);
+  -webkit-backdrop-filter: blur(12px) brightness(0.86);
+  border-radius: 1rem; /* <--- UPDATED */
+  z-index: 50;
+  transition: all 0.25s ease-out;
+  pointer-events: none;
+}
+
+/* --- CENTERED TOAST --- */
+.auth-toast-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 200;
+  width: 90%;
+  max-width: 420px;
+  animation: toastCenterPop 0.4s cubic-bezier(0.25, 0.9, 0.3, 1.6);
+}
+
+@keyframes toastCenterPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -55%) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
 /* Glass reflection sweep */
 .kiosk-title::after {
   content: '';
@@ -501,33 +570,6 @@ input.input-field:-webkit-autofill {
     opacity: 1;
     filter: blur(6px) brightness(1.3);
   }
-}
-
-/* =================================
-   5. AUTH SCREEN FALLBACKS
-   ==================================*/
-
-/* --- Auth Screen Scroll Fix (legacy classes) --- */
-.auth-screen,
-.auth-wrapper,
-.auth-card {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding-top: 5rem; /* matches header height */
-  padding-bottom: 2rem;
-  z-index: 1;
-}
-
-/* Add breathing space below fixed header */
-.auth-screen {
-  padding-top: 4rem;
-  padding-bottom: 2rem;
 }
 
 /* =================================
