@@ -298,6 +298,102 @@
   }
 }
 
+/* ===========================
+   INACTIVITY WARNING PREMIUM UI
+   =========================== */
+
+/* Fade + slight zoom animation */
+.inactivity-modal-enter {
+  animation: inactivityModalIn 0.35s ease forwards;
+}
+
+@keyframes inactivityModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Screen dimming behind modal */
+.inactivity-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 9998;
+  animation: dimIn 0.35s ease forwards;
+}
+
+@keyframes dimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Circular countdown ring */
+.countdown-ring {
+  width: 115px;
+  height: 115px;
+  border-radius: 50%;
+  margin: 1rem auto;
+  position: relative;
+  background: conic-gradient(var(--uta-blue), var(--uta-orange));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Inner circle */
+.countdown-ring-inner {
+  width: 90px;
+  height: 90px;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.3rem;
+  font-weight: 900;
+  color: var(--uta-blue);
+}
+
+/* UTA colors */
+:root {
+  --uta-blue: #0064b1;
+  --uta-orange: #f36f21;
+}
+
+/* Splash overlay on logout */
+.logout-splash {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #004b87, #f58634);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 3rem;
+  font-weight: 900;
+  z-index: 99999;
+  animation: splashFade 1s ease forwards;
+}
+
+@keyframes splashFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* ===============================
    2. DASHBOARD MODALS
    =============================== */

@@ -1,3 +1,17 @@
+// src/components/Dashboard.jsx
+// --------------------------------------------------------------------
+// - Django session auth (no Firebase)
+// - Reads user either from navigation state or /api/auth/me/
+// - User card (top-left) shows logged-in user's info
+// - 3-minute inactivity auto-logout with a 30s warning modal
+// - Premium inactivity modal: dim background, circular countdown ring,
+//   UTA blue/orange gradient, soft chime, fade/zoom animation
+// - Post-logout splash screen before redirecting to login
+// - Reserve modal with AM/PM toggles + conflict check (localStorage-only)
+// - Supplies modal with category-specific "Frequently Requested"
+// - Clears selection on modal open; live count + glow on submit
+// - Persists request history in localStorage; recomputes popularity on submit
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import KioskMap from './KioskMap';
@@ -86,14 +100,38 @@ export default function Dashboard() {
   const [user, setUser] = useState(null); // Django user: { id, email, fullName, ... }
   const [profile, setProfile] = useState(null); // future extension (roles, etc.)
 
-  // ---------------- Inactivity Warning Modal State ----------------
+  // ---------------- Inactivity / Countdown State ----------------
   const [showInactivityModal, setShowInactivityModal] = useState(false);
   const [countdown, setCountdown] = useState(30); // 30-second warning window
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 10 * 1000; // 3 minutes
+  const INACTIVITY_LIMIT = 10 * 1000; // 3 minutes (change to 10 * 1000 for testing)
   const WARNING_TIME = 30; // 30 seconds countdown
   const inactivityTimer = useRef(null);
+
+  // ---------------- Logout Splash State ----------------
+  const [showLogoutSplash, setShowLogoutSplash] = useState(false);
+
+  // Soft chime for inactivity warning
+  const chimeRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize audio only in browser
+    chimeRef.current = new Audio('/soft-chime.wav');
+  }, []);
+
+  // Helper: show splash then go to login (Tap to Begin lives there)
+  function startLogoutSplash() {
+    setShowLogoutSplash(true);
+    setTimeout(() => {
+      navigate('/', { state: { startOverlay: true } });
+    }, 1500);
+  }
+
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => document.body.classList.remove('modal-open');
+  }, []);
 
   // ---------- Auth: load user from navigation or Django session ----------
   useEffect(() => {
@@ -137,11 +175,21 @@ export default function Dashboard() {
       setShowInactivityModal(true);
       setCountdown(WARNING_TIME);
 
+      // Play soft chime when warning appears
+      if (chimeRef.current) {
+        chimeRef.current.volume = 0.35;
+        chimeRef.current.currentTime = 0;
+        chimeRef.current.play().catch(() => {
+          // ignore autoplay errors
+        });
+      }
+
+      // Countdown timer (1 second per tick)
       countdownRef.current = setInterval(() => {
         setCountdown((prev) => {
           if (prev === 1) {
             clearInterval(countdownRef.current);
-            logoutSession().finally(() => navigate('/'));
+            logoutSession().finally(() => startLogoutSplash());
           }
           return prev - 1;
         });
@@ -149,11 +197,12 @@ export default function Dashboard() {
     };
 
     const resetInactivityTimer = () => {
-      // close warning modal if it’s open
-      setShowInactivityModal(false);
-      if (countdownRef.current) clearInterval(countdownRef.current);
+      // If warning modal is open, do NOT close it and do NOT reset countdown.
+      if (showInactivityModal) {
+        return;
+      }
 
-      // reset inactivity timer
+      // Otherwise reset the main inactivity timer normally.
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
       inactivityTimer.current = setTimeout(
         startWarningCountdown,
@@ -172,7 +221,7 @@ export default function Dashboard() {
 
     events.forEach((e) => window.addEventListener(e, resetInactivityTimer));
 
-    // start timer the first time
+    // Start timer initially
     resetInactivityTimer();
 
     return () => {
@@ -182,13 +231,13 @@ export default function Dashboard() {
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [user]); // <-- IMPORTANT FIX
+  }, [user]); // important: only depends on user
 
   const handleLogout = async () => {
     try {
       await logoutSession();
     } finally {
-      navigate('/');
+      startLogoutSplash();
     }
   };
 
@@ -481,7 +530,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className='dashboard-view'>
+    <div className='dashboard-view dashboard-fade-in'>
       <div className='dashboard-grid'>
         {/* User Card (top-left) */}
         <div
@@ -837,11 +886,14 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Screen dimming for inactivity modal */}
+      {showInactivityModal && <div className='inactivity-dim'></div>}
+
       {/* Inactivity Warning Modal */}
       {showInactivityModal && (
         <div className='modal-overlay' style={{ zIndex: 9999 }}>
           <div
-            className='modal-box'
+            className='modal-box inactivity-modal-enter'
             style={{ maxWidth: '420px', textAlign: 'center' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -860,15 +912,9 @@ export default function Dashboard() {
               You will be signed out in
             </p>
 
-            <div
-              style={{
-                fontSize: '2.5rem',
-                fontWeight: '900',
-                marginTop: '0.5rem',
-                color: '#2563eb',
-              }}
-            >
-              {countdown}s
+            {/* Circular countdown ring */}
+            <div className='countdown-ring'>
+              <div className='countdown-ring-inner'>{countdown}s</div>
             </div>
 
             <div style={{ marginTop: '1.5rem' }}>
@@ -889,13 +935,20 @@ export default function Dashboard() {
                 onClick={async () => {
                   if (countdownRef.current) clearInterval(countdownRef.current);
                   await logoutSession();
-                  navigate('/');
+                  startLogoutSplash();
                 }}
               >
                 Sign Out Now
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Logout Splash Overlay */}
+      {showLogoutSplash && (
+        <div className='logout-splash premium-logout'>
+          <div className='logout-text'>See you soon…</div>
         </div>
       )}
 

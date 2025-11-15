@@ -193,7 +193,7 @@ export default function AuthForm({ onLoginSuccess }) {
     try {
       const user = await loginWithSession(trimmedEmail, trimmedPassword);
 
-      showToast('success', 'Welcome back! Redirecting…');
+      showToast('success', 'Welcome! Redirecting to dashboard…');
 
       setTimeout(() => {
         onLoginSuccess?.(user);
