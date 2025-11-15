@@ -7,12 +7,12 @@ Hello fellow Kiosk Guy — it is I, **Scrum Master**, here to guide you through 
 ## How to Run the Server
 
 ### 1. Navigate to the project folder
-Make sure you’re in the right place — the folder that contains both `package.json` and `requirements.txt`.
+Make sure you’re in the right place — the folder that contains both `manage.py` and `requirements.txt`.
 
 ```bash
 cd kioskguys/smartKiosk
 ```
-You should see files like `vite.config.js` and `requirements.txt` inside.
+You should see files like `vite.config.js` and `isrgrootx1.pem` inside.
 
 ---
 
@@ -21,13 +21,6 @@ This installs everything the Django backend needs.
 
 ```bash
 pip install -r requirements.txt
-```
-
-**Tip:** If you get permission or environment errors, use a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate   # Mac/Linux
-venv\Scripts\activate      # Windows
 ```
 
 ---
@@ -80,7 +73,20 @@ npm install --legacy-peer-deps
 
 ---
 
-### 5. Run the dev server
+## Running the App
+
+The app currently is split between the backend and the frontend. You can run the frontend on it's own, but without the backend running at the same time, you won't be able to register/login. Make sure that you run each in **seperate** terminals.
+
+
+
+### Running the Backend
+Once you installed the requirements using the pip command, run:
+
+```bash
+python manage.py runserver
+```
+
+### Running the Frontend
 Once everything is installed and Node is at `v24.11.0`, run:
 
 ```bash
@@ -89,19 +95,8 @@ npm run dev
 
 ---
 
-## Navigating To Pages
-Currently, there are two pages available:
-
-### [Login Page](http://localhost:5173/)
-- Map
-- Login
-- Sign Up
-
-### [Home Page](http://localhost:5173/#/dashboard)
-- Slideshow
-- Sign Out
-- Room Reservation
-- Supply Request
+## Navigation
+After running both the backend and frontend in seperate terminals, you can navigate to http://localhost:5173/. Then you can sign up or sign in.
 
 ---
 
@@ -111,7 +106,7 @@ We are currently using TiDB for our database connection where we will store our 
 ### Verifying Connection
 You can verify database connection by running the following:
 ```bash
-python manage shell
+python manage.py shell
 ```
 
 Then:
@@ -127,6 +122,7 @@ You should see the following output to console:
 [('Ssl_version', 'TLSv1.3')]
 ```
 
+You can exit by using `Ctrl+D`
 
 ---
 
