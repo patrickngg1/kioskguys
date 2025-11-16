@@ -100,12 +100,14 @@ export default function Dashboard() {
   const [user, setUser] = useState(null); // Django user: { id, email, fullName, ... }
   const [profile, setProfile] = useState(null); // future extension (roles, etc.)
 
+  const [ringProgress, setRingProgress] = useState(0);
+
   // ---------------- Inactivity / Countdown State ----------------
   const [showInactivityModal, setShowInactivityModal] = useState(false);
   const [countdown, setCountdown] = useState(30); // 30-second warning window
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 3 * 60 * 1000; // 3 minutes (change to 10 * 1000 for testing)
+  const INACTIVITY_LIMIT = 30 * 1000; // 3 minutes (change to 10 * 1000 for testing)
   const WARNING_TIME = 30; // 30 seconds countdown
   const inactivityTimer = useRef(null);
 
@@ -174,6 +176,7 @@ export default function Dashboard() {
     const startWarningCountdown = () => {
       setShowInactivityModal(true);
       setCountdown(WARNING_TIME);
+      setRingProgress(0);
 
       // Play soft chime when warning appears
       if (chimeRef.current) {
@@ -187,11 +190,17 @@ export default function Dashboard() {
       // Countdown timer (1 second per tick)
       countdownRef.current = setInterval(() => {
         setCountdown((prev) => {
+          const next = prev - 1;
+
+          // update progress ring
+          const pct = ((WARNING_TIME - next) / WARNING_TIME) * 360;
+          setRingProgress(pct);
+
           if (prev === 1) {
             clearInterval(countdownRef.current);
             logoutSession().finally(() => startLogoutSplash());
           }
-          return prev - 1;
+          return next;
         });
       }, 1000);
     };
@@ -913,7 +922,15 @@ export default function Dashboard() {
             </p>
 
             {/* Circular countdown ring */}
-            <div className='countdown-ring'>
+            <div
+              className='countdown-ring'
+              style={{
+                background: `conic-gradient(
+      var(--uta-orange) ${ringProgress}deg,
+      var(--uta-blue) ${ringProgress}deg
+    )`,
+              }}
+            >
               <div className='countdown-ring-inner'>{countdown}s</div>
             </div>
 
