@@ -107,7 +107,7 @@ export default function Dashboard() {
   const [countdown, setCountdown] = useState(30); // 30-second warning window
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 30 * 1000; // 3 minutes (change to 10 * 1000 for testing)
+  const INACTIVITY_LIMIT = 10 * 1000; // 3 minutes (change to 10 * 1000 for testing)
   const WARNING_TIME = 30; // 30 seconds countdown
   const inactivityTimer = useRef(null);
 
@@ -127,7 +127,7 @@ export default function Dashboard() {
     setShowLogoutSplash(true);
     setTimeout(() => {
       navigate('/', { state: { startOverlay: true } });
-    }, 1500);
+    }, 2000);
   }
 
   useEffect(() => {
@@ -923,7 +923,13 @@ export default function Dashboard() {
 
             {/* Circular countdown ring */}
             <div
-              className='countdown-ring'
+              className={`countdown-ring ${
+                countdown <= 5
+                  ? 'ring-glow-strong'
+                  : countdown <= 10
+                  ? 'ring-glow'
+                  : ''
+              }`}
               style={{
                 background: `conic-gradient(
       var(--uta-orange) ${ringProgress}deg,
@@ -931,7 +937,17 @@ export default function Dashboard() {
     )`,
               }}
             >
-              <div className='countdown-ring-inner'>{countdown}s</div>
+              <div
+                className={`countdown-ring-inner ${
+                  countdown <= 5
+                    ? 'text-pulse-strong'
+                    : countdown <= 10
+                    ? 'text-pulse'
+                    : ''
+                }`}
+              >
+                {countdown}s
+              </div>
             </div>
 
             <div style={{ marginTop: '1.5rem' }}>
@@ -963,9 +979,48 @@ export default function Dashboard() {
       )}
 
       {/* Logout Splash Overlay */}
+      {/* {showLogoutSplash && (
+        <div className='premium-logout'>
+          <div className='logout-card'>
+            <div className='logout-ring'>
+              <div className='logout-ring-inner'>
+                {/* You can put a UTA logo here if you want
+                <span>UTA</span>
+              </div>
+            </div>
+
+            <div className='logout-message'>Signing Out…</div>
+          </div>
+        </div>
+      )} */}
+
       {showLogoutSplash && (
-        <div className='logout-splash premium-logout'>
-          <div className='logout-text'>Signing Out…</div>
+        <div className='astral-logout-overlay'>
+          <div className='astral-portal-card'>
+            {/* Floating portal orb */}
+            <div className='portal-orb'>
+              <div className='portal-orb-ring outer'></div>
+              <div className='portal-orb-ring mid'></div>
+              <div className='portal-orb-ring inner'></div>
+
+              <div className='portal-orb-core'>
+                <span className='uta-badge'>UTA</span>
+              </div>
+            </div>
+
+            {/* Signing out text */}
+            <div className='logout-message-astral'>
+              <span className='logout-message-main'>Signing Out</span>
+              <span className='logout-message-sub'>See you next time ✨</span>
+            </div>
+
+            {/* Particle layer */}
+            <div className='portal-particles'>
+              {[...Array(12)].map((_, i) => (
+                <span key={i} className={`portal-particle p-${i + 1}`}></span>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

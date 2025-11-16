@@ -1526,6 +1526,597 @@ select option {
   z-index: -1;
 }
 
+/* ============================================================
+   ULTRA-PREMIUM SIGN-OUT SPLASH
+   ============================================================ */
+
+.premium-logout {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Cinematic Aurora Gradient */
+  background: radial-gradient(
+      circle at 20% 20%,
+      rgba(37, 99, 235, 0.35),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 85% 75%,
+      rgba(249, 115, 22, 0.35),
+      transparent 55%
+    ),
+    linear-gradient(135deg, #0f172a, #1e293b, #0f172a);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  animation: logoutFadeIn 0.8s ease forwards;
+}
+
+/* Fade in the background */
+@keyframes logoutFadeIn {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Floating glass card */
+.logout-card {
+  width: 300px;
+  height: 300px;
+  border-radius: 1.8rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(37, 99, 235, 0.3);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  animation: logoutCardIn 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  transform: scale(0.85) translateY(20px);
+  opacity: 0;
+}
+
+/* Card scale + drift */
+@keyframes logoutCardIn {
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Circular ring */
+.logout-ring {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: conic-gradient(var(--uta-blue) 0deg, var(--uta-orange) 360deg);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ringSweep 1.6s linear infinite;
+  box-shadow: 0 0 22px rgba(59, 130, 246, 0.35);
+}
+
+@keyframes ringSweep {
+  0% {
+    filter: hue-rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(25deg);
+    transform: rotate(360deg);
+  }
+}
+
+.logout-ring-inner {
+  width: 135px;
+  height: 135px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: white;
+  font-size: 1.35rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* "Signing Out…" shimmering text */
+.logout-message {
+  margin-top: 1.4rem;
+  background: linear-gradient(90deg, #93c5fd, #fbbf24, #93c5fd);
+  background-size: 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerLogout 3s ease-in-out infinite;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+@keyframes shimmerLogout {
+  0% {
+    background-position: 0%;
+  }
+  100% {
+    background-position: 200%;
+  }
+}
+/* Soft pulse for 10s → 6s */
+.text-pulse {
+  animation: textPulse 0.85s ease-out infinite;
+}
+
+@keyframes textPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* Stronger pulse + urgency */
+.text-pulse-strong {
+  animation: textPulseStrong 0.55s ease-in-out infinite;
+  color: #fb923c; /* your orange */
+}
+
+@keyframes textPulseStrong {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.13);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.ring-glow {
+  box-shadow: 0 0 14px rgba(251, 146, 60, 0.6),
+    0 0 28px rgba(251, 146, 60, 0.25);
+  transition: box-shadow 0.2s ease-out;
+}
+.ring-glow-strong {
+  box-shadow: 0 0 20px rgba(251, 146, 60, 0.9), 0 0 38px rgba(251, 146, 60, 0.6),
+    0 0 50px rgba(251, 146, 60, 0.3);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* ============================================================
+   ASTRAL PORTAL LOGOUT — HYBRID GLASS + HOLOGRAM RING
+   ============================================================ */
+
+.astral-logout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Deep-space astral background */
+  background: radial-gradient(
+      circle at 15% 15%,
+      rgba(59, 130, 246, 0.35),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 85% 80%,
+      rgba(248, 113, 113, 0.25),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 70% 10%,
+      rgba(147, 197, 253, 0.25),
+      transparent 60%
+    ),
+    linear-gradient(140deg, #020617, #0b1220, #020617);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  overflow: hidden;
+}
+
+/* Vignette + subtle moving aurora */
+.astral-logout-overlay::before,
+.astral-logout-overlay::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+}
+
+.astral-logout-overlay::before {
+  background: radial-gradient(
+    circle at 50% 110%,
+    rgba(15, 23, 42, 0.2),
+    rgba(15, 23, 42, 0.95)
+  );
+}
+
+.astral-logout-overlay::after {
+  background: radial-gradient(
+      circle at 10% 0%,
+      rgba(59, 130, 246, 0.35),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 90% 100%,
+      rgba(249, 115, 22, 0.35),
+      transparent 55%
+    );
+  opacity: 0.7;
+  mix-blend-mode: screen;
+  animation: astralAurora 14s ease-in-out infinite alternate;
+}
+
+@keyframes astralAurora {
+  0% {
+    transform: translate3d(-10px, 6px, 0) scale(1);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translate3d(10px, -8px, 0) scale(1.05);
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate3d(-6px, 4px, 0) scale(1.03);
+    opacity: 0.8;
+  }
+}
+
+/* Floating glass card that houses the portal */
+.astral-portal-card {
+  position: relative;
+  width: 340px;
+  height: 360px;
+  border-radius: 1.9rem;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(28px) saturate(220%);
+  -webkit-backdrop-filter: blur(28px) saturate(220%);
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(37, 99, 235, 0.4),
+    0 0 26px rgba(249, 115, 22, 0.24);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+  animation: astralCardTimeline 1.7s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  transform: scale(0.92) translateY(18px);
+  opacity: 0;
+}
+
+/* Card timeline: appear → hover → slight collapse */
+@keyframes astralCardTimeline {
+  0% {
+    transform: scale(0.85) translateY(24px);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.96) translateY(-10px);
+    opacity: 0.85;
+  }
+}
+
+/* Portal orb container */
+.portal-orb {
+  position: relative;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.45))
+    drop-shadow(0 0 28px rgba(30, 64, 175, 0.8));
+  animation: portalFloat 5.5s ease-in-out infinite;
+}
+
+@keyframes portalFloat {
+  0%,
+  100% {
+    transform: translateY(3px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Hybrid Glass + Hologram Rings */
+
+.portal-orb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+/* Outer glass ring */
+.portal-orb-ring.outer {
+  background: radial-gradient(
+      circle at 30% 0%,
+      rgba(255, 255, 255, 0.45),
+      transparent 58%
+    ),
+    radial-gradient(
+      circle at 70% 100%,
+      rgba(96, 165, 250, 0.5),
+      transparent 60%
+    );
+  opacity: 0.9;
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.65),
+    0 0 22px rgba(59, 130, 246, 0.32);
+  mask-image: radial-gradient(circle, transparent 58%, black 64%);
+}
+
+/* Mid hologram tech ring */
+.portal-orb-ring.mid {
+  inset: 14px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 180deg,
+    rgba(56, 189, 248, 0.1),
+    rgba(56, 189, 248, 0.9),
+    rgba(129, 140, 248, 0.4),
+    rgba(56, 189, 248, 0.9),
+    rgba(56, 189, 248, 0.1)
+  );
+  mix-blend-mode: screen;
+  opacity: 0.95;
+  mask-image: radial-gradient(circle, transparent 45%, black 60%);
+  animation: hologramSpin 4s linear infinite;
+}
+
+@keyframes hologramSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Inner soft ring */
+.portal-orb-ring.inner {
+  inset: 32px;
+  border-radius: 50%;
+  background: radial-gradient(
+      circle at 30% 0%,
+      rgba(248, 250, 252, 0.7),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 80% 100%,
+      rgba(59, 130, 246, 0.45),
+      transparent 60%
+    );
+  opacity: 0.9;
+  mix-blend-mode: screen;
+}
+
+/* Core glass node */
+.portal-orb-core {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 20% 0%,
+    #ffffff,
+    #e5e7eb 40%,
+    #93c5fd 90%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 22px rgba(191, 219, 254, 0.9), 0 0 18px rgba(37, 99, 235, 0.9);
+  overflow: hidden;
+}
+
+.portal-orb-core::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(
+    circle at 10% 0%,
+    rgba(255, 255, 255, 0.9),
+    transparent 55%
+  );
+  opacity: 0.8;
+}
+
+.uta-badge {
+  position: relative;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: #0f172a;
+}
+
+/* Logout text block */
+.logout-message-astral {
+  margin-top: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.logout-message-main {
+  background: linear-gradient(90deg, #facc15, #a5b4fc, #38bdf8, #fbbf24);
+  background-size: 220%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  font-size: 1.45rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  animation: astralShimmer 3.25s ease-in-out infinite;
+}
+
+.logout-message-sub {
+  font-size: 0.98rem;
+  color: #e5e7eb;
+  opacity: 0.8;
+}
+
+@keyframes astralShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Particle layer */
+.portal-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Base particle */
+.portal-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(248, 250, 252, 0.95),
+    rgba(56, 189, 248, 0.4)
+  );
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.9);
+  opacity: 0;
+  animation: particleFloat 7s linear infinite;
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translate3d(0, 10px, 0) scale(0.7);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(0, -28px, 0) scale(1.05);
+    opacity: 0;
+  }
+}
+
+/* Individual particle positions & timings */
+.portal-particle.p-1 {
+  left: 12%;
+  bottom: 18%;
+  animation-duration: 6.5s;
+}
+.portal-particle.p-2 {
+  left: 26%;
+  bottom: 8%;
+  animation-delay: 0.8s;
+}
+.portal-particle.p-3 {
+  left: 40%;
+  bottom: 20%;
+  animation-duration: 7.3s;
+}
+.portal-particle.p-4 {
+  left: 58%;
+  bottom: 10%;
+  animation-delay: 1.2s;
+}
+.portal-particle.p-5 {
+  left: 74%;
+  bottom: 18%;
+  animation-duration: 6.8s;
+}
+.portal-particle.p-6 {
+  left: 86%;
+  bottom: 26%;
+  animation-delay: 1.6s;
+}
+.portal-particle.p-7 {
+  left: 18%;
+  top: 18%;
+  animation-duration: 7.6s;
+}
+.portal-particle.p-8 {
+  left: 36%;
+  top: 10%;
+  animation-delay: 2s;
+}
+.portal-particle.p-9 {
+  left: 52%;
+  top: 16%;
+  animation-duration: 6.7s;
+}
+.portal-particle.p-10 {
+  left: 68%;
+  top: 8%;
+  animation-delay: 2.4s;
+}
+.portal-particle.p-11 {
+  left: 82%;
+  top: 18%;
+  animation-duration: 7.9s;
+}
+.portal-particle.p-12 {
+  left: 50%;
+  top: 2%;
+  animation-delay: 1.4s;
+}
+
+/* Slightly smaller card & orb on narrow screens */
+@media (max-width: 480px) {
+  .astral-portal-card {
+    width: 300px;
+    height: 330px;
+  }
+  .portal-orb {
+    width: 170px;
+    height: 170px;
+  }
+}
+
 /* ===========================================================
   RESPONSIVE DASHBOARD LAYOUT FIXES
 ===========================================================*/
