@@ -105,7 +105,7 @@ export default function Dashboard() {
   const [countdown, setCountdown] = useState(30); // 30-second warning window
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 10 * 1000; // 3 minutes (change to 10 * 1000 for testing)
+  const INACTIVITY_LIMIT = 3 * 60 * 1000; // 3 minutes (change to 10 * 1000 for testing)
   const WARNING_TIME = 30; // 30 seconds countdown
   const inactivityTimer = useRef(null);
 
@@ -948,7 +948,7 @@ export default function Dashboard() {
       {/* Logout Splash Overlay */}
       {showLogoutSplash && (
         <div className='logout-splash premium-logout'>
-          <div className='logout-text'>See you soon…</div>
+          <div className='logout-text'>Signing Out…</div>
         </div>
       )}
 
