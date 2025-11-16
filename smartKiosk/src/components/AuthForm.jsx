@@ -184,29 +184,31 @@ export default function AuthForm({ onLoginSuccess }) {
       return;
     }
 
-    // Optional: Enforce UTA domain
     if (!validateEmailDomain(trimmedEmail)) {
       showToast('error', 'Must use @mavs.uta.edu or @uta.edu email.');
       triggerShake();
       return;
     }
 
-    // ===== BACKEND LOGIN =====
+    // ⭐ INSTANT FEEDBACK HERE ⭐
+    showToast('success', 'Signing In…');
+
     try {
       const user = await loginWithSession(trimmedEmail, trimmedPassword);
 
-      showToast('success', 'Successful Login! Redirecting to dashboard…');
+      // Replace toast instantly when request returns
+      setToast({ type: 'success', message: 'Login successful!' });
 
       setTimeout(() => {
         onLoginSuccess?.(user);
-      }, 900);
+      }, 500);
     } catch (err) {
-      showToast(
-        'error',
-        err.message.includes('Failed to fetch')
+      setToast({
+        type: 'error',
+        message: err.message.includes('Failed to fetch')
           ? 'Server unreachable. Try again.'
-          : 'Invalid email or password.'
-      );
+          : 'Invalid email or password.',
+      });
       triggerShake();
     }
   }
