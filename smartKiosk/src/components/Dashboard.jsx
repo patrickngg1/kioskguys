@@ -127,7 +127,7 @@ export default function Dashboard() {
     setShowLogoutSplash(true);
     setTimeout(() => {
       navigate('/', { state: { startOverlay: true } });
-    }, 2000);
+    }, 3000);
   }
 
   useEffect(() => {
@@ -977,22 +977,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Logout Splash Overlay */}
-      {/* {showLogoutSplash && (
-        <div className='premium-logout'>
-          <div className='logout-card'>
-            <div className='logout-ring'>
-              <div className='logout-ring-inner'>
-                {/* You can put a UTA logo here if you want
-                <span>UTA</span>
-              </div>
-            </div>
-
-            <div className='logout-message'>Signing Out…</div>
-          </div>
-        </div>
-      )} */}
 
       {showLogoutSplash && (
         <div className='astral-logout-overlay'>

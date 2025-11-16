@@ -14,6 +14,8 @@ function validatePassword(password) {
   if (!/[A-Z]/.test(password))
     return 'Password must contain an uppercase letter.';
   if (!/[0-9]/.test(password)) return 'Password must contain a number.';
+  if (!/[^A-Za-z0-9]/.test(password))
+    return 'Password must contain a special character.';
   return null;
 }
 
@@ -308,7 +310,12 @@ export default function AuthForm({ onLoginSuccess }) {
           <button
             type='button'
             className={`tab-button ${view === 'login' ? 'active' : ''}`}
-            onClick={() => setView('login')}
+            onClick={() => {
+              setView('login');
+              setTimeout(() => {
+                document.getElementById('login-email-input')?.focus();
+              }, 10);
+            }}
           >
             Sign In
           </button>
@@ -316,7 +323,12 @@ export default function AuthForm({ onLoginSuccess }) {
           <button
             type='button'
             className={`tab-button ${view === 'register' ? 'active' : ''}`}
-            onClick={() => setView('register')}
+            onClick={() => {
+              setView('register');
+              setTimeout(() => {
+                document.getElementById('register-fullname-input')?.focus();
+              }, 10);
+            }}
           >
             Sign Up
           </button>
@@ -329,6 +341,7 @@ export default function AuthForm({ onLoginSuccess }) {
               <div className='form-group'>
                 <label>Email</label>
                 <input
+                  id='login-email-input'
                   className='input-field'
                   type='email'
                   placeholder='email@uta.edu'
@@ -363,6 +376,7 @@ export default function AuthForm({ onLoginSuccess }) {
                   }`}
                 >
                   <input
+                    id='register-fullname-input'
                     className='input-field'
                     type='text'
                     placeholder='Jane Doe'
@@ -445,7 +459,7 @@ export default function AuthForm({ onLoginSuccess }) {
                       }));
                       setPasswordStrength(getPasswordStrength(v));
                     }}
-                    placeholder='Min. 8 chars, 1 uppercase, 1 number'
+                    placeholder='Min. 8 chars, 1 uppercase, 1 number, 1 special symbol'
                     inputClass='input-field'
                     autoComplete='new-password'
                   />
