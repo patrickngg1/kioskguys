@@ -628,6 +628,30 @@
   transition: transform 0.6s ease, box-shadow 0.6s ease;
 }
 
+.dashboard-fade-in {
+  animation: dashboardEnter 1s ease-out forwards;
+}
+@keyframes dashboardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.dashboard-freeze {
+  animation: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transition: none !important;
+}
+
 /* ============================================================
    UTA DARK THEME — PREMIUM KIOSK STYLE
    ============================================================ */
@@ -1813,17 +1837,41 @@ select option {
     transform: scale(0.85) translateY(24px);
     opacity: 0;
   }
-  25% {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-  70% {
+  40% {
     transform: scale(1) translateY(0);
     opacity: 1;
   }
   100% {
-    transform: scale(0.96) translateY(-10px);
-    opacity: 0.85;
+    transform: scale(1.015) translateY(-2px);
+    opacity: 1;
+  }
+}
+
+.astral-portal-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.09) 50%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  animation: cardSheen 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes cardSheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  60% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(120%);
   }
 }
 
@@ -2117,6 +2165,29 @@ select option {
   }
 }
 
+/* Darken background when logout splash is active */
+.logout-dim {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.55)
+  );
+  opacity: 0;
+  animation: dimIn 0.5s ease forwards;
+  z-index: 1000; /* directly under the logout portal */
+  pointer-events: none;
+}
+
+@keyframes dimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 /* ===========================================================
   RESPONSIVE DASHBOARD LAYOUT FIXES
 ===========================================================*/

@@ -3,7 +3,7 @@
 // - Django session auth (no Firebase)
 // - Reads user either from navigation state or /api/auth/me/
 // - User card (top-left) shows logged-in user's info
-// - Inactivity auto-logout with a 30s warning modal
+// - 3-minute inactivity auto-logout with a 30s warning modal
 // - Premium inactivity modal: dim background, circular countdown ring,
 //   UTA blue/orange gradient, soft chime, fade/zoom animation
 // - Post-logout splash screen before redirecting to login
@@ -68,7 +68,7 @@ const isRoomReserved = (reservations, room, date, start, end) =>
 // Toast used for reservation/supplies confirm
 function ConfirmToast({ message = '', onDone }) {
   useEffect(() => {
-    const id = setTimeout(onDone, 4800);
+    const id = setTimeout(onDone, 4000);
     return () => clearTimeout(id);
   }, [onDone]);
 
@@ -105,15 +105,11 @@ export default function Dashboard() {
   // ---------------- Inactivity / Countdown State ----------------
   const [showInactivityModal, setShowInactivityModal] = useState(false);
   const [countdown, setCountdown] = useState(30); // 30-second warning window
+  const countdownRef = useRef(null);
 
-  // These refs are used for timers (no state/closure bugs)
-  const countdownRef = useRef(null); // holds the countdown interval id
-  const inactivityTimer = useRef(null); // holds the inactivity timeout id
-  const modalOpenRef = useRef(false); // true when warning modal is open
-
-  // NOTE: currently set to 30s for testing; change to 3 * 60 * 1000 for 3 min
-  const INACTIVITY_LIMIT = 30 * 1000; // 30 seconds (testing)
+  const INACTIVITY_LIMIT = 1 * 60 * 1000; // 3 minutes (change to 10 * 1000 for testing)
   const WARNING_TIME = 30; // 30 seconds countdown
+  const inactivityTimer = useRef(null);
 
   // ---------------- Logout Splash State ----------------
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
@@ -173,92 +169,55 @@ export default function Dashboard() {
     initUser();
   }, [location.state, navigate]);
 
-  // ---------- Inactivity Auto-Logout (robust, no double timers) ----------
-
-  // Show the 30-second warning modal and start the countdown ring
-  function showInactivityWarning() {
-    modalOpenRef.current = true;
-    setShowInactivityModal(true);
-    setCountdown(WARNING_TIME);
-    setRingProgress(0);
-
-    // Soft chime
-    if (chimeRef.current) {
-      chimeRef.current.volume = 0.35;
-      chimeRef.current.currentTime = 0;
-      chimeRef.current.play().catch(() => {});
-    }
-
-    // Clear any existing countdown interval
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
-
-    // Start countdown interval
-    countdownRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        const next = prev - 1;
-        const pct = ((WARNING_TIME - next) / WARNING_TIME) * 360;
-        setRingProgress(pct);
-
-        if (next <= 0) {
-          // Time is up: stop countdown and log out
-          if (countdownRef.current) {
-            clearInterval(countdownRef.current);
-            countdownRef.current = null;
-          }
-          modalOpenRef.current = false;
-          setShowInactivityModal(false);
-          logoutSession().finally(() => startLogoutSplash());
-        }
-
-        return next;
-      });
-    }, 1000);
-  }
-
-  // Reset the inactivity timer (called on activity and after Stay Signed In)
-  function resetInactivityTimer() {
-    if (inactivityTimer.current) {
-      clearTimeout(inactivityTimer.current);
-      inactivityTimer.current = null;
-    }
-
-    inactivityTimer.current = setTimeout(() => {
-      showInactivityWarning();
-    }, INACTIVITY_LIMIT);
-  }
-
-  // Handle any user activity: mouse, key, touch, scroll
-  function handleActivity() {
-    // If the modal is currently open, ignore activity until the user responds
-    if (modalOpenRef.current) return;
-    resetInactivityTimer();
-  }
-
-  // Called when the user chooses to stay signed in
-  function handleStaySignedIn() {
-    // Close the modal, stop countdown, and restart inactivity fresh
-    setShowInactivityModal(false);
-    modalOpenRef.current = false;
-
-    // Clear countdown interval
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
-
-    setCountdown(WARNING_TIME);
-    setRingProgress(0);
-
-    // Restart inactivity timer
-    resetInactivityTimer();
-  }
-
-  // Attach global activity listeners once user is available
+  // ---------- Inactivity Auto-Logout (3 min + 30s warning modal) ----------
   useEffect(() => {
-    if (!user) return;
+    if (!user) return; // only start after user is loaded
+
+    const startWarningCountdown = () => {
+      setShowInactivityModal(true);
+      setCountdown(WARNING_TIME);
+      setRingProgress(0);
+
+      // Play soft chime when warning appears
+      if (chimeRef.current) {
+        chimeRef.current.volume = 0.35;
+        chimeRef.current.currentTime = 0;
+        chimeRef.current.play().catch(() => {
+          // ignore autoplay errors
+        });
+      }
+
+      // Countdown timer (1 second per tick)
+      countdownRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          const next = prev - 1;
+
+          // update progress ring
+          const pct = ((WARNING_TIME - next) / WARNING_TIME) * 360;
+          setRingProgress(pct);
+
+          if (prev === 1) {
+            clearInterval(countdownRef.current);
+            logoutSession().finally(() => startLogoutSplash());
+          }
+          return next;
+        });
+      }, 1000);
+    };
+
+    const resetInactivityTimer = () => {
+      // If warning modal is open, do NOT close it and do NOT reset countdown.
+      if (showInactivityModal) {
+        return;
+      }
+
+      // Otherwise reset the main inactivity timer normally.
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = setTimeout(
+        startWarningCountdown,
+        INACTIVITY_LIMIT
+      );
+    };
 
     const events = [
       'mousemove',
@@ -269,26 +228,19 @@ export default function Dashboard() {
       'touchmove',
     ];
 
-    events.forEach((evt) => window.addEventListener(evt, handleActivity));
+    events.forEach((e) => window.addEventListener(e, resetInactivityTimer));
 
-    // Kick off inactivity timer immediately
+    // Start timer initially
     resetInactivityTimer();
 
     return () => {
-      events.forEach((evt) => window.removeEventListener(evt, handleActivity));
-
-      if (inactivityTimer.current) {
-        clearTimeout(inactivityTimer.current);
-        inactivityTimer.current = null;
-      }
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-        countdownRef.current = null;
-      }
-      modalOpenRef.current = false;
+      events.forEach((e) =>
+        window.removeEventListener(e, resetInactivityTimer)
+      );
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user]); // important: only depends on user
 
   const handleLogout = async () => {
     try {
@@ -301,7 +253,7 @@ export default function Dashboard() {
   const display = {
     name: profile?.fullName || user?.fullName || user?.email || 'Kiosk User',
     id: user?.id ?? '—',
-    role: 'Authenticated User',
+    role: 'Authenticated User', // you can change to user.role later
     email: user?.email || '—',
     avatar:
       'https://api.dicebear.com/7.x/thumbs/svg?seed=' +
@@ -587,7 +539,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className='dashboard-view dashboard-fade-in'>
+    <div
+      className={`dashboard-view dashboard-fade-in ${
+        showLogoutSplash ? 'dashboard-freeze' : ''
+      }`}
+    >
       <div className='dashboard-grid'>
         {/* User Card (top-left) */}
         <div
@@ -954,8 +910,13 @@ export default function Dashboard() {
             style={{ maxWidth: '420px', textAlign: 'center' }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button behaves like Stay Signed In */}
-            <button className='close-btn' onClick={handleStaySignedIn}>
+            <button
+              className='close-btn'
+              onClick={() => {
+                setShowInactivityModal(false);
+                if (countdownRef.current) clearInterval(countdownRef.current);
+              }}
+            >
               ✕
             </button>
 
@@ -997,7 +958,10 @@ export default function Dashboard() {
               <button
                 className='btn btn-primary w-full'
                 style={{ marginBottom: '0.75rem' }}
-                onClick={handleStaySignedIn}
+                onClick={() => {
+                  setShowInactivityModal(false);
+                  if (countdownRef.current) clearInterval(countdownRef.current);
+                }}
               >
                 Stay Signed In
               </button>
@@ -1006,19 +970,7 @@ export default function Dashboard() {
                 className='btn btn-primary w-full'
                 style={{ background: '#d72638' }}
                 onClick={async () => {
-                  // User explicitly wants to sign out now:
-                  modalOpenRef.current = false;
-
-                  if (inactivityTimer.current) {
-                    clearTimeout(inactivityTimer.current);
-                    inactivityTimer.current = null;
-                  }
-                  if (countdownRef.current) {
-                    clearInterval(countdownRef.current);
-                    countdownRef.current = null;
-                  }
-
-                  setShowInactivityModal(false);
+                  if (countdownRef.current) clearInterval(countdownRef.current);
                   await logoutSession();
                   startLogoutSplash();
                 }}
