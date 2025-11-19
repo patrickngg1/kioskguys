@@ -4,7 +4,8 @@ import AuthToast from './AuthToast';
 
 /* ===== Helpers ===== */
 function validateEmailDomain(email) {
-  const domain = email.substring(email.lastIndexOf('@'));
+  const v = email.toLowerCase(); // 🔥 FIX: always lowercase first
+  const domain = v.substring(v.lastIndexOf('@'));
   return domain === '@mavs.uta.edu' || domain === '@uta.edu';
 }
 
@@ -23,7 +24,7 @@ function formatFullName(value) {
   return value
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, ' ') // collapses multiple spaces
+    .replace(/\s+/g, ' ')
     .split(' ')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
@@ -35,7 +36,7 @@ function getPasswordStrength(password) {
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++; // symbol bonus
+  if (/[^A-Za-z0-9]/.test(password)) score++;
 
   if (score === 0) return { label: '', level: 0 };
   if (score === 1) return { label: 'Weak', level: 1 };
@@ -98,33 +99,23 @@ export default function AuthForm({ onLoginSuccess }) {
     level: 0,
   });
 
-  /* ===== Live validation helpers (inside component so they see state) ===== */
+  /* ===== Live validation helpers ===== */
   const validateFullNameLive = (value) => {
     const v = value.trim();
-
     if (!v) return 'Full name is required.';
 
-    // Split normalized parts
     const parts = v.split(/\s+/);
+    if (parts.length < 2) return 'Enter your first and last name.';
 
-    // Must have at least 2 words (first + last)
-    if (parts.length < 2) {
-      return 'Enter your first and last name.';
-    }
-
-    // Check each part for length OR valid initial "A."
     for (const p of parts) {
-      const cleaned = p.replace('.', ''); // allow initials like A.
-      if (cleaned.length < 2) {
-        return 'Each name must be at least 2 letters.';
-      }
+      const cleaned = p.replace('.', '');
+      if (cleaned.length < 2) return 'Each name must be at least 2 letters.';
     }
-
     return '';
   };
 
   const validateEmailLive = (value) => {
-    const v = value.trim();
+    const v = value.trim().toLowerCase(); // 🔥 FIX
     if (!v) return 'Email is required.';
     if (!validateEmailDomain(v)) return 'Must be @mavs.uta.edu or @uta.edu';
     return '';
@@ -162,10 +153,10 @@ export default function AuthForm({ onLoginSuccess }) {
   async function handleLogin(e) {
     e.preventDefault();
 
-    const trimmedEmail = email.trim();
+    // 🔥 Always lowercase before use
+    const trimmedEmail = email.trim().toLowerCase();
     const trimmedPassword = password.trim();
 
-    // ===== FRONTEND VALIDATION BEFORE API CALL =====
     if (!trimmedEmail && !trimmedPassword) {
       showToast('error', 'Email and password are required.');
       triggerShake();
@@ -190,14 +181,12 @@ export default function AuthForm({ onLoginSuccess }) {
       return;
     }
 
-    // ⭐ INSTANT FEEDBACK HERE ⭐
     showToast('success', 'Signing In…');
 
     try {
       const user = await loginWithSession(trimmedEmail, trimmedPassword);
 
-      // Replace toast instantly when request returns
-      setToast({ type: 'success', message: 'Login successful!' });
+      showToast('success', 'Login successful!');
 
       setTimeout(() => {
         onLoginSuccess?.(user);
@@ -217,13 +206,14 @@ export default function AuthForm({ onLoginSuccess }) {
   async function handleRegister(e) {
     e.preventDefault();
 
-    // Run the same logic used for live errors, but in a strict order
+    // 🔥 Always lowercase email before validating/sending
+    const lowerEmail = email.trim().toLowerCase();
+
     const fullNameErr = validateFullNameLive(fullName);
-    const emailErr = validateEmailLive(email);
+    const emailErr = validateEmailLive(lowerEmail);
     const passwordErr = validatePasswordLive(password);
     const confirmErr = validateConfirmPasswordLive(confirmPassword, password);
 
-    // Sync errors state so UI reflects them
     setErrors({
       fullName: fullNameErr,
       email: emailErr,
@@ -231,7 +221,6 @@ export default function AuthForm({ onLoginSuccess }) {
       confirmPassword: confirmErr,
     });
 
-    // Priority toast + shake
     if (fullNameErr) {
       showToast('error', fullNameErr);
       triggerShake();
@@ -253,7 +242,6 @@ export default function AuthForm({ onLoginSuccess }) {
       return;
     }
 
-    // Double-check with helper (defensive)
     const pwErr = validatePassword(password);
     if (pwErr) {
       showToast('error', pwErr);
@@ -262,12 +250,12 @@ export default function AuthForm({ onLoginSuccess }) {
     }
 
     try {
-      await registerWithSession(email, password, fullName);
+      // 🔥 Send lowercase email to backend
+      await registerWithSession(lowerEmail, password, fullName);
 
       showToast('success', 'Account created! Please sign in.');
       setView('login');
 
-      // Reset sensitive fields & validation
       setPassword('');
       setConfirmPassword('');
       setPasswordStrength({ label: '', level: 0 });
@@ -290,7 +278,7 @@ export default function AuthForm({ onLoginSuccess }) {
 
   return (
     <div id='auth-container' className='form-container'>
-      {/* ===== Toast overlay + blur ===== */}
+      {/* Toast overlay */}
       {toast && (
         <>
           <div className='auth-blur-overlay' />
@@ -304,7 +292,7 @@ export default function AuthForm({ onLoginSuccess }) {
         </>
       )}
 
-      {/* Card content that blurs when toast is active */}
+      {/* Card */}
       <div className={toast ? 'blurred-card' : ''}>
         <h1 className='kiosk-title'>KIOSK ACCESS</h1>
 
@@ -369,7 +357,7 @@ export default function AuthForm({ onLoginSuccess }) {
           ) : (
             /* ========== REGISTER FORM ========== */
             <form onSubmit={handleRegister}>
-              {/* Full Name */}
+              {/* FULL NAME */}
               <div className='form-group'>
                 <label>Full Name</label>
                 <div
@@ -410,7 +398,7 @@ export default function AuthForm({ onLoginSuccess }) {
                 )}
               </div>
 
-              {/* UTA Email */}
+              {/* UTA EMAIL */}
               <div className='form-group'>
                 <label>UTA Email</label>
                 <div
@@ -428,7 +416,7 @@ export default function AuthForm({ onLoginSuccess }) {
                       setEmail(v);
                       setErrors((prev) => ({
                         ...prev,
-                        email: validateEmailLive(v),
+                        email: validateEmailLive(v.toLowerCase()), // 🔥 FIX
                       }));
                     }}
                     autoComplete='email'
@@ -442,7 +430,7 @@ export default function AuthForm({ onLoginSuccess }) {
                 )}
               </div>
 
-              {/* Password */}
+              {/* PASSWORD */}
               <div className='form-group'>
                 <label>Password</label>
                 <div
@@ -473,7 +461,7 @@ export default function AuthForm({ onLoginSuccess }) {
                   <div className='inline-error'>{errors.password}</div>
                 )}
 
-                {/* Password strength meter */}
+                {/* Strength bar */}
                 {password && (
                   <div className='pw-strength-container'>
                     <div
@@ -486,7 +474,7 @@ export default function AuthForm({ onLoginSuccess }) {
                 )}
               </div>
 
-              {/* Confirm Password */}
+              {/* CONFIRM PASSWORD */}
               <div className='form-group'>
                 <label>Confirm Password</label>
                 <div

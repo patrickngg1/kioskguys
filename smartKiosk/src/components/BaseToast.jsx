@@ -13,18 +13,30 @@ export default function BaseToast({
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
+  const getIcon = () => {
+    switch (type) {
+      case 'success':
+        return '💎'; // premium diamond for success
+      case 'error':
+        return '⚠️'; // error icon
+      case 'warning':
+        return '⚠️';
+      case 'info':
+      default:
+        return 'ℹ️';
+    }
+  };
+
   return (
     <div className='auth-toast-container'>
       <div className={`auth-toast-card ${type}`}>
-        <div className='auth-toast-icon'>
-          {type === 'success' && '✓'}
-          {type === 'error' && '⚠️'}
-          {type === 'warning' && '!'}
-          {type === 'info' && 'ℹ️'}
-        </div>
+        {/* ICON */}
+        <div className='auth-toast-icon'>{getIcon()}</div>
 
+        {/* TEXT */}
         <div className='auth-toast-text'>{message}</div>
 
+        {/* CLOSE BUTTON */}
         <button className='auth-toast-close' onClick={onClose}>
           ×
         </button>

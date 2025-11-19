@@ -1,16 +1,11 @@
 // src/components/Dashboard.jsx
 // --------------------------------------------------------------------
-// - Django session auth (no Firebase)
-// - Reads user either from navigation state or /api/auth/me/
-// - User card (top-left) shows logged-in user's info
-// - 3-minute inactivity auto-logout with a 30s warning modal
-// - Premium inactivity modal: dim background, circular countdown ring,
-//   UTA blue/orange gradient, soft chime, fade/zoom animation
-// - Post-logout splash screen before redirecting to login
-// - Reserve modal with AM/PM toggles + conflict check (localStorage-only)
-// - Supplies modal with category-specific "Frequently Requested"
-// - Clears selection on modal open; live count + glow on submit
-// - Persists request history in localStorage; recomputes popularity on submit
+// - Uses TiDB-backed popularity via /api/supplies/popular/?limit=3
+// - Uses dynamic categories via /api/items/
+// - Shows top-3 "Frequently Requested" per category, then the rest
+// - RequestSupply modal is fully dynamic (admin can add categories)
+// - Toasts are clean, premium, and not duplicated
+// --------------------------------------------------------------------
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -19,23 +14,22 @@ import '../styles/Dashboard.css';
 import '../styles/App.css';
 import banner1 from '../assets/banner1.png';
 import banner2 from '../assets/banner2.png';
-import DashboardToast from './DashboardToast'; // still available if you want to use later
+import DashboardToast from './DashboardToast';
+import RequestSupply from './RequestSupply';
 import { getSessionUser, logoutSession } from '../api/authApi';
 
-// Load every .png and .jpg in /src/assets as URLs at build time
+// Load assets dynamically
 const assetPng = import.meta.glob('../assets/*.png', {
   eager: true,
   query: '?url',
   import: 'default',
 });
-
 const assetJpg = import.meta.glob('../assets/*.jpg', {
   eager: true,
   query: '?url',
   import: 'default',
 });
 
-// Helper: get image for an item name, falling back to Kleenex.png
 const getSupplyImg = (name) =>
   assetPng[`../assets/${name}.png`] ||
   assetJpg[`../assets/${name}.jpg`] ||
@@ -65,154 +59,97 @@ const isRoomReserved = (reservations, room, date, start, end) =>
       timesOverlap(start, end, r.start, r.end)
   );
 
-// Toast used for reservation/supplies confirm
-function ConfirmToast({ message = '', onDone }) {
-  useEffect(() => {
-    const id = setTimeout(onDone, 4000);
-    return () => clearTimeout(id);
-  }, [onDone]);
+// --------------- (Kept for possible future mapping if needed) ---------------
+const ITEM_CATEGORY_MAP = {
+  'Plastic Knives': 'closet',
+  'Paper Roll': 'closet',
+  'Water Filters': 'closet',
+  'Dish Soap': 'closet',
+  Kleenex: 'closet',
+  'Paper Towels': 'closet',
+  'Dry Erase Marker': 'closet',
+  Tape: 'closet',
+  Stapler: 'closet',
 
-  const formatted =
-    typeof message === 'string'
-      ? message
-          .replace(/(Total)/g, '<strong>$1</strong>')
-          .replace(/(\$[0-9,]+)/g, '<span class="highlight-time">$1</span>')
-      : '';
+  'Coffee Stirrer': 'break',
+  Sugar: 'break',
+  Creamer: 'break',
+  Snacks: 'break',
 
-  return (
-    <div className='confirm-toast'>
-      <div className='confirm-card'>
-        <div className='confirm-emoji'>💎</div>
-        <span className='confirm-icon'>✅</span>
-        <div
-          className='confirm-text'
-          dangerouslySetInnerHTML={{ __html: formatted }}
-        ></div>
-      </div>
-    </div>
-  );
-}
+  'Cafe Bustelo': 'kcup',
+  'Dark Magic': 'kcup',
+  'Breakfast Blend': 'kcup',
+  'Breakfast Blend Decaf': 'kcup',
+  'Green Tea': 'kcup',
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [user, setUser] = useState(null); // Django user: { id, email, fullName, ... }
-  const [profile, setProfile] = useState(null); // future extension (roles, etc.)
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
 
+  // Inactivity / countdown
   const [ringProgress, setRingProgress] = useState(0);
-
-  // ---------------- Inactivity / Countdown State ----------------
   const [showInactivityModal, setShowInactivityModal] = useState(false);
-  const [countdown, setCountdown] = useState(30); // 30-second warning window
+  const [countdown, setCountdown] = useState(30);
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 1 * 60 * 1000; // 3 minutes (change to 10 * 1000 for testing)
-  const WARNING_TIME = 30; // 30 seconds countdown
+  const INACTIVITY_LIMIT = 2 * 60 * 1000;
+  const WARNING_TIME = 30;
   const inactivityTimer = useRef(null);
-
-  // ---------------- Logout Splash State ----------------
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
-
-  // Soft chime for inactivity warning
   const chimeRef = useRef(null);
 
   useEffect(() => {
-    // Initialize audio only in browser
     chimeRef.current = new Audio('/soft-chime.wav');
   }, []);
 
-  // Helper: show splash then go to login (Tap to Begin lives there)
   function startLogoutSplash() {
     setShowLogoutSplash(true);
-    setTimeout(() => {
-      navigate('/', { state: { startOverlay: true } });
-    }, 3000);
+    setTimeout(() => navigate('/', { state: { startOverlay: true } }), 3000);
   }
 
-  useEffect(() => {
-    document.body.classList.add('modal-open');
-    return () => document.body.classList.remove('modal-open');
-  }, []);
-
-  // ---------- Auth: load user from navigation or Django session ----------
+  // ------------------------ Load User ------------------------
   useEffect(() => {
     const navUser = location.state?.user || null;
 
     async function initUser() {
-      // 1. If user was passed via navigate('/dashboard', { state: { user } })
       if (navUser) {
         setUser(navUser);
-        setProfile({
-          fullName: navUser.fullName,
-          email: navUser.email,
-        });
+        setProfile({ fullName: navUser.fullName, email: navUser.email });
         return;
       }
 
-      // 2. Fallback: fetch via session cookie
       const sessionUser = await getSessionUser();
 
       if (!sessionUser) {
-        // Not authenticated -> back to login screen
         navigate('/');
         return;
       }
 
       setUser(sessionUser);
-      setProfile({
-        fullName: sessionUser.fullName,
-        email: sessionUser.email,
-      });
+      setProfile({ fullName: sessionUser.fullName, email: sessionUser.email });
     }
 
     initUser();
   }, [location.state, navigate]);
 
-  // ---------- Inactivity Auto-Logout (3 min + 30s warning modal) ----------
+  // ------------------------ Inactivity Logic ------------------------
+  // ------------------------ Inactivity Detection (no countdown here) ------------------------
   useEffect(() => {
-    if (!user) return; // only start after user is loaded
+    if (!user) return;
 
     const startWarningCountdown = () => {
       setShowInactivityModal(true);
-      setCountdown(WARNING_TIME);
-      setRingProgress(0);
-
-      // Play soft chime when warning appears
-      if (chimeRef.current) {
-        chimeRef.current.volume = 0.35;
-        chimeRef.current.currentTime = 0;
-        chimeRef.current.play().catch(() => {
-          // ignore autoplay errors
-        });
-      }
-
-      // Countdown timer (1 second per tick)
-      countdownRef.current = setInterval(() => {
-        setCountdown((prev) => {
-          const next = prev - 1;
-
-          // update progress ring
-          const pct = ((WARNING_TIME - next) / WARNING_TIME) * 360;
-          setRingProgress(pct);
-
-          if (prev === 1) {
-            clearInterval(countdownRef.current);
-            logoutSession().finally(() => startLogoutSplash());
-          }
-          return next;
-        });
-      }, 1000);
     };
 
     const resetInactivityTimer = () => {
-      // If warning modal is open, do NOT close it and do NOT reset countdown.
-      if (showInactivityModal) {
-        return;
-      }
+      if (showInactivityModal) return;
 
-      // Otherwise reset the main inactivity timer normally.
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+
       inactivityTimer.current = setTimeout(
         startWarningCountdown,
         INACTIVITY_LIMIT
@@ -228,19 +165,52 @@ export default function Dashboard() {
       'touchmove',
     ];
 
-    events.forEach((e) => window.addEventListener(e, resetInactivityTimer));
+    events.forEach((ev) => window.addEventListener(ev, resetInactivityTimer));
 
-    // Start timer initially
     resetInactivityTimer();
 
     return () => {
-      events.forEach((e) =>
-        window.removeEventListener(e, resetInactivityTimer)
+      events.forEach((ev) =>
+        window.removeEventListener(ev, resetInactivityTimer)
       );
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [user]); // important: only depends on user
+  }, [user]);
+
+  // ------------------------ Countdown Timer Logic ------------------------
+  useEffect(() => {
+    if (!showInactivityModal) return;
+
+    // Reset countdown & ring
+    setCountdown(WARNING_TIME);
+    setRingProgress(0);
+
+    // Play chime
+    if (chimeRef.current) {
+      chimeRef.current.volume = 0.35;
+      chimeRef.current.currentTime = 0;
+      chimeRef.current.play().catch(() => {});
+    }
+
+    countdownRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        const next = prev - 1;
+        const pct = ((WARNING_TIME - next) / WARNING_TIME) * 360;
+        setRingProgress(pct);
+
+        if (prev === 1) {
+          clearInterval(countdownRef.current);
+          logoutSession().finally(() => startLogoutSplash());
+        }
+
+        return next;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(countdownRef.current);
+    };
+  }, [showInactivityModal]);
 
   const handleLogout = async () => {
     try {
@@ -251,17 +221,17 @@ export default function Dashboard() {
   };
 
   const display = {
-    name: profile?.fullName || user?.fullName || user?.email || 'Kiosk User',
+    name: profile?.fullName || user?.fullName || user?.email,
     id: user?.id ?? '—',
-    role: 'Authenticated User', // you can change to user.role later
-    email: user?.email || '—',
+    role: 'Authenticated User',
+    email: user?.email,
     avatar:
       'https://api.dicebear.com/7.x/thumbs/svg?seed=' +
       encodeURIComponent(user?.email || 'uta') +
       '&backgroundType=gradientLinear&shapeColor=1d4ed8,2563eb',
   };
 
-  // ---------- Banners ----------
+  // ------------------------ Banners ------------------------
   const [bannerIdx, setBannerIdx] = useState(0);
   const banners = [
     {
@@ -276,12 +246,12 @@ export default function Dashboard() {
     },
   ];
 
-  // ---------- Modals + Toast ----------
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [showSuppliesModal, setShowSuppliesModal] = useState(false);
   const [toast, setToast] = useState(null);
+  const [toastShake, setToastShake] = useState(false);
 
-  // ---------- Reservations ----------
+  // ------------------------ Reservations ------------------------
   const [reservations, setReservations] = useState(() =>
     readJSON('reservations', [])
   );
@@ -320,20 +290,21 @@ export default function Dashboard() {
     today.setHours(0, 0, 0, 0);
     if (selectedDate < today) {
       setToast('⚠️ You cannot reserve rooms for past dates.');
+      setToastShake(true);
       return;
     }
 
-    const toMinutes = (h, m, period) => {
+    const toMinutes = (h, m, p) => {
       let hour = parseInt(h, 10) % 12;
-      if (period === 'PM') hour += 12;
+      if (p === 'PM') hour += 12;
       return hour * 60 + parseInt(m, 10);
     };
 
     const startMins = toMinutes(startHour, startMin, startPeriod);
     const endMins = toMinutes(endHour, endMin, endPeriod);
-
     if (endMins <= startMins) {
       setToast('⚠️ End time must be after start time.');
+      setToastShake(true);
       return;
     }
 
@@ -342,185 +313,172 @@ export default function Dashboard() {
 
     if (isRoomReserved(reservations, room, date, start, end)) {
       setToast('⚠️ That time is already reserved. Please choose another slot.');
+      setToastShake(true);
       return;
     }
 
-    const newReservation = {
-      room,
-      date,
-      start,
-      end,
-      createdAt: nowISO(),
-    };
-
+    const newReservation = { room, date, start, end, createdAt: nowISO() };
     const updated = [...reservations, newReservation];
     setReservations(updated);
     writeJSON('reservations', updated);
 
     setShowReserveModal(false);
     setToast(`✅ Room ${room} reserved on ${date} from ${start} to ${end}.`);
+    setToastShake(false);
   };
 
-  // ---------- Supplies ----------
-  const STORAGE_CLOSET = [
-    'Kleenex',
-    'AA Batteries',
-    'Ultra Fine Point Permanent Marker',
-    'Regular Permanent Marker',
-    'Finepoint Permanent Marker',
-    'Black Ballpoint Pen',
-    'Blue Ballpoint Pen',
-    'Standard Paper Clips',
-    'Jumbo Paper Clips',
-    'Staplers',
-    'Blue Dry Erase Markers',
-    'Red Dry Erase Markers',
-    'Black Dry Erase Markers',
-    'Whiteboard Spray',
-    'Scissors',
-    'Yellow Highlighters',
-    'Orange Highlighters',
-    'Pink Highlighters',
-    'Microfiber Cloth',
-    'Micro Binder Clips',
-    'Medium Binder Clips',
-    'Large Binder Clips',
-    'Rubber Bands',
-    'Pencils',
-    'Mechanical Pencil Lead',
-    'Spray Bottles',
-    'All Purpose Cleaner',
-    'Dry Eraser',
-    'Copy Paper',
-    'Dolly',
-  ];
+  // ------------------------ Items from backend ------------------------
+  // itemsByCategory: { "Storage Closet": [ {id, name, image, ...}, ... ], ... }
+  const [itemsByCategory, setItemsByCategory] = useState({});
 
-  const BREAK_ROOM = [
-    'Coffee Cups',
-    'Coffee Lids',
-    'Stir Sticks',
-    'Sugar Packets',
-    'Sugar Container',
-    'Coffee Creamer',
-    'Napkins',
-    'Plates',
-    'Trash Bags',
-    'Small Trash Bags',
-    'Plastic Spoons',
-    'Plastic Forks',
-    'Plastic Knives',
-    'Paper Roll',
-    'Water Filters',
-    'Dish Soap',
-  ];
+  useEffect(() => {
+    async function loadItems() {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/items/');
+        const data = await res.json();
+        setItemsByCategory(data.categories ?? {});
+      } catch (err) {
+        console.error('Failed to load items', err);
+        setItemsByCategory({});
+      }
+    }
+    loadItems();
+  }, []);
 
-  const K_CUPS = [
-    'Cafe Bustelo',
-    'Dark Magic',
-    'Breakfast Blend',
-    'Breakfast Blend Decaf',
-    'Green Tea',
-  ];
+  // ------------------------ Backend Popularity (grouped per category) ------------------------
+  // /api/supplies/popular/?limit=3 returns:
+  // { ok: true, popular: { "Storage Closet": [ { name, count }, ... ], ... } }
+  const [popularByCategory, setPopularByCategory] = useState({});
 
-  const categorizeItem = (item) => {
-    if (STORAGE_CLOSET.includes(item)) return 'closet';
-    if (BREAK_ROOM.includes(item)) return 'break';
-    if (K_CUPS.includes(item)) return 'kcup';
-    return 'other';
-  };
-
-  const computePopularByCategory = (history) => {
-    const freq = { closet: {}, break: {}, kcup: {} };
-    history.forEach((req) => {
-      req.items.forEach((item) => {
-        const cat = categorizeItem(item);
-        if (!freq[cat]) return;
-        freq[cat][item] = (freq[cat][item] || 0) + 1;
-      });
-    });
-
-    const toTop6Set = (obj) =>
-      new Set(
-        Object.entries(obj)
-          .sort((a, b) => b[1] - a[1])
-          .map(([i]) => i)
-          .slice(0, 6)
+  const loadPopular = async () => {
+    try {
+      const res = await fetch(
+        'http://127.0.0.1:8000/api/supplies/popular/?limit=3'
       );
+      const data = await res.json();
+      const popular = data?.popular || {};
 
-    return {
-      closet: toTop6Set(freq.closet),
-      break: toTop6Set(freq.break),
-      kcup: toTop6Set(freq.kcup),
-    };
+      const mapped = {};
+      Object.entries(popular).forEach(([categoryName, items]) => {
+        mapped[categoryName] = new Set((items || []).map((x) => x.name));
+      });
+
+      setPopularByCategory(mapped);
+    } catch (err) {
+      console.error('Failed to load popular items', err);
+      setPopularByCategory({});
+    }
   };
 
-  const [popularByCategory, setPopularByCategory] = useState(() => {
-    const history = readJSON('supplyRequests', []);
-    return computePopularByCategory(history);
-  });
+  useEffect(() => {
+    loadPopular();
+  }, []);
 
   const [selectedSupplies, setSelectedSupplies] = useState([]);
 
+  // Auto-rotate banner only when modals are closed
   useEffect(() => {
-    if (showReserveModal || showSuppliesModal) return; // pause while modal open
+    if (showReserveModal || showSuppliesModal) return;
     const id = setInterval(
       () => setBannerIdx((i) => (i + 1) % banners.length),
       7000
     );
     return () => clearInterval(id);
-  }, [showReserveModal, showSuppliesModal]);
+  }, [showReserveModal, showSuppliesModal, banners.length]);
 
-  const toggleSupply = (name) => {
-    setSelectedSupplies((prev) => {
-      const has = prev.includes(name);
-      const next = has ? prev.filter((x) => x !== name) : [...prev, name];
-      return next;
-    });
-  };
+  const toggleSupply = (id) =>
+    setSelectedSupplies((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
 
-  const submitSupplies = () => {
-    if (selectedSupplies.length === 0) {
+  const submitSupplies = async () => {
+    if (!selectedSupplies.length) {
       setToast('Please select at least one item.');
+      setToastShake(true);
       return;
     }
-    const history = readJSON('supplyRequests', []);
-    const updatedHistory = [
-      ...history,
-      { items: selectedSupplies, createdAt: nowISO() },
-    ];
-    writeJSON('supplyRequests', updatedHistory);
-    setPopularByCategory(computePopularByCategory(updatedHistory));
+
+    // Close modal instantly
     setShowSuppliesModal(false);
-    setToast(`Supply request sent: ${selectedSupplies.join(', ')}`);
+
+    // Show loading toast
+    setToastShake(false);
+    setToast('Submitting your request...');
+
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/supplies/request/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          items: selectedSupplies,
+          userId: user?.id,
+          fullName: user?.fullName,
+          email: user?.email,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setToast('Something went wrong. Please try again.');
+        setToastShake(true);
+        return;
+      }
+
+      // 🔥 Refresh popularity instantly (so UI updates!)
+      await loadPopular();
+
+      // Build item names from selected ids
+      const allItems = Object.values(itemsByCategory).flat();
+      const itemNames = selectedSupplies
+        .map((id) => allItems.find((x) => x.id === id)?.name || 'Item')
+        .join(', ');
+
+      setToast(
+        `Your supply request was submitted successfully!\nItems: ${itemNames}`
+      );
+      setToastShake(false);
+
+      // Reset selected items
+      setSelectedSupplies([]);
+    } catch (err) {
+      console.error('Network error:', err);
+      setToast('Network error. Please try again.');
+      setToastShake(true);
+    }
   };
 
-  const supplyCard = (name) => (
-    <div
-      key={name}
-      className={`supply-item ${
-        selectedSupplies.includes(name) ? 'selected' : ''
-      }`}
-      onClick={() => toggleSupply(name)}
-      role='button'
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === 'Enter' ? toggleSupply(name) : null)}
-      aria-label={`Select ${name}`}
-    >
-      <img src={getSupplyImg(name)} alt={name} />
-      <span>{name}</span>
-    </div>
-  );
+  // Supply card for each item
+  const supplyCard = (item) => {
+    if (!item) return null;
 
-  const renderSection = (title, items, categoryKey) => {
-    const popularSet =
-      categoryKey === 'closet'
-        ? popularByCategory.closet
-        : categoryKey === 'break'
-        ? popularByCategory.break
-        : popularByCategory.kcup;
+    const imgSrc = item.image ? item.image : getSupplyImg(item.name);
 
-    const popular = items.filter((i) => popularSet.has(i));
-    const rest = items.filter((i) => !popularSet.has(i));
+    return (
+      <div
+        key={item.id}
+        className={`supply-item ${
+          selectedSupplies.includes(item.id) ? 'selected' : ''
+        }`}
+        onClick={() => toggleSupply(item.id)}
+        role='button'
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && toggleSupply(item.id)}
+        aria-label={`Select ${item.name}`}
+      >
+        <img src={imgSrc} alt={item.name} />
+        <span>{item.name}</span>
+      </div>
+    );
+  };
+
+  // ------------------------ Render Per Category (dynamic) ------------------------
+  const renderSection = (title, items) => {
+    const popularSet = popularByCategory[title] || new Set();
+
+    const popular = items.filter((item) => popularSet.has(item.name));
+    const rest = items.filter((item) => !popularSet.has(item.name));
 
     return (
       <section className='supply-section' key={title}>
@@ -538,112 +496,140 @@ export default function Dashboard() {
     );
   };
 
+  // ------------------------ Toast Type Logic (single source of truth) ------------------------
+  let toastType = 'success';
+  if (toastShake) {
+    toastType = 'error';
+  } else if (!toast) {
+    toastType = 'success';
+  } else if (toast.toLowerCase().includes('submitting')) {
+    toastType = 'loading';
+  } else if (
+    toast.toLowerCase().includes('successfully') ||
+    toast.toLowerCase().includes('submitted')
+  ) {
+    toastType = 'success';
+  } else if (
+    toast.toLowerCase().includes('error') ||
+    toast.toLowerCase().includes('please select') ||
+    toast.startsWith('⚠')
+  ) {
+    toastType = 'error';
+  }
+
+  // ------------------------ RENDER ------------------------
   return (
-    <div
-      className={`dashboard-view dashboard-fade-in ${
-        showLogoutSplash ? 'dashboard-freeze' : ''
-      }`}
-    >
-      <div className='dashboard-grid'>
-        {/* User Card (top-left) */}
-        <div
-          className='card user-card action-card'
-          style={{ gridArea: 'user' }}
-        >
-          <div className='user-row'>
-            <img className='user-avatar' src={display.avatar} alt='' />
-            <div>
-              <div className='user-name'>{display.name}</div>
-              <div className='user-id'>User ID: {display.id}</div>
+    <>
+      {/* MAIN DASHBOARD */}
+      <div
+        className={`dashboard-view dashboard-fade-in ${
+          showLogoutSplash ? 'dashboard-freeze' : ''
+        }`}
+      >
+        <div className='dashboard-grid'>
+          {/* USER CARD */}
+          <div
+            className='card user-card action-card'
+            style={{ gridArea: 'user' }}
+          >
+            <div className='user-row'>
+              <img className='user-avatar' src={display.avatar} alt='' />
+              <div>
+                <div className='user-name'>{display.name}</div>
+                <div className='user-id'>User ID: {display.id}</div>
+              </div>
             </div>
-          </div>
-          <div className='user-meta'>{display.role}</div>
+            <div className='user-meta'>{display.role}</div>
+            <div className='user-email'>{display.email}</div>
 
-          <div className='user-email'>{display.email}</div>
-
-          <div style={{ marginTop: '0.75rem' }}>
-            <button onClick={handleLogout} className='btn btn-primary wl-ful'>
+            <button
+              onClick={handleLogout}
+              className='btn btn-primary wl-ful'
+              style={{ marginTop: '0.75rem' }}
+            >
               Sign Out
             </button>
           </div>
-        </div>
 
-        {/* Banner */}
-        <div className='banner-block'>
-          {banners.map((b, i) => (
-            <img
-              key={i}
-              src={b.image}
-              alt={b.alt}
-              className={`banner-img ${i === bannerIdx ? 'active' : ''}`}
-            />
-          ))}
+          {/* BANNER */}
+          <div className='banner-block'>
+            {banners.map((b, i) => (
+              <img
+                key={i}
+                src={b.image}
+                alt={b.alt}
+                className={`banner-img ${i === bannerIdx ? 'active' : ''}`}
+              />
+            ))}
+            <button
+              className='banner-cta btn btn-primary'
+              onClick={() => {
+                const href = banners[bannerIdx].cta.href;
+                if (href === '#reserve') setShowReserveModal(true);
+                if (href === '#supplies') {
+                  setSelectedSupplies([]);
+                  setShowSuppliesModal(true);
+                }
+              }}
+            >
+              {banners[bannerIdx].cta.label}
+            </button>
+          </div>
 
-          <button
-            className='banner-cta btn btn-primary'
-            onClick={() => {
-              const href = banners[bannerIdx].cta.href;
-              if (href === '#reserve') setShowReserveModal(true);
-              if (href === '#supplies') {
+          {/* MAP */}
+          <div className='map-container' style={{ gridArea: 'map' }}>
+            <KioskMap />
+          </div>
+
+          {/* RESERVE CARD */}
+          <div className='card action-card' style={{ gridArea: 'reserve' }}>
+            <div className='action-head'>
+              <div className='action-title'>Reserve Conference Room</div>
+            </div>
+            <p className='action-copy'>Book a meeting space by date & time.</p>
+
+            <button
+              onClick={() => {
+                setReservationData({
+                  room: '',
+                  date: '',
+                  startHour: '',
+                  startMin: '',
+                  startPeriod: 'AM',
+                  endHour: '',
+                  endMin: '',
+                  endPeriod: 'AM',
+                });
+                setShowReserveModal(true);
+              }}
+              className='btn btn-primary wl-ful'
+            >
+              Open Scheduler
+            </button>
+          </div>
+
+          {/* SUPPLIES CARD */}
+          <div className='card action-card' style={{ gridArea: 'supplies' }}>
+            <div className='action-head'>
+              <div className='action-title'>Request Supplies</div>
+            </div>
+            <p className='action-copy'>
+              Tap pictures to select items you need.
+            </p>
+            <button
+              onClick={() => {
                 setSelectedSupplies([]);
                 setShowSuppliesModal(true);
-              }
-            }}
-          >
-            {banners[bannerIdx].cta.label}
-          </button>
-        </div>
-
-        {/* Map */}
-        <div className='map-container' style={{ gridArea: 'map' }}>
-          <KioskMap />
-        </div>
-
-        {/* Reserve Action Card */}
-        <div className='card action-card' style={{ gridArea: 'reserve' }}>
-          <div className='action-head'>
-            <div className='action-title'>Reserve Conference Room</div>
+              }}
+              className='btn btn-primary w-full'
+            >
+              Open Request Form
+            </button>
           </div>
-          <p className='action-copy'>Book a meeting space by date & time.</p>
-          <button
-            onClick={() => {
-              setReservationData({
-                room: '',
-                date: '',
-                startHour: '',
-                startMin: '',
-                startPeriod: 'AM',
-                endHour: '',
-                endMin: '',
-                endPeriod: 'AM',
-              });
-              setShowReserveModal(true);
-            }}
-            className='btn btn-primary wl-ful'
-          >
-            Open Scheduler
-          </button>
-        </div>
-
-        {/* Supplies Action Card */}
-        <div className='card action-card' style={{ gridArea: 'supplies' }}>
-          <div className='action-head'>
-            <div className='action-title'>Request Supplies</div>
-          </div>
-          <p className='action-copy'>Tap pictures to select items you need.</p>
-          <button
-            onClick={() => {
-              setSelectedSupplies([]);
-              setShowSuppliesModal(true);
-            }}
-            className='btn btn-primary w-full'
-          >
-            Open Request Form
-          </button>
         </div>
       </div>
 
-      {/* Reserve Room Modal */}
+      {/* RESERVATION MODAL */}
       {showReserveModal && (
         <div
           className='modal-overlay'
@@ -662,8 +648,8 @@ export default function Dashboard() {
             <h2>Reserve Conference Room</h2>
 
             <div className='rooms-row'>
-              {['A', 'B'].map((letter) => {
-                const r = `Room ${letter}`;
+              {['A', 'B'].map((l) => {
+                const r = `Room ${l}`;
                 return (
                   <div
                     key={r}
@@ -718,6 +704,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Start Time */}
               <div className='form-row'>
                 <div>
                   <label>Start Time</label>
@@ -733,15 +720,13 @@ export default function Dashboard() {
                       }
                     >
                       <option value=''>Hour</option>
-                      {[...Array(12)].map((_, i) => {
-                        const h = i + 1;
-                        return (
-                          <option key={h} value={h}>
-                            {h}
-                          </option>
-                        );
-                      })}
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1}
+                        </option>
+                      ))}
                     </select>
+
                     <select
                       required
                       value={reservationData.startMin}
@@ -757,6 +742,7 @@ export default function Dashboard() {
                         <option key={m}>{m}</option>
                       ))}
                     </select>
+
                     <span
                       className={`ampm-badge ${
                         reservationData.startPeriod === 'PM'
@@ -770,11 +756,12 @@ export default function Dashboard() {
                         }))
                       }
                     >
-                      {reservationData.startPeriod || 'AM'}
+                      {reservationData.startPeriod}
                     </span>
                   </div>
                 </div>
 
+                {/* End Time */}
                 <div>
                   <label>End Time</label>
                   <div className='time-picker'>
@@ -789,15 +776,13 @@ export default function Dashboard() {
                       }
                     >
                       <option value=''>Hour</option>
-                      {[...Array(12)].map((_, i) => {
-                        const h = i + 1;
-                        return (
-                          <option key={h} value={h}>
-                            {h}
-                          </option>
-                        );
-                      })}
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1}
+                        </option>
+                      ))}
                     </select>
+
                     <select
                       required
                       value={reservationData.endMin}
@@ -813,6 +798,7 @@ export default function Dashboard() {
                         <option key={m}>{m}</option>
                       ))}
                     </select>
+
                     <span
                       className={`ampm-badge ${
                         reservationData.endPeriod === 'PM'
@@ -826,7 +812,7 @@ export default function Dashboard() {
                         }))
                       }
                     >
-                      {reservationData.endPeriod || 'AM'}
+                      {reservationData.endPeriod}
                     </span>
                   </div>
                 </div>
@@ -840,74 +826,25 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Supplies Modal */}
-      {showSuppliesModal && (
-        <div
-          className='modal-overlay'
-          onClick={() => setShowSuppliesModal(false)}
-        >
-          <div
-            className='modal-box large'
-            onClick={(e) => e.stopPropagation()}
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              const stickyBar = el.querySelector('.submit-request-sticky');
-              if (!stickyBar) return;
+      {/* SUPPLIES MODAL */}
+      <RequestSupply
+        isOpen={showSuppliesModal}
+        onClose={() => setShowSuppliesModal(false)}
+        itemsByCategory={itemsByCategory}
+        selectedSupplies={selectedSupplies}
+        submitSupplies={submitSupplies}
+        renderSection={renderSection}
+      />
 
-              const atTop = el.scrollTop === 0;
-              const atBottom =
-                el.scrollHeight - el.scrollTop <= el.clientHeight + 1;
-
-              if (!atTop && !atBottom) {
-                stickyBar.classList.add('scrolling');
-              } else {
-                stickyBar.classList.remove('scrolling');
-              }
-            }}
-          >
-            <button
-              className='close-btn'
-              onClick={() => setShowSuppliesModal(false)}
-            >
-              ✕
-            </button>
-            <h2>Request Supplies</h2>
-            <p className='supply-hint'>
-              Tap on the pictures to select items. Frequently requested items
-              appear first.
-            </p>
-
-            {renderSection('Storage Closet', STORAGE_CLOSET, 'closet')}
-            {renderSection('Break Room', BREAK_ROOM, 'break')}
-            {renderSection('K-Cups', K_CUPS, 'kcup')}
-
-            <div className='submit-request-sticky'>
-              <button
-                onClick={submitSupplies}
-                className={`btn btn-primary w-full mt-2 ${
-                  selectedSupplies.length > 0 ? 'active-glow' : ''
-                }`}
-              >
-                {selectedSupplies.length > 0
-                  ? `Submit Request (${selectedSupplies.length} item${
-                      selectedSupplies.length > 1 ? 's' : ''
-                    })`
-                  : 'Submit Request'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Screen dimming for inactivity modal */}
+      {/* INACTIVITY OVERLAY */}
       {showInactivityModal && <div className='inactivity-dim'></div>}
 
-      {/* Inactivity Warning Modal */}
+      {/* INACTIVITY MODAL */}
       {showInactivityModal && (
         <div className='modal-overlay' style={{ zIndex: 9999 }}>
           <div
             className='modal-box inactivity-modal-enter'
-            style={{ maxWidth: '420px', textAlign: 'center' }}
+            style={{ maxWidth: 420, textAlign: 'center' }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -925,7 +862,7 @@ export default function Dashboard() {
               You will be signed out in
             </p>
 
-            {/* Circular countdown ring */}
+            {/* countdown ring */}
             <div
               className={`countdown-ring ${
                 countdown <= 5
@@ -935,10 +872,7 @@ export default function Dashboard() {
                   : ''
               }`}
               style={{
-                background: `conic-gradient(
-      var(--uta-orange) ${ringProgress}deg,
-      var(--uta-blue) ${ringProgress}deg
-    )`,
+                background: `conic-gradient(var(--uta-orange) ${ringProgress}deg, var(--uta-blue) ${ringProgress}deg)`,
               }}
             >
               <div
@@ -954,55 +888,50 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div style={{ marginTop: '1.5rem' }}>
-              <button
-                className='btn btn-primary w-full'
-                style={{ marginBottom: '0.75rem' }}
-                onClick={() => {
-                  setShowInactivityModal(false);
-                  if (countdownRef.current) clearInterval(countdownRef.current);
-                }}
-              >
-                Stay Signed In
-              </button>
+            <button
+              className='btn btn-primary w-full'
+              style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}
+              onClick={() => {
+                setShowInactivityModal(false);
+                if (countdownRef.current) clearInterval(countdownRef.current);
+              }}
+            >
+              Stay Signed In
+            </button>
 
-              <button
-                className='btn btn-primary w-full'
-                style={{ background: '#d72638' }}
-                onClick={async () => {
-                  if (countdownRef.current) clearInterval(countdownRef.current);
-                  await logoutSession();
-                  startLogoutSplash();
-                }}
-              >
-                Sign Out Now
-              </button>
-            </div>
+            <button
+              className='btn btn-primary w-full'
+              style={{ background: '#d72638' }}
+              onClick={async () => {
+                if (countdownRef.current) clearInterval(countdownRef.current);
+                await logoutSession();
+                startLogoutSplash();
+              }}
+            >
+              Sign Out Now
+            </button>
           </div>
         </div>
       )}
 
+      {/* LOGOUT SPLASH */}
       {showLogoutSplash && (
         <div className='astral-logout-overlay'>
           <div className='astral-portal-card'>
-            {/* Floating portal orb */}
             <div className='portal-orb'>
               <div className='portal-orb-ring outer'></div>
               <div className='portal-orb-ring mid'></div>
               <div className='portal-orb-ring inner'></div>
-
               <div className='portal-orb-core'>
                 <span className='uta-badge'>UTA</span>
               </div>
             </div>
 
-            {/* Signing out text */}
             <div className='logout-message-astral'>
               <span className='logout-message-main'>Signing Out</span>
               <span className='logout-message-sub'>See you next time ✨</span>
             </div>
 
-            {/* Particle layer */}
             <div className='portal-particles'>
               {[...Array(12)].map((_, i) => (
                 <span key={i} className={`portal-particle p-${i + 1}`}></span>
@@ -1012,7 +941,16 @@ export default function Dashboard() {
         </div>
       )}
 
-      {toast && <ConfirmToast message={toast} onDone={() => setToast(null)} />}
-    </div>
+      {/* PREMIUM TOAST */}
+      <DashboardToast
+        type={toastType}
+        message={toast}
+        onClose={() => {
+          setToast(null);
+          setToastShake(false);
+        }}
+        visible={!!toast}
+      />
+    </>
   );
 }

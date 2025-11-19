@@ -1,23 +1,5 @@
-"""
-URL configuration for kiosks project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
 from django.urls import path, include
-
-# NEW
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -25,12 +7,26 @@ from rest_framework_simplejwt.views import (
 )
 
 urlpatterns = [
+    # Admin
     path('admin/', admin.site.urls),
-    path('', include('main.urls')),
-    path("", include("accounts.urls")),
 
-    # 🔥 NEW: JWT endpoints (do NOT replace existing ones)
-    path("api/auth/jwt/login/", TokenObtainPairView.as_view(), name="jwt_login"),
-    path("api/auth/jwt/refresh/", TokenRefreshView.as_view(), name="jwt_refresh"),
-    path("api/auth/jwt/verify/", TokenVerifyView.as_view(), name="jwt_verify"),
+    # App pages
+    path('', include('main.urls')),
+
+    # Session-based auth (login, register, me, logout)
+    # Now your endpoints are:
+    #   /api/auth/login/
+    #   /api/auth/register/
+    #   /api/auth/logout/
+    #   /api/auth/me/
+    path('api/auth/', include('accounts.urls')),
+
+    # Supply Request API
+    #   /api/supplies/request/
+    path('api/', include('api.urls')),
+
+    # JWT Endpoints (future use)
+    path('api/auth/jwt/login/', TokenObtainPairView.as_view(), name='jwt_login'),
+    path('api/auth/jwt/refresh/', TokenRefreshView.as_view(), name='jwt_refresh'),
+    path('api/auth/jwt/verify/', TokenVerifyView.as_view(), name='jwt_verify'),
 ]

@@ -13,7 +13,8 @@ const LoginForm = ({ displayMessage }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    const trimmedEmail = email.trim();
+    // 🔥 Only required change — lowercase email for consistency
+    const trimmedEmail = email.trim().toLowerCase();
     const trimmedPassword = password.trim();
 
     if (!trimmedEmail && !trimmedPassword) {
@@ -32,8 +33,7 @@ const LoginForm = ({ displayMessage }) => {
     setLoading(true);
     try {
       const user = await loginWithSession(trimmedEmail, trimmedPassword);
-      // You could also pass user back if needed:
-      // displayMessage(`Welcome, ${user.fullName}!`, 'success');
+
       displayMessage('Login successful!', 'success');
       setEmail('');
       setPassword('');

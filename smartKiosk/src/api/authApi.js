@@ -38,12 +38,13 @@ export async function registerWithSession(email, password, fullName) {
   return data.user;
 }
 
-// ------- JWT login (for mobile later) -------
+// ------- JWT login (for mobile or future apps) -------
 export async function loginWithJwt(email, password) {
   const res = await fetch(`${BASE_URL}/api/auth/jwt/login/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: email, password }),
+    // FIXED: backend expects { email, password }
+    body: JSON.stringify({ email, password }),
   });
 
   const data = await res.json();
@@ -63,17 +64,15 @@ export async function getSessionUser() {
   });
 
   if (!res.ok) {
-    // 401/403 means "not logged in"
-    return null;
+    return null; // not logged in
   }
 
   const data = await res.json();
-  return data.user || null; // { id, email, fullName, ... } or null
+  return data.user || null;
 }
 
 // ------- Logout session (for kiosk) -------
 export async function logoutSession() {
-  // We don't really care about the response body; just fire and forget
   await fetch(`${BASE_URL}/api/auth/logout/`, {
     method: 'POST',
     credentials: 'include',

@@ -259,7 +259,7 @@ html {
   justify-content: space-between;
   gap: 1rem;
   padding: 0 22px;
-  z-index: 1200;
+  z-index: 1000;
   background: linear-gradient(
     180deg,
     rgba(17, 24, 39, 0.75),

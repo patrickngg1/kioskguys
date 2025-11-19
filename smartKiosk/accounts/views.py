@@ -1,9 +1,10 @@
 import json
-
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+
+from .models import UserProfile
 
 ALLOWED_DOMAINS = ("uta.edu", "mavs.uta.edu")
 
@@ -16,14 +17,6 @@ def is_uta_email(email: str) -> bool:
 
 
 def validate_password_strength(password: str):
-    """
-    Must be:
-      - at least 8 chars
-      - contain 1 uppercase
-      - contain 1 digit
-      - contain 1 special character
-    Returns a list of error messages (empty list = OK).
-    """
     pw = password or ""
     errors = []
     if len(pw) < 8:
@@ -37,27 +30,25 @@ def validate_password_strength(password: str):
     return errors
 
 
-@csrf_exempt  # TODO: handle CSRF properly in production
+# ---------------------------------------------------------
+# POST /api/auth/register/
+# ---------------------------------------------------------
+@csrf_exempt
 def register_api(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST allowed."}, status=405)
 
     try:
         data = json.loads(request.body.decode("utf-8"))
-    except json.JSONDecodeError:
+    except:
         return JsonResponse({"error": "Invalid JSON body."}, status=400)
 
+    full_name = (data.get("fullName") or "").strip()
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
 
-    # accept multiple possible keys for the name field
-    full_name = (
-        data.get("fullName")
-        or data.get("full_name")
-        or data.get("name")
-        or ""
-    ).strip()
-
+    if not full_name:
+        return JsonResponse({"error": "Full name is required."}, status=400)
     if not email or not password:
         return JsonResponse({"error": "Email and password are required."}, status=400)
 
@@ -71,23 +62,28 @@ def register_api(request):
     if pw_errors:
         return JsonResponse({"error": pw_errors[0]}, status=400)
 
-    if User.objects.filter(email__iexact=email).exists():
+    # Email-as-username system
+    if User.objects.filter(username=email).exists():
         return JsonResponse(
             {"error": "This email is already registered. Try logging in."},
             status=400,
         )
 
-    # use email as username
-    username = email
-
-    user = User(username=username, email=email)
-    # store name if provided
-    if full_name:
-        user.first_name = full_name
+    # Create Django User
+    user = User.objects.create(username=email, email=email)
     user.set_password(password)
-    user.is_active = True  # no verification yet
-    user.save()            # <-- writes to DB
+    user.is_active = True        # active by default
+    user.save()
 
+    # Store full name in profile
+    profile = UserProfile.objects.create(
+        user=user,
+        full_name=full_name,
+        is_verified=True,
+        is_admin=False
+    )
+
+    # Auto-login after registration — optional but kept
     login(request, user)
 
     return JsonResponse(
@@ -96,13 +92,16 @@ def register_api(request):
             "user": {
                 "id": user.id,
                 "email": user.email,
-                "fullName": user.first_name,
+                "fullName": profile.full_name,
             },
         },
         status=201,
     )
 
 
+# ---------------------------------------------------------
+# POST /api/auth/login/
+# ---------------------------------------------------------
 @csrf_exempt
 def login_api(request):
     if request.method != "POST":
@@ -110,7 +109,7 @@ def login_api(request):
 
     try:
         data = json.loads(request.body.decode("utf-8"))
-    except json.JSONDecodeError:
+    except:
         return JsonResponse({"error": "Invalid JSON body."}, status=400)
 
     email = (data.get("email") or "").strip().lower()
@@ -119,14 +118,14 @@ def login_api(request):
     if not email or not password:
         return JsonResponse({"error": "Email and password are required."}, status=400)
 
+    # Authenticate username=email
     user = authenticate(request, username=email, password=password)
-    if user is None:
-        return JsonResponse(
-            {"error": "Invalid email or password."},
-            status=401,
-        )
+    if not user:
+        return JsonResponse({"error": "Invalid email or password."}, status=401)
 
     login(request, user)
+
+    profile = UserProfile.objects.get(user=user)
 
     return JsonResponse(
         {
@@ -134,7 +133,9 @@ def login_api(request):
             "user": {
                 "id": user.id,
                 "email": user.email,
-                "fullName": user.first_name,
+                "fullName": profile.full_name,
+                "isAdmin": profile.is_admin,
+                "isVerified": profile.is_verified,
             },
         }
     )

@@ -30,10 +30,13 @@ INSTALLED_APPS = [
     'corsheaders',
     'kiosks',
     'accounts',
-
+    'api',
     'rest_framework',
     'rest_framework_simplejwt',
 ]
+
+SITE_ID = 1
+
 
 # ---------------------------------------------------------
 # MIDDLEWARE
@@ -162,3 +165,38 @@ SIMPLE_JWT = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ----------------------------------------------------
+# EMAIL CONFIGURATION (GMAIL SMTP)
+# ----------------------------------------------------
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+
+EMAIL_HOST_USER = "ersaatuta@gmail.com"
+EMAIL_HOST_PASSWORD = "wfwxwdtuxufsauyp"  # no spaces
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+EMAIL_TIMEOUT = 20
+
+# Disable SMTP SSL certificate verification (dev only)
+import ssl
+SMTP_UNVERIFIED_CONTEXT = ssl._create_unverified_context()
+
+
+# Allow cross-site cookies for React -> Django
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_HTTPONLY = False
+
+CSRF_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_HTTPONLY = False
+
+# React (localhost) is trusted for CSRF POST requests
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
