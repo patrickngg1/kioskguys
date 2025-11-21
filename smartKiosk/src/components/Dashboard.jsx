@@ -16,6 +16,7 @@ import KioskMap from './KioskMap';
 import '../styles/Dashboard.css';
 import '../styles/App.css';
 import DashboardToast from './DashboardToast';
+import AdminPanel from './AdminPanel';
 import RequestSupply from './RequestSupply';
 import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
@@ -592,6 +593,22 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ADMIN PANEL OVERLAY (Full Screen) */}
+      {showAdminPanel && (
+        <AdminPanel
+          isOpen={showAdminPanel}
+          onClose={() => setShowAdminPanel(false)}
+          user={user}
+          // For now, pass what Dashboard already has.
+          // We'll wire real admin fetches next.
+          reservations={reservations}
+          itemsByCategory={itemsByCategory}
+          // rooms/users can be fetched in AdminPanel later:
+          rooms={[]}
+          users={[]}
+        />
+      )}
 
       {/* RESERVE MODAL */}
       {showReserveModal && (
