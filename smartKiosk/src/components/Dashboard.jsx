@@ -20,18 +20,9 @@ import RequestSupply from './RequestSupply';
 import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
 
-const nowISO = () => new Date().toISOString();
 // Deprecated local storage helpers removed. Only keeping necessary functions:
 const timesOverlap = (aStart, aEnd, bStart, bEnd) =>
   aStart < bEnd && bStart < aEnd;
-const isRoomReserved = (reservations, room, date, start, end) =>
-  reservations.some(
-    (r) =>
-      r.room === room &&
-      r.date === date &&
-      timesOverlap(start, end, r.start, r.end)
-  );
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -76,7 +67,7 @@ export default function Dashboard() {
 
       const sessionUser = await getSessionUser();
 
-      if (!sessionUser) {
+      if (sessionUser === null) {
         navigate('/');
         return;
       }

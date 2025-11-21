@@ -38,6 +38,15 @@ const combineDateTime = (dateStr, timeStr) => {
 // Interval overlap test for [start,end)
 const overlaps = (startA, endA, startB, endB) => startA < endB && startB < endA;
 
+// Convert "HH:MM" (24h) to "h:MM AM/PM"
+const to12HourDisplay = (timeStr) => {
+  if (!timeStr) return '';
+  const [hour, minute] = timeStr.split(':').map(Number);
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = ((hour + 11) % 12) + 1;
+  return `${hour12}:${minute.toString().padStart(2, '0')} ${suffix}`;
+};
+
 function ReserveConferenceRoom({
   isOpen,
   onClose,
@@ -189,7 +198,8 @@ function ReserveConferenceRoom({
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // ⭐ stops the hard page reload
+    e.stopPropagation();
 
     if (!user) {
       setToast('Please sign in first.');
@@ -538,7 +548,8 @@ function ReserveConferenceRoom({
                             <div className='myres-card-left'>
                               <div className='myres-room'>{res.roomName}</div>
                               <div className='myres-time'>
-                                {res.date} · {res.startTime}–{res.endTime}
+                                {res.date} · {to12HourDisplay(res.startTime)} –{' '}
+                                {to12HourDisplay(res.endTime)}
                               </div>
                             </div>
 
