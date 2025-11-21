@@ -1,14 +1,11 @@
 from django.db import models
-
+from django.contrib.auth.models import User
 
 # ---------------------------------------------------------
-# CATEGORY MODEL (Dynamic item sections)
+# CATEGORY MODEL
 # ---------------------------------------------------------
 class Category(models.Model):
-    # Display name: “Break Room”, “K-Cups”, “Storage Closet”
     name = models.CharField(max_length=100, unique=True)
-
-    # Machine key: "break", "kcup", "closet"
     key = models.CharField(max_length=50, unique=True)
 
     def __str__(self):
@@ -16,30 +13,52 @@ class Category(models.Model):
 
 
 # ---------------------------------------------------------
-# ITEM MODEL (Each supply item belongs to a Category)
+# ITEM MODEL — FINAL VERSION (Media Uploads Only)
 # ---------------------------------------------------------
+
+def supply_item_upload_path(instance, filename):
+    """
+    Upload path for item images:
+    media/items/<Item_Name_Safe>/<filename>
+    """
+    safe_name = instance.name.replace(" ", "_")
+    return f"items/{safe_name}/{filename}"
+
+
 class Item(models.Model):
     name = models.CharField(max_length=200, unique=True)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="items")
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
 
-    # Uploaded image
-    image = models.ImageField(upload_to="items/", blank=True, null=True)
+    # FINAL — ONLY DJANGO MEDIA IMAGES
+    image = models.ImageField(
+        upload_to=supply_item_upload_path,
+        blank=True,
+        null=True,
+        help_text="Upload an image like 'Kleenex.png'"
+    )
+
+    # Track popularity
+    request_count = models.IntegerField(default=0)
+
+    # Let admin hide items
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.name} ({self.category.key})"
 
 
 # ---------------------------------------------------------
-# SUPPLY REQUEST (When a user submits items)
+# SUPPLY REQUEST MODEL
 # ---------------------------------------------------------
 class SupplyRequest(models.Model):
     user_id = models.IntegerField()
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
-
-    # Stores an array of item names
     items = models.JSONField()
-
     requested_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -47,7 +66,7 @@ class SupplyRequest(models.Model):
 
 
 # ---------------------------------------------------------
-# ITEM POPULARITY (Counts how many times each item was used)
+# ITEM POPULARITY MODEL
 # ---------------------------------------------------------
 class ItemPopularity(models.Model):
     item_name = models.CharField(max_length=255)
@@ -62,15 +81,32 @@ class ItemPopularity(models.Model):
 
 
 # ---------------------------------------------------------
-# ROOM RESERVATIONS (For conference room bookings)
+# ROOM MODEL
+# ---------------------------------------------------------
+class Room(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    capacity = models.IntegerField(default=8)
+    has_screen = models.BooleanField(default=True)
+    has_hdmi = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} (Capacity: {self.capacity})"
+
+
+# ---------------------------------------------------------
+# ROOM RESERVATION MODEL
 # ---------------------------------------------------------
 class RoomReservation(models.Model):
-    room = models.CharField(max_length=50)
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.CASCADE,
+        related_name="reservations",
+    )
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
 
-    user_id = models.IntegerField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     full_name = models.CharField(max_length=120)
     email = models.EmailField()
 
@@ -84,4 +120,23 @@ class RoomReservation(models.Model):
         ordering = ["date", "start_time"]
 
     def __str__(self):
-        return f"{self.room} on {self.date} ({self.start_time}-{self.end_time})"
+        return f"{self.room.name} on {self.date} ({self.start_time}-{self.end_time})"
+
+
+def ui_asset_upload_path(instance, filename):
+    """
+    Save UI assets (like banners, favicons, backgrounds)
+    into: media/ui_assets/<AssetName>.<ext>
+    """
+    import os
+    safe_name = instance.name.replace(" ", "_")
+    ext = os.path.splitext(filename)[1].lower()
+    return f"ui_assets/{safe_name}{ext}"
+
+
+class UIAsset(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    image = models.ImageField(upload_to=ui_asset_upload_path)
+
+    def __str__(self):
+        return self.name

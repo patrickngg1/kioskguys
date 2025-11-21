@@ -1,3 +1,4 @@
+// src/components/AuthScreen.jsx
 import React from 'react';
 import AuthForm from './AuthForm';
 import { useNavigate } from 'react-router-dom';

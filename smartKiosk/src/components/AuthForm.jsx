@@ -36,7 +36,7 @@ function getPasswordStrength(password) {
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (!/[^A-Za-z0-9]/.test(password)) score++;
 
   if (score === 0) return { label: '', level: 0 };
   if (score === 1) return { label: 'Weak', level: 1 };
@@ -184,12 +184,20 @@ export default function AuthForm({ onLoginSuccess }) {
     showToast('success', 'Signing In…');
 
     try {
-      const user = await loginWithSession(trimmedEmail, trimmedPassword);
+      // loginWithSession returns the full response object: { id, email, fullName, ... }
+      const response = await loginWithSession(trimmedEmail, trimmedPassword);
 
       showToast('success', 'Login successful!');
 
+      // 💡 FIX APPLIED: Capture all critical user fields for Dashboard
+      const userPayload = {
+        id: response.id,
+        email: response.email,
+        fullName: response.fullName,
+      };
+
       setTimeout(() => {
-        onLoginSuccess?.(user);
+        onLoginSuccess?.(userPayload);
       }, 500);
     } catch (err) {
       setToast({
@@ -250,8 +258,8 @@ export default function AuthForm({ onLoginSuccess }) {
     }
 
     try {
-      // 🔥 Send lowercase email to backend
-      await registerWithSession(lowerEmail, password, fullName);
+      // 💡 FIX APPLIED: Match the signature (fullName, email, password) from authApi.js
+      await registerWithSession(fullName, lowerEmail, password);
 
       showToast('success', 'Account created! Please sign in.');
       setView('login');

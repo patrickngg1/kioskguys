@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createContext } from 'react';
 import {
   HashRouter as Router,
   Routes,
@@ -12,6 +12,9 @@ import Dashboard from './components/Dashboard';
 import Header from './components/Header';
 import StartOverlay from './components/StartOverlay';
 import './styles/App.css';
+
+// 🟦 NEW: Context to store all Django UI asset URLs
+export const UIAssetsContext = createContext(null);
 
 /**
  * PageLayout:
@@ -33,25 +36,24 @@ function PageLayout() {
   );
 }
 
-function AppContent() {
+function AppContent({ uiAssets }) {
   const [started, setStarted] = useState(false);
   const inactivityTimer = useRef(null);
   const location = useLocation();
 
   const onDashboard = location.pathname.includes('dashboard');
-  // ✅ Render content if user has started OR we’re on dashboard
   const allowContent = started || onDashboard;
 
-  // ✅ Inactivity overlay only on login route (never blank the dashboard)
+  // Inactivity overlay logic (unchanged)
   useEffect(() => {
-    if (onDashboard) return; // do nothing on dashboard
-    if (!started) return; // only run timer when overlay is dismissed
+    if (onDashboard) return;
+    if (!started) return;
 
     const resetTimer = () => {
       clearTimeout(inactivityTimer.current);
       inactivityTimer.current = setTimeout(() => {
-        setStarted(false); // bring overlay back on login
-      }, 60000); // 1 minute
+        setStarted(false);
+      }, 60000);
     };
 
     const events = ['click', 'mousemove', 'keydown', 'touchstart'];
@@ -66,22 +68,44 @@ function AppContent() {
 
   return (
     <>
-      {/* 🟧 Overlay only on login (never on dashboard) */}
       {!started && !onDashboard && (
         <StartOverlay onStart={() => setStarted(true)} />
       )}
 
-      {/* 🟩 Header + content render when started OR on dashboard */}
-      {allowContent && <Header />}
-      {allowContent && <PageLayout />}
+      {/* 🟦 Provide UI assets to the entire app */}
+      <UIAssetsContext.Provider value={uiAssets}>
+        {allowContent && <Header />}
+        {allowContent && <PageLayout />}
+      </UIAssetsContext.Provider>
     </>
   );
 }
 
 export default function App() {
+  const [uiAssets, setUIAssets] = useState(null);
+
+  // 🟧 Fetch UI assets ONCE from Django
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/ui-assets/')
+      .then((res) => res.json())
+      .then((data) => setUIAssets(data.assets))
+      .catch((e) => console.error('Failed to load UI assets', e));
+  }, []);
+
+  // 🟧 Update favicon dynamically when assets load
+  useEffect(() => {
+    if (!uiAssets || !uiAssets.favicon) return;
+
+    const link = document.querySelector("link[rel='icon']");
+    if (link) link.href = uiAssets.favicon;
+  }, [uiAssets]);
+
+  // Wait for assets BEFORE showing anything
+  if (uiAssets === null) return null; // only block while fetching
+
   return (
     <Router>
-      <AppContent />
+      <AppContent uiAssets={uiAssets} />
     </Router>
   );
 }

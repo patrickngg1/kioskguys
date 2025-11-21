@@ -1,6 +1,38 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, Item, ItemPopularity, SupplyRequest, RoomReservation
+from .models import (
+    Category,
+    Item,
+    SupplyRequest,
+    ItemPopularity,
+    Room,
+    RoomReservation,
+)
+from .models import UIAsset
+
+@admin.register(UIAsset)
+class UIAssetAdmin(admin.ModelAdmin):
+    list_display = ("name", "image")
+
+
+# -----------------------------------------
+# ROOM ADMIN
+# -----------------------------------------
+@admin.register(Room)
+class RoomAdmin(admin.ModelAdmin):
+    list_display = ("name", "capacity", "has_screen", "has_hdmi")
+    search_fields = ("name",)
+    list_filter = ("has_screen", "has_hdmi")
+
+
+# -----------------------------------------
+# ROOM RESERVATION ADMIN
+# -----------------------------------------
+@admin.register(RoomReservation)
+class RoomReservationAdmin(admin.ModelAdmin):
+    list_display = ("room", "date", "start_time", "end_time", "full_name", "email", "cancelled")
+    list_filter = ("date", "room", "cancelled")
+    search_fields = ("full_name", "email")
 
 
 # -----------------------------------------
@@ -43,19 +75,9 @@ class ItemPopularityAdmin(admin.ModelAdmin):
 
 
 # -----------------------------------------
-# Supply Requests
+# Supply Requests Admin
 # -----------------------------------------
 @admin.register(SupplyRequest)
 class SupplyRequestAdmin(admin.ModelAdmin):
     list_display = ("id", "full_name", "email", "requested_at")
     readonly_fields = ("requested_at", "items")
-
-
-# -----------------------------------------
-# Room Reservations
-# -----------------------------------------
-@admin.register(RoomReservation)
-class RoomReservationAdmin(admin.ModelAdmin):
-    list_display = ("room", "date", "start_time", "end_time", "full_name")
-    list_filter = ("room", "date")
-    search_fields = ("full_name", "email")

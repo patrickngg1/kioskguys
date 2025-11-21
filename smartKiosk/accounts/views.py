@@ -1,141 +1,119 @@
-import json
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework_simplejwt.tokens import RefreshToken
+import json
 
-from .models import UserProfile
-
-ALLOWED_DOMAINS = ("uta.edu", "mavs.uta.edu")
-
-
-def is_uta_email(email: str) -> bool:
-    parts = (email or "").rsplit("@", 1)
-    if len(parts) != 2:
-        return False
-    return parts[1].lower() in ALLOWED_DOMAINS
-
-
-def validate_password_strength(password: str):
-    pw = password or ""
-    errors = []
-    if len(pw) < 8:
-        errors.append("Password must be at least 8 characters long.")
-    if not any(c.isupper() for c in pw):
-        errors.append("Password must contain at least one uppercase letter.")
-    if not any(c.isdigit() for c in pw):
-        errors.append("Password must contain at least one number.")
-    if not any(not c.isalnum() for c in pw):
-        errors.append("Password must contain at least one special character.")
-    return errors
+# ----------------------------------------------------
+# Helper: Create JWT tokens
+# ----------------------------------------------------
+def generate_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    access = str(refresh.access_token)
+    refresh_token = str(refresh)
+    return access, refresh_token
 
 
-# ---------------------------------------------------------
-# POST /api/auth/register/
-# ---------------------------------------------------------
-@csrf_exempt
-def register_api(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Only POST allowed."}, status=405)
-
-    try:
-        data = json.loads(request.body.decode("utf-8"))
-    except:
-        return JsonResponse({"error": "Invalid JSON body."}, status=400)
-
-    full_name = (data.get("fullName") or "").strip()
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or ""
-
-    if not full_name:
-        return JsonResponse({"error": "Full name is required."}, status=400)
-    if not email or not password:
-        return JsonResponse({"error": "Email and password are required."}, status=400)
-
-    if not is_uta_email(email):
-        return JsonResponse(
-            {"error": "Email must end with @uta.edu or @mavs.uta.edu."},
-            status=400,
-        )
-
-    pw_errors = validate_password_strength(password)
-    if pw_errors:
-        return JsonResponse({"error": pw_errors[0]}, status=400)
-
-    # Email-as-username system
-    if User.objects.filter(username=email).exists():
-        return JsonResponse(
-            {"error": "This email is already registered. Try logging in."},
-            status=400,
-        )
-
-    # Create Django User
-    user = User.objects.create(username=email, email=email)
-    user.set_password(password)
-    user.is_active = True        # active by default
-    user.save()
-
-    # Store full name in profile
-    profile = UserProfile.objects.create(
-        user=user,
-        full_name=full_name,
-        is_verified=True,
-        is_admin=False
-    )
-
-    # Auto-login after registration — optional but kept
-    login(request, user)
-
-    return JsonResponse(
-        {
-            "message": "Registration successful.",
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "fullName": profile.full_name,
-            },
-        },
-        status=201,
-    )
-
-
-# ---------------------------------------------------------
+# ----------------------------------------------------
 # POST /api/auth/login/
-# ---------------------------------------------------------
+# Returns access token + sets refresh cookie
+# ----------------------------------------------------
 @csrf_exempt
 def login_api(request):
     if request.method != "POST":
-        return JsonResponse({"error": "Only POST allowed."}, status=405)
+        return JsonResponse({"error": "Invalid method"}, status=405)
 
     try:
-        data = json.loads(request.body.decode("utf-8"))
+        data = json.loads(request.body.decode())
     except:
-        return JsonResponse({"error": "Invalid JSON body."}, status=400)
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    email = (data.get("email") or "").strip().lower()
+    email = (data.get("email") or "").lower().strip()
     password = data.get("password") or ""
 
     if not email or not password:
-        return JsonResponse({"error": "Email and password are required."}, status=400)
+        return JsonResponse({"ok": False, "error": "Missing credentials"}, status=400)
 
-    # Authenticate username=email
     user = authenticate(request, username=email, password=password)
-    if not user:
-        return JsonResponse({"error": "Invalid email or password."}, status=401)
+    if user is None:
+        return JsonResponse({"ok": False, "error": "Invalid email or password"}, status=401)
 
+    # Keep Django session so request.user works
     login(request, user)
 
-    profile = UserProfile.objects.get(user=user)
+    # Use built-in user fields (no UserProfile model)
+    profile_full_name = user.get_full_name() or user.email
+    is_admin = user.is_staff or user.is_superuser
 
-    return JsonResponse(
-        {
-            "message": "Login successful.",
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "fullName": profile.full_name,
-                "isAdmin": profile.is_admin,
-                "isVerified": profile.is_verified,
-            },
+    # Generate JWT tokens
+    access, refresh_token = generate_tokens_for_user(user)
+
+    response = JsonResponse({
+        "ok": True,
+        "access": access,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "fullName": profile_full_name,
+            "isAdmin": is_admin,
         }
+    })
+
+    # Set refresh cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="None",
+        path="/api/auth/",
     )
+
+    return response
+
+
+
+# ----------------------------------------------------
+# POST /api/auth/refresh/
+# Returns new access token using refresh cookie
+# ----------------------------------------------------
+@csrf_exempt
+def refresh_api(request):
+    refresh_token = request.COOKIES.get("refresh_token")
+
+    if not refresh_token:
+        return JsonResponse({"ok": False, "error": "No refresh token"}, status=401)
+
+    try:
+        refresh = RefreshToken(refresh_token)
+        new_access = str(refresh.access_token)
+        return JsonResponse({"ok": True, "access": new_access})
+    except Exception as e:
+        print("REFRESH ERROR:", e)
+        return JsonResponse({"ok": False, "error": "Invalid refresh token"}, status=401)
+
+
+# ----------------------------------------------------
+# POST /api/auth/logout/
+# Clears refresh cookie
+# ----------------------------------------------------
+@csrf_exempt
+def logout_api(request):
+    try:
+        logout(request)
+        response = JsonResponse({"ok": True})
+        response.delete_cookie("refresh_token", path="/api/auth/")
+        return response
+    except:
+        return JsonResponse({"ok": False, "error": "Logout failed"}, status=500)
+
+
+# -------------------------------
+# REGISTER PLACEHOLDER
+# -------------------------------
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+@api_view(["POST"])
+def register_api(request):
+    return Response({"ok": True, "message": "Registration endpoint working"})

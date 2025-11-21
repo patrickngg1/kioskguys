@@ -1,54 +1,27 @@
 // src/components/Dashboard.jsx
 // --------------------------------------------------------------------
 // - Uses TiDB-backed popularity via /api/supplies/popular/?limit=3
-// - Uses dynamic categories via /api/items/
+// - Uses dynamic categories via /api/items/ (TiDB)
 // - Shows top-3 "Frequently Requested" per category, then the rest
 // - RequestSupply modal is fully dynamic (admin can add categories)
 // - Toasts are clean, premium, and not duplicated
+// - UI chrome images (banners, etc.) come from Django /api/ui-assets/
+//   via UIAssetsContext from App.jsx
 // --------------------------------------------------------------------
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { UIAssetsContext } from '../App';
 import KioskMap from './KioskMap';
 import '../styles/Dashboard.css';
 import '../styles/App.css';
-import banner1 from '../assets/banner1.png';
-import banner2 from '../assets/banner2.png';
 import DashboardToast from './DashboardToast';
 import RequestSupply from './RequestSupply';
+import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
 
-// Load assets dynamically
-const assetPng = import.meta.glob('../assets/*.png', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
-const assetJpg = import.meta.glob('../assets/*.jpg', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
-
-const getSupplyImg = (name) =>
-  assetPng[`../assets/${name}.png`] ||
-  assetJpg[`../assets/${name}.jpg`] ||
-  assetPng['../assets/Kleenex.png'];
-
 const nowISO = () => new Date().toISOString();
-const readJSON = (k, fallback) => {
-  try {
-    const raw = localStorage.getItem(k);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-const writeJSON = (k, v) => {
-  try {
-    localStorage.setItem(k, JSON.stringify(v));
-  } catch {}
-};
+// Deprecated local storage helpers removed. Only keeping necessary functions:
 const timesOverlap = (aStart, aEnd, bStart, bEnd) =>
   aStart < bEnd && bStart < aEnd;
 const isRoomReserved = (reservations, room, date, start, end) =>
@@ -59,33 +32,12 @@ const isRoomReserved = (reservations, room, date, start, end) =>
       timesOverlap(start, end, r.start, r.end)
   );
 
-// --------------- (Kept for possible future mapping if needed) ---------------
-const ITEM_CATEGORY_MAP = {
-  'Plastic Knives': 'closet',
-  'Paper Roll': 'closet',
-  'Water Filters': 'closet',
-  'Dish Soap': 'closet',
-  Kleenex: 'closet',
-  'Paper Towels': 'closet',
-  'Dry Erase Marker': 'closet',
-  Tape: 'closet',
-  Stapler: 'closet',
-
-  'Coffee Stirrer': 'break',
-  Sugar: 'break',
-  Creamer: 'break',
-  Snacks: 'break',
-
-  'Cafe Bustelo': 'kcup',
-  'Dark Magic': 'kcup',
-  'Breakfast Blend': 'kcup',
-  'Breakfast Blend Decaf': 'kcup',
-  'Green Tea': 'kcup',
-};
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 🔵 Global UI assets (banners, chrome) from App.jsx context
+  const uiAssets = useContext(UIAssetsContext);
 
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -136,8 +88,7 @@ export default function Dashboard() {
     initUser();
   }, [location.state, navigate]);
 
-  // ------------------------ Inactivity Logic ------------------------
-  // ------------------------ Inactivity Detection (no countdown here) ------------------------
+  // ------------------------ Inactivity Detection ------------------------
   useEffect(() => {
     if (!user) return;
 
@@ -175,7 +126,7 @@ export default function Dashboard() {
       );
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     };
-  }, [user]);
+  }, [user, showInactivityModal]);
 
   // ------------------------ Countdown Timer Logic ------------------------
   useEffect(() => {
@@ -221,7 +172,13 @@ export default function Dashboard() {
   };
 
   const display = {
-    name: profile?.fullName || user?.fullName || user?.email,
+    name:
+      profile?.fullName ||
+      user?.fullName ||
+      user?.first_name ||
+      user?.firstName ||
+      user?.email,
+
     id: user?.id ?? '—',
     role: 'Authenticated User',
     email: user?.email,
@@ -231,16 +188,16 @@ export default function Dashboard() {
       '&backgroundType=gradientLinear&shapeColor=1d4ed8,2563eb',
   };
 
-  // ------------------------ Banners ------------------------
+  // ------------------------ Banners (from Django ui_assets) ------------------------
   const [bannerIdx, setBannerIdx] = useState(0);
   const banners = [
     {
-      image: banner1,
+      image: uiAssets?.banner1,
       alt: 'UTA Campus Entrance',
       cta: { href: '#reserve', label: 'Reserve a Room' },
     },
     {
-      image: banner2,
+      image: uiAssets?.banner2,
       alt: 'Need markers or adapters?',
       cta: { href: '#supplies', label: 'Request Supplies' },
     },
@@ -251,10 +208,10 @@ export default function Dashboard() {
   const [toast, setToast] = useState(null);
   const [toastShake, setToastShake] = useState(false);
 
-  // ------------------------ Reservations ------------------------
-  const [reservations, setReservations] = useState(() =>
-    readJSON('reservations', [])
-  );
+  // ------------------------ Reservations (local) ------------------------
+  // 💡 FIX: Set to empty array, relying entirely on the modal's fetch/API
+  const [reservations, setReservations] = useState([]);
+
   const [reservationData, setReservationData] = useState({
     room: '',
     date: '',
@@ -266,82 +223,48 @@ export default function Dashboard() {
     endPeriod: 'AM',
   });
 
-  const submitReservation = (e) => {
-    e.preventDefault();
+  // ❌ submitReservation function has been removed.
 
-    const {
-      room,
-      date,
-      startHour,
-      startMin,
-      startPeriod,
-      endHour,
-      endMin,
-      endPeriod,
-    } = reservationData;
-
-    if (!room || !date || !startHour || !startMin || !endHour || !endMin) {
-      console.error('Reservation form is incomplete');
-      return;
-    }
-
-    const selectedDate = new Date(date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (selectedDate < today) {
-      setToast('⚠️ You cannot reserve rooms for past dates.');
-      setToastShake(true);
-      return;
-    }
-
-    const toMinutes = (h, m, p) => {
-      let hour = parseInt(h, 10) % 12;
-      if (p === 'PM') hour += 12;
-      return hour * 60 + parseInt(m, 10);
-    };
-
-    const startMins = toMinutes(startHour, startMin, startPeriod);
-    const endMins = toMinutes(endHour, endMin, endPeriod);
-    if (endMins <= startMins) {
-      setToast('⚠️ End time must be after start time.');
-      setToastShake(true);
-      return;
-    }
-
-    const start = `${startHour}:${startMin} ${startPeriod}`;
-    const end = `${endHour}:${endMin} ${endPeriod}`;
-
-    if (isRoomReserved(reservations, room, date, start, end)) {
-      setToast('⚠️ That time is already reserved. Please choose another slot.');
-      setToastShake(true);
-      return;
-    }
-
-    const newReservation = { room, date, start, end, createdAt: nowISO() };
-    const updated = [...reservations, newReservation];
-    setReservations(updated);
-    writeJSON('reservations', updated);
-
-    setShowReserveModal(false);
-    setToast(`✅ Room ${room} reserved on ${date} from ${start} to ${end}.`);
-    setToastShake(false);
-  };
-
-  // ------------------------ Items from backend ------------------------
-  // itemsByCategory: { "Storage Closet": [ {id, name, image, ...}, ... ], ... }
+  // ------------------------ Items from backend (TiDB) ------------------------
+  // /api/items/ returns: { ok: true, categories: { "Storage Closet": [...], "Break Room": [...], "K-Cups": [...] } }
   const [itemsByCategory, setItemsByCategory] = useState({});
-
   useEffect(() => {
     async function loadItems() {
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/items/');
+        const res = await fetch('http://localhost:8000/api/items/');
         const data = await res.json();
-        setItemsByCategory(data.categories ?? {});
+
+        let categoriesOut = {};
+
+        if (data.categories) {
+          categoriesOut = data.categories;
+        } else if (Array.isArray(data.items)) {
+          data.items.forEach((item) => {
+            const cat = item.category_name || item.category || 'Misc';
+            if (!categoriesOut[cat]) categoriesOut[cat] = [];
+            categoriesOut[cat].push(item);
+          });
+        } else if (Array.isArray(data)) {
+          data.forEach((item) => {
+            const cat = item.category_name || item.category || 'Misc';
+            if (!categoriesOut[cat]) categoriesOut[cat] = [];
+            categoriesOut[cat].push(item);
+          });
+        } else {
+          const entries = Object.entries(data);
+          const allArrays = entries.every(([k, v]) => Array.isArray(v));
+          if (allArrays) {
+            categoriesOut = data;
+          }
+        }
+
+        setItemsByCategory(categoriesOut);
       } catch (err) {
         console.error('Failed to load items', err);
         setItemsByCategory({});
       }
     }
+
     loadItems();
   }, []);
 
@@ -353,7 +276,7 @@ export default function Dashboard() {
   const loadPopular = async () => {
     try {
       const res = await fetch(
-        'http://127.0.0.1:8000/api/supplies/popular/?limit=3'
+        'http://localhost:8000/api/supplies/popular/?limit=3'
       );
       const data = await res.json();
       const popular = data?.popular || {};
@@ -390,70 +313,68 @@ export default function Dashboard() {
     setSelectedSupplies((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
-
+  // ---- FIXED submitSupplies (drop-in replacement) ----
+  // ==========================
+  // CORRECT submitSupplies()
+  // ==========================
   const submitSupplies = async () => {
-    if (!selectedSupplies.length) {
+    if (selectedSupplies.length === 0) {
       setToast('Please select at least one item.');
       setToastShake(true);
       return;
     }
 
-    // Close modal instantly
-    setShowSuppliesModal(false);
-
-    // Show loading toast
-    setToastShake(false);
-    setToast('Submitting your request...');
-
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/supplies/request/', {
+      setToast('Submitting request…');
+      setToastShake(false);
+
+      const res = await fetch('http://localhost:8000/api/supplies/request/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          items: selectedSupplies,
-          userId: user?.id,
-          fullName: user?.fullName,
-          email: user?.email,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: selectedSupplies }),
       });
 
       const data = await res.json();
 
-      if (!res.ok || !data.ok) {
-        setToast('Something went wrong. Please try again.');
+      // 🔥 SAFE SUCCESS CHECK
+      const success =
+        res.ok &&
+        (data.ok === true ||
+          data.requestId ||
+          data.id ||
+          data.success ||
+          data.message);
+
+      if (!success) {
+        setToast(data.error || 'Request failed.');
         setToastShake(true);
         return;
       }
 
-      // 🔥 Refresh popularity instantly (so UI updates!)
-      await loadPopular();
-
-      // Build item names from selected ids
+      // Build item names for toast
       const allItems = Object.values(itemsByCategory).flat();
       const itemNames = selectedSupplies
         .map((id) => allItems.find((x) => x.id === id)?.name || 'Item')
         .join(', ');
 
-      setToast(
-        `Your supply request was submitted successfully!\nItems: ${itemNames}`
-      );
+      setToast(`Request submitted successfully!\nItems: ${itemNames}`);
       setToastShake(false);
 
-      // Reset selected items
       setSelectedSupplies([]);
+      setShowSuppliesModal(false);
     } catch (err) {
-      console.error('Network error:', err);
+      console.error('Submit error:', err);
       setToast('Network error. Please try again.');
       setToastShake(true);
     }
   };
 
-  // Supply card for each item
+  // Supply card for each item — images come directly from TiDB/Django `items.image`
   const supplyCard = (item) => {
     if (!item) return null;
 
-    const imgSrc = item.image ? item.image : getSupplyImg(item.name);
+    const imgSrc = item.image || null;
 
     return (
       <div
@@ -467,7 +388,11 @@ export default function Dashboard() {
         onKeyDown={(e) => e.key === 'Enter' && toggleSupply(item.id)}
         aria-label={`Select ${item.name}`}
       >
-        <img src={imgSrc} alt={item.name} />
+        {imgSrc ? (
+          <img src={imgSrc} alt={item.name} />
+        ) : (
+          <div className='supply-placeholder'>{item.name}</div>
+        )}
         <span>{item.name}</span>
       </div>
     );
@@ -553,14 +478,16 @@ export default function Dashboard() {
 
           {/* BANNER */}
           <div className='banner-block'>
-            {banners.map((b, i) => (
-              <img
-                key={i}
-                src={b.image}
-                alt={b.alt}
-                className={`banner-img ${i === bannerIdx ? 'active' : ''}`}
-              />
-            ))}
+            {banners.map((b, i) =>
+              b.image ? (
+                <img
+                  key={i}
+                  src={b.image}
+                  alt={b.alt}
+                  className={`banner-img ${i === bannerIdx ? 'active' : ''}`}
+                />
+              ) : null
+            )}
             <button
               className='banner-cta btn btn-primary'
               onClick={() => {
@@ -629,201 +556,17 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* RESERVATION MODAL */}
+      {/* RESERVE MODAL */}
       {showReserveModal && (
-        <div
-          className='modal-overlay'
-          onClick={() => setShowReserveModal(false)}
-        >
-          <div
-            className='modal-box reserve-box'
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className='close-btn'
-              onClick={() => setShowReserveModal(false)}
-            >
-              ✕
-            </button>
-            <h2>Reserve Conference Room</h2>
-
-            <div className='rooms-row'>
-              {['A', 'B'].map((l) => {
-                const r = `Room ${l}`;
-                return (
-                  <div
-                    key={r}
-                    className={`room-card ${
-                      reservationData.room === r ? 'selected' : ''
-                    }`}
-                    onClick={() =>
-                      setReservationData((d) => ({ ...d, room: r }))
-                    }
-                  >
-                    <div className='room-name'>{r}</div>
-                    <div className='room-meta'>Capacity: 8 · Screen · HDMI</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <form onSubmit={submitReservation} className='reserve-form'>
-              <div className='form-row'>
-                <div>
-                  <label>Date</label>
-                  <input
-                    type='date'
-                    required
-                    min={new Date().toISOString().split('T')[0]}
-                    value={reservationData.date}
-                    onChange={(e) =>
-                      setReservationData((d) => ({
-                        ...d,
-                        date: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label>Room</label>
-                  <select
-                    required
-                    value={reservationData.room}
-                    onChange={(e) =>
-                      setReservationData((d) => ({
-                        ...d,
-                        room: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value=''>Select Room</option>
-                    <option value='Room A'>Room A</option>
-                    <option value='Room B'>Room B</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Start Time */}
-              <div className='form-row'>
-                <div>
-                  <label>Start Time</label>
-                  <div className='time-picker'>
-                    <select
-                      required
-                      value={reservationData.startHour}
-                      onChange={(e) =>
-                        setReservationData((d) => ({
-                          ...d,
-                          startHour: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value=''>Hour</option>
-                      {[...Array(12)].map((_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          {i + 1}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      required
-                      value={reservationData.startMin}
-                      onChange={(e) =>
-                        setReservationData((d) => ({
-                          ...d,
-                          startMin: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value=''>Min</option>
-                      {['00', '15', '30', '45'].map((m) => (
-                        <option key={m}>{m}</option>
-                      ))}
-                    </select>
-
-                    <span
-                      className={`ampm-badge ${
-                        reservationData.startPeriod === 'PM'
-                          ? 'pm-active'
-                          : 'am-active'
-                      }`}
-                      onClick={() =>
-                        setReservationData((d) => ({
-                          ...d,
-                          startPeriod: d.startPeriod === 'AM' ? 'PM' : 'AM',
-                        }))
-                      }
-                    >
-                      {reservationData.startPeriod}
-                    </span>
-                  </div>
-                </div>
-
-                {/* End Time */}
-                <div>
-                  <label>End Time</label>
-                  <div className='time-picker'>
-                    <select
-                      required
-                      value={reservationData.endHour}
-                      onChange={(e) =>
-                        setReservationData((d) => ({
-                          ...d,
-                          endHour: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value=''>Hour</option>
-                      {[...Array(12)].map((_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          {i + 1}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      required
-                      value={reservationData.endMin}
-                      onChange={(e) =>
-                        setReservationData((d) => ({
-                          ...d,
-                          endMin: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value=''>Min</option>
-                      {['00', '15', '30', '45'].map((m) => (
-                        <option key={m}>{m}</option>
-                      ))}
-                    </select>
-
-                    <span
-                      className={`ampm-badge ${
-                        reservationData.endPeriod === 'PM'
-                          ? 'pm-active'
-                          : 'am-active'
-                      }`}
-                      onClick={() =>
-                        setReservationData((d) => ({
-                          ...d,
-                          endPeriod: d.endPeriod === 'AM' ? 'PM' : 'AM',
-                        }))
-                      }
-                    >
-                      {reservationData.endPeriod}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <button type='submit' className='btn btn-primary w-full mt-2'>
-                Confirm Reservation
-              </button>
-            </form>
-          </div>
-        </div>
+        <ReserveConferenceRoom
+          isOpen={showReserveModal}
+          onClose={() => setShowReserveModal(false)}
+          user={user}
+          setToast={setToast}
+          setToastShake={setToastShake}
+          existingReservations={reservations}
+          onReservationCreated={(r) => setReservations((prev) => [...prev, r])}
+        />
       )}
 
       {/* SUPPLIES MODAL */}

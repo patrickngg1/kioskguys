@@ -1,0 +1,399 @@
+/* ============================================================
+   RESERVE MODAL — ULTRA PREMIUM (Option A Glow)
+   - Softer, cleaner halo
+   - No left/right overflow artifacts
+   - Conf panel uses YES/KEEP small buttons
+   - Room cards animate in/out
+   Scoped to reservation modal only.
+   ============================================================ */
+
+/* ---------------- Option A header row ---------------- */
+.myres-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.95rem 0 0.75rem;
+  padding: 0.25rem 0.1rem;
+  animation: resFadeInUp 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.myres-toggle-label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 800;
+  letter-spacing: 0.25px;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.48);
+}
+
+.myres-toggle-sub {
+  font-size: 0.82rem;
+  opacity: 0.76;
+  font-weight: 500;
+  margin-top: 0.12rem;
+}
+
+/* ---------------- Vision Pro toggles ---------------- */
+.vision-toggle {
+  width: 66px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.085);
+  backdrop-filter: blur(18px) saturate(165%);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  position: relative;
+  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.06),
+    0 8px 28px rgba(0, 0, 0, 0.36);
+}
+
+.vision-toggle.small {
+  width: 56px;
+  height: 30px;
+}
+
+.vision-toggle.on {
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.98),
+    rgba(96, 165, 250, 0.98)
+  );
+  border-color: rgba(255, 255, 255, 0.26);
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.75),
+    0 6px 18px rgba(37, 99, 235, 0.55);
+}
+
+/* ultra-subtle shimmer when ON */
+.vision-toggle.on::before {
+  content: '';
+  position: absolute;
+  inset: -60% -20%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.55),
+    transparent 58%
+  );
+  opacity: 0.18;
+  animation: resShimmer 3s linear infinite;
+  pointer-events: none;
+}
+
+.vision-toggle-knob {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 5px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #ffffff;
+  transition: all 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.42);
+}
+
+.vision-toggle.small .vision-toggle-knob {
+  width: 22px;
+  height: 22px;
+  left: 4px;
+}
+
+.vision-toggle.on .vision-toggle-knob {
+  left: calc(100% - 29px);
+}
+
+.vision-toggle.small.on .vision-toggle-knob {
+  left: calc(100% - 26px);
+}
+
+/* ---------------- Panel open/close ---------------- */
+.myres-panel {
+  overflow: hidden;
+  transition: max-height 440ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 260ms ease, transform 440ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 260ms ease;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-10px);
+  filter: blur(4px);
+  margin-bottom: 0.9rem;
+}
+
+.myres-panel.open {
+  max-height: 900px;
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* ---------------- List container ---------------- */
+.myres-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.2rem;
+
+  /* room for halo fade so no hard left/right cutoffs */
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+/* ================== Reservation cards ================== */
+.myres-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.15rem 1.3rem;
+  border-radius: 18px;
+  background: rgba(15, 18, 28, 0.54);
+  backdrop-filter: blur(20px) saturate(165%);
+  -webkit-backdrop-filter: blur(20px) saturate(165%);
+  border: none;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.42),
+    inset 0 0 18px rgba(255, 255, 255, 0.02);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.myres-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.055),
+    rgba(255, 255, 255, 0) 42%
+  );
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+/* Softer, cleaner halo behind card (Option A) */
+.myres-card::after {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at center,
+    rgba(59, 130, 246, 0.16),
+    transparent 72%
+  );
+  filter: blur(15px);
+  opacity: 0;
+  transition: opacity 260ms ease;
+  pointer-events: none;
+}
+
+.myres-card:hover {
+  transform: translateY(-4px) scale(1.012);
+  background: rgba(20, 25, 40, 0.62);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 18px rgba(59, 130, 246, 0.12),
+    inset 0 0 22px rgba(255, 255, 255, 0.02);
+}
+.myres-card:hover::after {
+  opacity: 0.3;
+}
+
+.myres-card.selected {
+  transform: translateY(-2px) scale(1.01);
+  background: rgba(20, 25, 45, 0.68);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35),
+    0 0 38px rgba(59, 130, 246, 0.35), 0 14px 42px rgba(0, 0, 0, 0.5),
+    inset 0 0 22px rgba(255, 255, 255, 0.03);
+}
+.myres-card.selected::after {
+  opacity: 0.42;
+  background: radial-gradient(
+    circle at center,
+    rgba(59, 130, 246, 0.26),
+    transparent 72%
+  );
+  filter: blur(18px);
+}
+
+/* text */
+.myres-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.myres-room {
+  font-weight: 800;
+  font-size: 1.07rem;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.98);
+}
+.myres-time {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+/* ---------------- Actions row: Cancel Selected + Clear ---------------- */
+.myres-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.95rem;
+  flex-wrap: nowrap;
+}
+
+.myres-cancel-btn {
+  width: auto !important;
+  min-width: 170px;
+  height: 44px;
+  padding: 0 1.35rem !important;
+}
+
+/* Clear uses btn btn-primary from Dashboard.css in JSX */
+.myres-clear-btn {
+  width: auto !important;
+  min-width: 120px;
+  height: 44px;
+  padding: 0 1.2rem !important;
+  opacity: 0.9;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.myres-clear-btn:hover {
+  opacity: 1;
+}
+.myres-clear-btn:active {
+  transform: scale(0.98);
+}
+
+/* ---------------- Confirmation panel (Yes/Keep) ---------------- */
+.cancel-confirm-panel {
+  margin-top: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: resConfirmDrop 380ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.cancel-confirm-text {
+  margin-bottom: 0.75rem;
+  opacity: 0.95;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.2px;
+}
+
+.cancel-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.cancel-confirm-btn {
+  width: auto;
+  min-width: 140px;
+  height: 44px;
+  padding: 0 1.2rem !important;
+}
+
+.cancel-confirm-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+.cancel-confirm-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ---------------- Rooms row animation (when <=2) ---------------- */
+.rooms-row-premium {
+  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 240ms ease;
+  will-change: opacity, transform, filter;
+}
+.rooms-row-premium.cards-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+.rooms-row-premium.cards-out {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+/* ---------------- Empty / loading text ---------------- */
+.myres-loading,
+.myres-empty {
+  margin: 0.7rem 0 0.2rem 0;
+  opacity: 0.93;
+  font-weight: 500;
+}
+
+/* Make both actions look premium */
+.cancel-confirm-btn {
+  width: auto;
+  min-width: 150px;
+  height: 44px;
+  padding: 0 1.4rem !important;
+  font-weight: 600;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+/* Subtle hierarchy for the Keep button */
+.keep-btn {
+  opacity: 0.82;
+}
+
+.keep-btn:hover {
+  opacity: 1;
+}
+
+.keep-btn:active {
+  transform: scale(0.97);
+}
+
+/* ---------------- Micro animations ---------------- */
+@keyframes resFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes resConfirmDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes resShimmer {
+  0% {
+    transform: translateX(-30%) translateY(-30%) rotate(0deg);
+  }
+  100% {
+    transform: translateX(30%) translateY(30%) rotate(360deg);
+  }
+}

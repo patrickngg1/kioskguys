@@ -1,13 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import utaLogo from '../assets/apple-touch-icon.png'; // ✅ local import
+// src/components/Header.jsx
+import React, { useEffect, useState, useContext } from 'react';
+import { UIAssetsContext } from '../App'; // 🔥 use global assets
 
 export default function Header() {
+  const assets = useContext(UIAssetsContext); // 🔥 access Django images
   const [time, setTime] = useState(() => new Date());
 
+  // update clock every second
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // choose best available logo
+  const utaLogo =
+    assets['uta-logo'] ||
+    assets['apple-touch-icon'] || // most likely
+    assets['favicon-32x32'] ||
+    assets['favicon-16x16'];
 
   const formatTime = (d) =>
     d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -21,14 +31,13 @@ export default function Header() {
 
   return (
     <>
-      <header
-        className='kiosk-header'
-        role='banner'
-        aria-label='Smart kiosk header'
-      >
-        {/* ===== Left Brand Section ===== */}
+      <header className='kiosk-header'>
         <div className='brand-left'>
-          <img src={utaLogo} alt='UTA logo' className='uta-logo' />
+          {utaLogo ? (
+            <img src={utaLogo} className='uta-logo' alt='UTA logo' />
+          ) : (
+            <div className='uta-logo uta-logo-fallback'>UTA</div>
+          )}
 
           <div className='brand-text'>
             <div className='brand-title'>ERSA Smart Kiosk</div>
@@ -36,22 +45,18 @@ export default function Header() {
           </div>
         </div>
 
-        {/* ===== Center Accent Message ===== */}
-        <div className='header-center' aria-hidden='true'>
+        <div className='header-center'>
           <span className='welcome-msg'>Welcome, Maverick!</span>
         </div>
 
-        {/* ===== Right Clock Section ===== */}
         <div className='brand-right'>
           <div className='kiosk-date'>{formatDate(time)}</div>
-          <div className='kiosk-time' aria-live='polite'>
-            {formatTime(time)}
-          </div>
+          <div className='kiosk-time'>{formatTime(time)}</div>
         </div>
       </header>
 
-      {/* ===== Animated Accent Bar Below Header ===== */}
-      <div className='kiosk-accent' aria-hidden='true' />
+      {/* Accent bar */}
+      <div className='kiosk-accent' />
     </>
   );
 }

@@ -5,6 +5,11 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenVerifyView,
 )
+from kiosks.ui_assets import get_ui_assets;
+
+# ⭐ ADD THESE THREE IMPORTS
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # Admin
@@ -13,20 +18,19 @@ urlpatterns = [
     # App pages
     path('', include('main.urls')),
 
-    # Session-based auth (login, register, me, logout)
-    # Now your endpoints are:
-    #   /api/auth/login/
-    #   /api/auth/register/
-    #   /api/auth/logout/
-    #   /api/auth/me/
+    # Auth endpoints
     path('api/auth/', include('accounts.urls')),
 
-    # Supply Request API
-    #   /api/supplies/request/
+    # Supply Request + Items API
     path('api/', include('api.urls')),
-
-    # JWT Endpoints (future use)
+    path("api/ui-assets/", get_ui_assets),
+    # JWT Endpoints
     path('api/auth/jwt/login/', TokenObtainPairView.as_view(), name='jwt_login'),
     path('api/auth/jwt/refresh/', TokenRefreshView.as_view(), name='jwt_refresh'),
     path('api/auth/jwt/verify/', TokenVerifyView.as_view(), name='jwt_verify'),
 ]
+
+# ⭐ ADD THIS BLOCK BELOW
+# Serve media files (uploaded images)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

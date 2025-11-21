@@ -45,7 +45,7 @@ export default function DashboardToast({ type, message, visible, onClose }) {
   if (!visible || !message) return null;
 
   const getEmoji = () => {
-    if (type === 'success') return '💎';
+    if (type === 'success') return '✅';
     if (type === 'error') return '⚠️';
     if (type === 'loading') return '⏳';
     return 'ℹ️';

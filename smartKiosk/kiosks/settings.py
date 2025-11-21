@@ -4,6 +4,7 @@ Django settings for kiosks project.
 
 from pathlib import Path
 from datetime import timedelta
+import ssl # Import needed for SMTP_UNVERIFIED_CONTEXT
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -56,12 +57,15 @@ MIDDLEWARE = [
 ]
 
 # ---------------------------------------------------------
-# CORS SETTINGS (Corrected)
+# CORS SETTINGS (Fixed to include Django's own port)
 # ---------------------------------------------------------
 CORS_ALLOW_CREDENTIALS = True   # allow cookies!
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    # 💡 Fix: Add Django's development port (8000) for local self-referencing.
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -77,9 +81,6 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-
-# Remove allow-all-origins — it BREAKS cookies
-# CORS_ALLOW_ALL_ORIGINS = True  # ❌ REMOVE THIS
 
 # ---------------------------------------------------------
 # URL CONF
@@ -182,21 +183,34 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_TIMEOUT = 20
 
 # Disable SMTP SSL certificate verification (dev only)
-import ssl
 SMTP_UNVERIFIED_CONTEXT = ssl._create_unverified_context()
 
 
 # Allow cross-site cookies for React -> Django
 SESSION_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_HTTPONLY = False
+SESSION_COOKIE_SECURE = True       # REQUIRED when SameSite=None
+SESSION_COOKIE_HTTPONLY = False    # ok for development
 
 CSRF_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = True          # REQUIRED when SameSite=None
 CSRF_COOKIE_HTTPONLY = False
-
 # React (localhost) is trusted for CSRF POST requests
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    # Fix: Add Django's development port (8000) for local self-referencing.
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
+
+# 💡 FINAL FIX: Use a setting to instruct CSRF middleware to ignore the cancellation path
+# We ignore /api/rooms/reservations/ to cover the cancellation endpoint
+CSRF_IGNORE_PATHS = [
+    '/api/rooms/reservations/', 
+]
+
+# ---------------------------------------------------------
+# MEDIA (uploaded images)
+# ---------------------------------------------------------
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

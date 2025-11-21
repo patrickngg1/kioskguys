@@ -16,7 +16,7 @@ export default function BaseToast({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return '💎'; // premium diamond for success
+        return '✅'; // premium diamond for success
       case 'error':
         return '⚠️'; // error icon
       case 'warning':

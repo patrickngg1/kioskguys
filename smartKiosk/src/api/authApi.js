@@ -1,80 +1,79 @@
 // src/api/authApi.js
+// ------------------------------------------------------------
+// FINAL VERSION — FIXED FOR DJANGO SESSION AUTH + ROOM RESERVATION
+// ------------------------------------------------------------
 
-const BASE_URL = 'http://127.0.0.1:8000'; // Django backend URL
+const BASE_URL = 'http://localhost:8000';
 
-// ------- Session-based login (for kiosk) -------
+// ------------------------------------------------------------
+// LOGIN USING DJANGO SESSION AUTH   (/api/login/)
+// ------------------------------------------------------------
 export async function loginWithSession(email, password) {
-  const res = await fetch(`${BASE_URL}/api/auth/login/`, {
+  const res = await fetch(`${BASE_URL}/api/login/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', // important: send/receive cookies
+    credentials: 'include', // SENDS COOKIE
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ email, password }),
   });
 
   const data = await res.json();
 
-  if (!res.ok) {
+  if (!res.ok || !data.ok) {
     throw new Error(data.error || 'Login failed');
   }
 
-  return data.user; // { id, email, fullName, ... }
+  return data; // contains ok + message
 }
 
-// ------- Registration (for kiosk) -------
-export async function registerWithSession(email, password, fullName) {
-  const res = await fetch(`${BASE_URL}/api/auth/register/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ email, password, fullName }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.error || 'Registration failed');
-  }
-
-  return data.user;
-}
-
-// ------- JWT login (for mobile or future apps) -------
-export async function loginWithJwt(email, password) {
-  const res = await fetch(`${BASE_URL}/api/auth/jwt/login/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    // FIXED: backend expects { email, password }
-    body: JSON.stringify({ email, password }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.detail || 'JWT login failed');
-  }
-
-  return data; // { access, refresh }
-}
-
-// ------- Get current user via session cookie (for kiosk/dashboard) -------
+// ------------------------------------------------------------
+// GET CURRENT LOGGED-IN USER FROM DJANGO SESSION  (/api/me/)
+// ------------------------------------------------------------
 export async function getSessionUser() {
-  const res = await fetch(`${BASE_URL}/api/auth/me/`, {
-    method: 'GET',
-    credentials: 'include',
-  });
+  try {
+    const res = await fetch(`${BASE_URL}/api/me/`, {
+      credentials: 'include', // SEND COOKIE
+    });
 
-  if (!res.ok) {
-    return null; // not logged in
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data.ok || !data.user) return null;
+
+    return data.user; // { id, email, fullName }
+  } catch (err) {
+    console.log('getSessionUser() failed:', err);
+    return null;
   }
-
-  const data = await res.json();
-  return data.user || null;
 }
 
-// ------- Logout session (for kiosk) -------
+// ------------------------------------------------------------
+// LOGOUT SESSION
+// ------------------------------------------------------------
 export async function logoutSession() {
-  await fetch(`${BASE_URL}/api/auth/logout/`, {
+  await fetch(`${BASE_URL}/api/logout/`, {
+    method: 'POST',
+    credentials: 'include', // remove session cookie
+  });
+}
+
+// ------------------------------------------------------------
+// OPTIONAL — REGISTER NEW USER (if you create /register/ later)
+// ------------------------------------------------------------
+export async function registerWithSession(fullName, email, password) {
+  const res = await fetch(`${BASE_URL}/api/register/`, {
     method: 'POST',
     credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fullName, email, password }),
   });
+
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+  return data;
 }
