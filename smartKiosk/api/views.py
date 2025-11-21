@@ -36,33 +36,69 @@ from django.utils import timezone
 def register_user(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
-        email = data.get("email").lower().strip()
-        password = data.get("password")
-        full_name = data.get("fullName").strip()
+
+        email = data.get("email", "").lower().strip()
+        password = data.get("password", "")
+        full_name = data.get("fullName", "").strip()
+
     except Exception:
-        return JsonResponse({"ok": False, "error": "Invalid JSON or missing fields"}, status=400)
+        return JsonResponse(
+            {"ok": False, "error": "Invalid JSON or missing fields"},
+            status=400
+        )
 
-    if not all([email, password, full_name]):
-        return JsonResponse({"ok": False, "error": "All fields are required"}, status=400)
+    # Validate required fields
+    if not email or not password or not full_name:
+        return JsonResponse(
+            {"ok": False, "error": "All fields are required"},
+            status=400
+        )
 
-    # 2. Check for existing email (and use email as unique username)
+    # Check for existing email
     if User.objects.filter(email=email).exists():
-        return JsonResponse({"ok": False, "error": "This email is already registered"}, status=409)
+        return JsonResponse(
+            {"ok": False, "error": "This email is already registered"},
+            status=409
+        )
 
-    # 3. Create User
     try:
-        # Use email as username for consistency/uniqueness
-        user = User.objects.create_user(username=email, email=email, password=password)
+        # Create Django user using email as username
+        user = User.objects.create_user(
+            username=email,
+            email=email,
+            password=password
+        )
+
+        # ---------------------------------------------------------
+        # SAVE first_name + last_name properly into Django's User model
+        # ---------------------------------------------------------
+        parts = full_name.split()
+        first = parts[0]
+        last = " ".join(parts[1:]) if len(parts) > 1 else ""
+
+        user.first_name = first
+        user.last_name = last
         user.save()
 
-        # 4. Create UserProfile (for full name, etc.)
-        UserProfile.objects.create(user=user, full_name=full_name)
+        # ---------------------------------------------------------
+        # Create UserProfile and store full_name there too
+        # ---------------------------------------------------------
+        UserProfile.objects.create(
+            user=user,
+            full_name=full_name
+        )
 
     except Exception as e:
         print("Registration error:", e)
-        return JsonResponse({"ok": False, "error": "Registration failed due to server error"}, status=500)
+        return JsonResponse(
+            {"ok": False, "error": "Registration failed due to server error"},
+            status=500
+        )
 
-    return JsonResponse({"ok": True, "message": "Account created successfully"}, status=201)
+    return JsonResponse(
+        {"ok": True, "message": "Account created successfully"},
+        status=201
+    )
 
 # ---------------------------------------------------------
 # GET /api/items/
@@ -756,7 +792,7 @@ def login_user(request):
             "id": user_obj.id, # 💡 FIX APPLIED: ADDED User ID
             "fullName": full_name,
             "email": user_obj.email,
-            "isAdmin": is_admin,
+            "isAdmin": user_obj.is_staff,
         },
         status=200,
     )
@@ -791,7 +827,7 @@ def get_session_user(request):
                 "id": user.id,
                 "email": user.email,
                 "fullName": full_name,
-                "isAdmin": is_admin,
+                "isAdmin": user.is_staff,
             },
         },
         status=200,

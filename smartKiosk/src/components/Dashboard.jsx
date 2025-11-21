@@ -171,7 +171,7 @@ export default function Dashboard() {
       user?.email,
 
     id: user?.id ?? '—',
-    role: 'Authenticated User',
+    role: user?.isAdmin ? 'Administrator' : 'Authenticated User',
     email: user?.email,
     avatar:
       'https://api.dicebear.com/7.x/thumbs/svg?seed=' +
@@ -509,6 +509,24 @@ export default function Dashboard() {
               {banners[bannerIdx].cta.label}
             </button>
           </div>
+          {/* ADMIN CARDS (only for admin users) */}
+          {user?.isAdmin && (
+            <div className='card action-card' style={{ gridArea: 'admin1' }}>
+              <div className='action-head'>
+                <div className='action-title'>Admin Dashboard</div>
+              </div>
+              <p className='action-copy'>
+                Manage rooms, reservations, items & users.
+              </p>
+
+              <button
+                onClick={() => setShowAdminPanel(true)}
+                className='btn btn-primary w-full'
+              >
+                Open Admin Panel
+              </button>
+            </div>
+          )}
 
           {/* MAP */}
           <div className='map-container' style={{ gridArea: 'map' }}>
