@@ -59,21 +59,32 @@ export default function Dashboard() {
     const navUser = location.state?.user || null;
 
     async function initUser() {
+      // If user was passed during login navigation
       if (navUser) {
         setUser(navUser);
-        setProfile({ fullName: navUser.fullName, email: navUser.email });
+        setProfile({
+          fullName: navUser.fullName,
+          email: navUser.email,
+        });
         return;
       }
 
+      // Otherwise load from Django session (/api/me/)
       const sessionUser = await getSessionUser();
 
-      if (sessionUser === null) {
+      // Backend returns: { ok: true, user: {...} }
+      if (!sessionUser || !sessionUser.user) {
         navigate('/');
         return;
       }
 
-      setUser(sessionUser);
-      setProfile({ fullName: sessionUser.fullName, email: sessionUser.email });
+      const u = sessionUser.user;
+
+      setUser(u);
+      setProfile({
+        fullName: u.fullName,
+        email: u.email,
+      });
     }
 
     initUser();
@@ -196,6 +207,7 @@ export default function Dashboard() {
 
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [showSuppliesModal, setShowSuppliesModal] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastShake, setToastShake] = useState(false);
 
@@ -471,7 +483,7 @@ export default function Dashboard() {
                 <div className='user-id'>User ID: {display.id}</div>
               </div>
             </div>
-            <div className='user-meta'>{display.role}</div>
+            <div className='user-meta'>Role: {display.role}</div>
             <div className='user-email'>{display.email}</div>
 
             <button
@@ -511,7 +523,7 @@ export default function Dashboard() {
           </div>
           {/* ADMIN CARDS (only for admin users) */}
           {user?.isAdmin && (
-            <div className='card action-card' style={{ gridArea: 'admin1' }}>
+            <div className='card action-card' style={{ gridArea: 'adminFull' }}>
               <div className='action-head'>
                 <div className='action-title'>Admin Dashboard</div>
               </div>

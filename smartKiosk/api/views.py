@@ -797,10 +797,6 @@ def login_user(request):
         status=200,
     )
 
-# ---------------------------------------------------------
-# GET /api/me/
-# Return the current session user, if logged in
-# ---------------------------------------------------------
 @csrf_exempt
 @require_GET
 def get_session_user(request):
@@ -808,30 +804,16 @@ def get_session_user(request):
         return JsonResponse({"ok": False, "user": None}, status=401)
 
     user = request.user
-    profile = getattr(user, "userprofile", None)
 
-    full_name = None
-    is_admin = False
+    # Build user object exactly how frontend expects it
+    user_data = {
+        "id": user.id,
+        "email": user.email,
+        "fullName": user.get_full_name() or user.username or user.email,
+        "isAdmin": user.is_staff,   # KEY FIX!
+    }
 
-    if profile:
-        full_name = profile.full_name or None
-        is_admin = getattr(profile, "is_admin", False)
-
-    if not full_name:
-        full_name = user.get_full_name() or user.username or user.email
-
-    return JsonResponse(
-        {
-            "ok": True,
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "fullName": full_name,
-                "isAdmin": user.is_staff,
-            },
-        },
-        status=200,
-    )
+    return JsonResponse({"ok": True, "user": user_data}, status=200)
 
 
 # ---------------------------------------------------------

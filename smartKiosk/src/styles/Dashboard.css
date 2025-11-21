@@ -63,7 +63,8 @@
   grid-template-areas:
     'user banner'
     'reserve map'
-    'supplies map';
+    'supplies map'
+    'adminFull adminFull';
   gap: 2rem;
   width: min(1400px, 95vw);
   margin: 0 auto;

@@ -194,6 +194,7 @@ export default function AuthForm({ onLoginSuccess }) {
         id: response.id,
         email: response.email,
         fullName: response.fullName,
+        isAdmin: response.isAdmin, // ⭐ IMPORTANT ⭐
       };
 
       setTimeout(() => {
