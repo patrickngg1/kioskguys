@@ -223,7 +223,23 @@ export default function Dashboard() {
     endPeriod: 'AM',
   });
 
-  // ❌ submitReservation function has been removed.
+  const loadReservations = async () => {
+    try {
+      const res = await fetch(
+        'http://localhost:8000/api/rooms/reservations/my/',
+        {
+          credentials: 'include',
+        }
+      );
+      const data = await res.json();
+
+      if (data.ok && Array.isArray(data.reservations)) {
+        setReservations(data.reservations);
+      }
+    } catch (err) {
+      console.error('Failed to load reservations:', err);
+    }
+  };
 
   // ------------------------ Items from backend (TiDB) ------------------------
   // /api/items/ returns: { ok: true, categories: { "Storage Closet": [...], "Break Room": [...], "K-Cups": [...] } }
@@ -560,12 +576,15 @@ export default function Dashboard() {
       {showReserveModal && (
         <ReserveConferenceRoom
           isOpen={showReserveModal}
-          onClose={() => setShowReserveModal(false)}
+          onClose={() => {
+            setShowReserveModal(false);
+            loadReservations(); // ← reload data WITHOUT page refresh
+          }}
           user={user}
           setToast={setToast}
           setToastShake={setToastShake}
           existingReservations={reservations}
-          onReservationCreated={(r) => setReservations((prev) => [...prev, r])}
+          onReservationCreated={() => loadReservations()}
         />
       )}
 

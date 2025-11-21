@@ -282,10 +282,18 @@ function ReserveConferenceRoom({
           endTime: end24,
         }),
       });
+      // Safely parse backend response
+      let data = null;
 
-      const data = await res.json();
+      try {
+        data = await res.json();
+      } catch {
+        // Backend returned no JSON body (common with 201 Created)
+        data = {};
+      }
 
-      if (!res.ok || !data.ok) {
+      // Correct success detection
+      if (!res.ok || data.ok !== true) {
         if (res.status === 409) {
           setToast(
             data.message ||
