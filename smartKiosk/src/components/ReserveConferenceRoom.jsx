@@ -7,6 +7,7 @@
 // - Multi-select cancel
 // - Confirmation panel: ONLY TWO buttons (Yes / Keep)
 // - No inline styles added
+// - ✅ Perfect pluralization for cancel UX
 // ---------------------------------------------------------------
 import '../styles/Dashboard.css';
 import '../styles/reserveModal.css';
@@ -181,6 +182,10 @@ function ReserveConferenceRoom({
   const firstSelectedId = selectedIds[0] || null;
   const selectedCount = selectedIds.length;
 
+  // ✅ Perfect pluralization helpers
+  const noun = selectedCount === 1 ? 'reservation' : 'reservations';
+  const theNoun = selectedCount === 1 ? 'the reservation' : 'the reservations';
+
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
       if (prev.includes(id)) {
@@ -292,17 +297,15 @@ function ReserveConferenceRoom({
           endTime: end24,
         }),
       });
-      // Safely parse backend response
+
       let data = null;
 
       try {
         data = await res.json();
       } catch {
-        // Backend returned no JSON body (common with 201 Created)
         data = {};
       }
 
-      // Correct success detection
       if (!res.ok || data.ok !== true) {
         if (res.status === 409) {
           setToast(
@@ -333,7 +336,6 @@ function ReserveConferenceRoom({
         cancelReason: r.cancelReason || '',
       });
 
-      // Add into local "my reservations"
       setMyReservations((prev) => [
         ...prev,
         {
@@ -352,7 +354,6 @@ function ReserveConferenceRoom({
       );
       setToastShake(false);
 
-      // Reset form
       setReservationData({
         roomId: '',
         date: '',
@@ -374,7 +375,6 @@ function ReserveConferenceRoom({
     }
   };
 
-  // In src/components/ReserveConferenceRoom.jsx (Replace the existing function with this)
   const handleConfirmCancelSelected = async () => {
     if (selectedIds.length === 0) return;
 
@@ -392,8 +392,6 @@ function ReserveConferenceRoom({
           {
             method: 'POST',
             credentials: 'include',
-            // 💡 FIX APPLIED: Removed headers and body to send the cleanest request possible.
-            // The backend's request.body read will handle the parsing gracefully.
           }
         );
 
@@ -407,8 +405,6 @@ function ReserveConferenceRoom({
         const msg = (data?.error || data?.message || '').toLowerCase();
         const alreadyCanceled = msg.includes('already');
 
-        // Only count success when backend confirms it,
-        // OR when it is already canceled (race-proof).
         if ((res.ok && data.ok) || alreadyCanceled) {
           successes.push(id);
           setLocallyCancelledIds((prev) => [...prev, id]);
@@ -426,14 +422,12 @@ function ReserveConferenceRoom({
       }
     }
 
-    // ✅ Only remove the ones that truly succeeded
     if (successes.length > 0) {
       setMyReservations((prev) =>
         prev.filter((r) => !successes.includes(r.id))
       );
     }
 
-    // ✅ Toasts that make sense in kiosk UX
     if (failures.length > 0) {
       if (successes.length === 0) {
         setToast(
@@ -573,8 +567,7 @@ function ReserveConferenceRoom({
                           {confirmingCancel && firstSelectedId === res.id && (
                             <div className='cancel-confirm-panel'>
                               <p className='cancel-confirm-text'>
-                                Cancel {selectedCount} reservation
-                                {selectedCount > 1 ? 's' : ''}?
+                                Cancel {selectedCount} {noun}?
                               </p>
                               <div className='cancel-confirm-actions'>
                                 <button
@@ -582,7 +575,7 @@ function ReserveConferenceRoom({
                                   className='btn btn-primary cancel-confirm-btn'
                                   onClick={handleConfirmCancelSelected}
                                 >
-                                  Yes, Cancel the reservation
+                                  Yes, Cancel {theNoun}
                                 </button>
 
                                 <button
@@ -590,7 +583,7 @@ function ReserveConferenceRoom({
                                   className='btn btn-primary cancel-confirm-btn keep-btn'
                                   onClick={() => setConfirmingCancel(false)}
                                 >
-                                  Keep the reservation
+                                  Keep {theNoun}
                                 </button>
                               </div>
                             </div>

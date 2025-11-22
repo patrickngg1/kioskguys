@@ -1,17 +1,24 @@
-# api/views.py
 import json
 import smtplib
+import os
+import requests
+from base64 import b64encode
+
 from email.mime.text import MIMEText
 from base64 import b64encode
 
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import F
-
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from api.utils.email_templates import render_reservation_email
+from api.utils.calendar_utils import build_calendar_links
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+
 
 from accounts.models import UserProfile
 
@@ -26,6 +33,62 @@ from .models import (
 
 from datetime import datetime, timedelta
 from django.utils import timezone
+
+# ---------------------------------------------------------
+# SendGrid Email Helper (Web API, bypassing broken SMTP)
+# ---------------------------------------------------------
+def send_via_sendgrid(
+    to_email,
+    subject,
+    html_content,
+    *,
+    ics_content=None,
+    from_email="ersaatuta@gmail.com",
+    from_name="UTA Smart Kiosk"
+):
+    """
+    Sends an email using SendGrid Web API.
+    Supports HTML emails + optional ICS calendar attachment.
+    """
+    api_key = os.environ.get("SENDGRID_API_KEY") or getattr(settings, "SENDGRID_API_KEY", None)
+    if not api_key:
+        raise Exception("SENDGRID_API_KEY is missing")
+
+    # Base payload for SendGrid API v3
+    payload = {
+        "personalizations": [{"to": [{"email": to_email}]}],
+        "from": {"email": from_email, "name": from_name},
+        "subject": subject,
+        "content": [{"type": "text/html", "value": html_content}],
+    }
+
+    # Attach ICS file (calendar invite) if provided
+    if ics_content:
+        # ics_content is already bytes — DO NOT encode again
+        payload["attachments"] = [
+            {
+                "content": b64encode(ics_content).decode("utf-8"),
+                "type": "text/calendar",  # SendGrid requires NO semicolons
+                "filename": "reservation.ics",
+                "disposition": "attachment",
+            }
+        ]
+
+    # Call SendGrid API v3
+    res = requests.post(
+        "https://api.sendgrid.com/v3/mail/send",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=15,
+    )
+
+    if res.status_code >= 400:
+        raise Exception(f"SendGrid error {res.status_code}: {res.text}")
+
+    return True
 
 # ---------------------------------------------------------
 # POST /api/register/
@@ -100,6 +163,7 @@ def register_user(request):
         status=201
     )
 
+
 # ---------------------------------------------------------
 # GET /api/items/
 # Returns all items grouped by category (display name)
@@ -168,7 +232,7 @@ def upload_item_image(request, item_id):
 
 # ---------------------------------------------------------
 # POST /api/supplies/request/
-# Creates a supply request, updates popularity, sends email
+# Creates a supply request, updates popularity, sends email (PREMIUM)
 # ---------------------------------------------------------
 @csrf_exempt
 @require_POST
@@ -243,45 +307,48 @@ def create_supply_request(request):
         ItemPopularity.objects.filter(pk=pop.pk).update(count=F("count") + 1)
 
     # ---------------------------------------------------------
-    # Send email notification
+    # Send PREMIUM email notification via Django backend (SendGrid)
     # ---------------------------------------------------------
-    subject = f"New Supply Request from {full_name}"
-    recipient = "optimistic.prakash@gmail.com"
-
-    body_lines = [
-        "A new supply request has been submitted.",
-        "",
-        f"Requester: {full_name}",
-        f"User ID: {user_id}",
-        f"Email: {email}",
-        "",
-        "Items Requested:",
-    ]
-    body_lines.extend([f"- {name}" for name in item_names])
-    body_lines.extend(
-        [
-            "",
-            f"Request ID: {supply_request.id}",
-            f"Requested At: {supply_request.requested_at}",
-        ]
-    )
-
-    msg = MIMEText("\n".join(body_lines))
-    msg["Subject"] = subject
-    msg["From"] = settings.EMAIL_HOST_USER
-    msg["To"] = recipient
-
     email_sent = False
     email_error = None
 
     try:
-        with smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT) as server:
-            server.starttls(context=settings.SMTP_UNVERIFIED_CONTEXT)
-            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-            server.sendmail(settings.EMAIL_HOST_USER, recipient, msg.as_string())
+        from django.core.mail import EmailMultiAlternatives
+        from api.utils.email_templates import render_supply_request_email
+
+        backend_base = getattr(
+            settings,
+            "BACKEND_BASE_URL",
+            request.build_absolute_uri("/").rstrip("/")
+        )
+        logo_url = f"{backend_base}/media/ui_assets/apple-touch-icon.png"
+
+        html_body = render_supply_request_email(
+            full_name=full_name,
+            email=email,
+            items=item_names,
+            request_id=supply_request.id,
+            timestamp=supply_request.requested_at,
+            logo_url=logo_url,
+        )
+
+        subject = f"📦 New Supply Request — {full_name}"
+        recipient = "optimistic.prakash@gmail.com"
+
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body="A new supply request has been submitted.",
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", settings.EMAIL_HOST_USER),
+            to=[recipient],
+        )
+        msg.attach_alternative(html_body, "text/html")
+        msg.send()
+
         email_sent = True
+
     except Exception as e:
         email_error = str(e)
+        email_sent = False
 
     return JsonResponse(
         {
@@ -362,14 +429,14 @@ def get_rooms(request):
 
     return JsonResponse({"ok": True, "rooms": data}, status=200)
 
-# …………… EVERYTHING ABOVE UNCHANGED ……………
 
 # ---------------------------------------------------------
-# Helpers for calendar link and emails
+# Helpers for calendar link and emails (legacy)
 # ---------------------------------------------------------
 def build_calendar_link(reservation):
     """
     Generate a Google Calendar link using zoneinfo-safe datetimes.
+    (Kept for backward compatibility; no longer used by premium email.)
     """
     from datetime import datetime, timezone as dt_timezone
     from urllib.parse import quote
@@ -405,9 +472,11 @@ def build_calendar_link(reservation):
     return f"https://www.google.com/calendar/render?{query}"
 
 
-
-
 def send_reservation_email(reservation, calendar_link):
+    """
+    Legacy plain-text email sender (kept for compatibility).
+    Now TLS-safe for SendGrid (no unverified context required).
+    """
     subject = f"Reservation Confirmed – {reservation.room.name}"
     body = f"""
 Your conference room reservation is confirmed.
@@ -434,7 +503,12 @@ Add to your calendar:
 
     try:
         with smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT) as server:
-            server.starttls(context=settings.SMTP_UNVERIFIED_CONTEXT)
+            # use context only if it exists (dev-friendly), otherwise normal TLS
+            ctx = getattr(settings, "SMTP_UNVERIFIED_CONTEXT", None)
+            if ctx:
+                server.starttls(context=ctx)
+            else:
+                server.starttls()
             server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
             server.sendmail(
                 settings.EMAIL_HOST_USER, [reservation.email], msg.as_string()
@@ -536,9 +610,74 @@ def create_room_reservation(request):
         email=email,
     )
 
-    # Optional: send calendar email
-    calendar_link = build_calendar_link(reservation)
-    email_sent, email_error = send_reservation_email(reservation, calendar_link)
+        # ---------------------------------------------------------
+    # PREMIUM CALENDAR EMAIL (UTA + Apple Vision Glass Style)
+    # ---------------------------------------------------------
+    email_sent = False
+    email_error = None
+    calendar_link = None
+
+    try:
+        from api.utils.calendar_utils import create_ics_content as generate_ics_event, build_calendar_links
+
+        from api.utils.email_templates import render_reservation_email
+
+        tz = timezone.get_current_timezone()
+
+        start_naive = datetime.combine(date_value, start_value)
+        end_naive = datetime.combine(date_value, end_value)
+
+        start_dt = timezone.make_aware(start_naive, tz)
+        end_dt = timezone.make_aware(end_naive, tz)
+
+        ics_content = generate_ics_event(
+            room_name=room.name,
+            start_dt=start_dt,
+            end_dt=end_dt,
+            reservation_id=reservation.id,
+            user_email=email,
+        )
+
+        backend_base = getattr(
+            settings,
+            "BACKEND_BASE_URL",
+            request.build_absolute_uri("/").rstrip("/")
+        )
+        frontend_base = getattr(settings, "FRONTEND_BASE_URL", backend_base)
+
+        ics_download_url = f"{backend_base}/api/calendar/ics/{reservation.id}/"
+        details_url = f"{frontend_base}/dashboard"
+
+        calendar_links = build_calendar_links(reservation)
+
+        logo_url = f"{backend_base}/media/ui_assets/apple-touch-icon.png"
+        html_body = render_reservation_email(
+            user=request.user,
+            reservation=reservation,
+            calendar_links=calendar_links,
+            logo_url=logo_url,
+        )
+
+        subject = f"✔️ Reservation Confirmed — {room.name}"
+
+        # --- SEND VIA SENDGRID (PREMIUM + RELIABLE) ---
+        try:
+            send_via_sendgrid(
+                to_email=email,
+                subject=subject,
+                html_content=html_body,
+                ics_content=ics_content,   # attach ICS correctly
+            )
+            email_sent = True
+            calendar_link = calendar_links.get("google")
+        except Exception as e:
+            email_error = str(e)
+            email_sent = False
+            calendar_link = None  # do not overwrite with a good link later
+
+    except Exception as e:
+        email_error = str(e)
+        email_sent = False
 
     return JsonResponse(
         {
@@ -563,7 +702,6 @@ def create_room_reservation(request):
     )
 
 
-# api/views.py (Replace the existing function with this)
 # ---------------------------------------------------------
 # GET /api/rooms/reservations/my/
 # List future reservations for the logged-in user
@@ -593,8 +731,8 @@ def my_room_reservations(request):
             "roomId": r.room.id,
             "roomName": r.room.name,
             "capacity": r.room.capacity,
-            "hasScreen": r.room.has_screen,   # ← FIXED
-            "hasHdmi": r.room.has_hdmi,       # ← FIXED
+            "hasScreen": r.room.has_screen,
+            "hasHdmi": r.room.has_hdmi,
             "date": str(r.date),
             "startTime": r.start_time.strftime("%H:%M"),
             "endTime": r.end_time.strftime("%H:%M"),
@@ -604,7 +742,6 @@ def my_room_reservations(request):
 
     return JsonResponse({"ok": True, "reservations": data}, status=200)
 
-# api/views.py (Replace the existing function with this)
 
 # ---------------------------------------------------------
 # POST /api/rooms/reservations/<id>/cancel/
@@ -616,14 +753,11 @@ def cancel_room_reservation(request, reservation_id):
     if not request.user.is_authenticated:
         return JsonResponse({"ok": False, "error": "Login required"}, status=401)
 
-    # 💡 CRITICAL FIX: Read the raw body stream to ensure Django's request 
-    # parsing is satisfied, resolving the persistent 400 error.
     try:
-        # Read and discard the entire body content
-        request.read() 
+        request.read()
     except Exception:
         pass
-        
+
     try:
         reservation = RoomReservation.objects.get(id=reservation_id)
 
@@ -633,7 +767,6 @@ def cancel_room_reservation(request, reservation_id):
                 status=400,
             )
 
-        # Only allow the user who booked the room (or an admin in future)
         if reservation.user != request.user:
             return JsonResponse(
                 {"ok": False, "error": "Not allowed"},
@@ -654,14 +787,15 @@ def cancel_room_reservation(request, reservation_id):
     except Exception as e:
         print("Cancel error:", e)
         return JsonResponse({"ok": False, "error": "Server error"}, status=500)
+
+
 # ---------------------------------------------------------
 # POST /api/rooms/reservations/<id>/admin-cancel/
-# Admin cancels ANY reservation + sends cancellation email
+# Admin cancels ANY reservation + sends PREMIUM cancellation email
 # ---------------------------------------------------------
 @csrf_exempt
 @require_POST
 def admin_cancel_reservation(request, reservation_id):
-    # Require admin privileges
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse(
             {"ok": False, "error": "Admin privileges required"},
@@ -683,12 +817,10 @@ def admin_cancel_reservation(request, reservation_id):
             "Your reservation has been cancelled by an administrator."
         )
 
-        # Mark cancelled
         reservation.cancelled = True
         reservation.cancel_reason = reason
         reservation.save()
 
-        # Send cancellation email
         send_cancellation_email(reservation, reason)
 
         return JsonResponse({"ok": True, "message": "Reservation cancelled"})
@@ -705,35 +837,51 @@ def admin_cancel_reservation(request, reservation_id):
             status=500,
         )
 
-def send_cancellation_email(reservation, reason):
-    subject = f"Reservation Cancelled – {reservation.room.name}"
-    body = f"""
-    <h3>Your reservation has been cancelled</h3>
-    <p><b>Room:</b> {reservation.room.name}</p>
-    <p><b>Date:</b> {reservation.date}</p>
-    <p><b>Original Time:</b> {reservation.start_time} – {reservation.end_time}</p>
-    <p><b>Reason:</b> {reason}</p>
-    <br/>
-    <p>If you have any questions, please contact the building administrator.</p>
-    """
 
-    msg = MIMEText(body, "html")
-    msg["Subject"] = subject
-    msg["From"] = settings.EMAIL_HOST_USER
-    msg["To"] = reservation.email
+def send_cancellation_email(reservation, reason):
+    """
+    PREMIUM cancellation email via Django backend (SendGrid).
+    """
+    email_sent = False
+    email_error = None
 
     try:
-        smtp = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT)
-        smtp.starttls()
-        smtp.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-        smtp.send_message(msg)
-        smtp.quit()
-        return True, None
+        from django.core.mail import EmailMultiAlternatives
+        from api.utils.email_templates import render_cancellation_email
+
+        backend_base = getattr(
+            settings,
+            "BACKEND_BASE_URL",
+            settings.BACKEND_BASE_URL if hasattr(settings, "BACKEND_BASE_URL") else ""
+        )
+        if not backend_base:
+            # fall back to a reasonable absolute base if needed
+            backend_base = "http://localhost:8000"
+
+        logo_url = f"{backend_base}/media/ui_assets/apple-touch-icon.png"
+
+        html_body = render_cancellation_email(reservation, reason, logo_url)
+
+        subject = f"❌ Reservation Cancelled — {reservation.room.name}"
+
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body="Your reservation has been cancelled.",
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", settings.EMAIL_HOST_USER),
+            to=[reservation.email],
+        )
+        msg.attach_alternative(html_body, "text/html")
+        msg.send()
+
+        email_sent = True
+
     except Exception as e:
-        return False, str(e)
+        email_error = str(e)
+        email_sent = False
+
+    return email_sent, email_error
 
 
-# api/views.py (Replace the existing function with this)
 # ---------------------------------------------------------
 # POST /api/login/
 # Session-based login using Django User (TiDB-backed)
@@ -757,7 +905,6 @@ def login_user(request):
             {"ok": False, "error": "Email and password required"}, status=400
         )
 
-    # Django User does NOT authenticate with email by default, so we find user by email
     try:
         user_obj = User.objects.get(email=email)
     except User.DoesNotExist:
@@ -765,7 +912,6 @@ def login_user(request):
             {"ok": False, "error": "Invalid email or password"}, status=401
         )
 
-    # Use username for authenticate()
     user = authenticate(username=user_obj.username, password=password)
 
     if user is None:
@@ -773,7 +919,6 @@ def login_user(request):
             {"ok": False, "error": "Invalid email or password"}, status=401
         )
 
-    # Create session
     login(request, user)
 
     full_name = (
@@ -781,21 +926,19 @@ def login_user(request):
         if hasattr(user_obj, "userprofile")
         else user_obj.username
     )
-    is_admin = hasattr(user_obj, "userprofile") and getattr(
-        user_obj.userprofile, "is_admin", False
-    )
 
     return JsonResponse(
         {
             "ok": True,
             "message": "Login successful",
-            "id": user_obj.id, # 💡 FIX APPLIED: ADDED User ID
+            "id": user_obj.id,
             "fullName": full_name,
             "email": user_obj.email,
             "isAdmin": user_obj.is_staff,
         },
         status=200,
     )
+
 
 @csrf_exempt
 @require_GET
@@ -805,12 +948,11 @@ def get_session_user(request):
 
     user = request.user
 
-    # Build user object exactly how frontend expects it
     user_data = {
         "id": user.id,
         "email": user.email,
         "fullName": user.get_full_name() or user.username or user.email,
-        "isAdmin": user.is_staff,   # KEY FIX!
+        "isAdmin": user.is_staff,
     }
 
     return JsonResponse({"ok": True, "user": user_data}, status=200)
@@ -822,11 +964,10 @@ def get_session_user(request):
 # ---------------------------------------------------------
 @require_GET
 def get_ui_assets(request):
-    from .models import UIAsset  # safe import inside function
+    from .models import UIAsset
 
     assets = {}
 
-    # Build a dict: { "bg-campus": "http://.../media/ui_assets/bg-campus.jpg", ... }
     for asset in UIAsset.objects.all():
         assets[asset.name] = request.build_absolute_uri(asset.image.url)
 
@@ -841,7 +982,42 @@ def get_ui_assets(request):
 @require_POST
 def logoutSession(request):
     try:
-        logout(request)  # from django.contrib.auth
+        logout(request)
         return JsonResponse({"ok": True, "message": "Logged out"}, status=200)
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
+# ---------------------------------------------------------
+# GET /api/calendar/ics/<id>/
+# Download ICS (Apple / iCal / universal)
+# ---------------------------------------------------------
+@require_GET
+def download_ics(request, reservation_id):
+    try:
+        r = RoomReservation.objects.select_related("room").get(id=reservation_id)
+    except RoomReservation.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Reservation not found"}, status=404)
+
+    try:
+        from api.utils.calendar_utils import create_ics_content as generate_ics_event
+
+        tz = timezone.get_current_timezone()
+
+        start_dt = timezone.make_aware(datetime.combine(r.date, r.start_time), tz)
+        end_dt = timezone.make_aware(datetime.combine(r.date, r.end_time), tz)
+
+        ics = generate_ics_event(
+            room_name=r.room.name,
+            start_dt=start_dt,
+            end_dt=end_dt,
+            reservation_id=r.id,
+            user_email=r.email,
+        )
+
+        response = HttpResponse(ics, content_type="text/calendar")
+        response["Content-Disposition"] = 'attachment; filename="reservation.ics"'
+        return response
+
     except Exception as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=500)

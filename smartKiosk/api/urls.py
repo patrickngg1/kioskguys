@@ -47,6 +47,9 @@ urlpatterns = [
         views.admin_cancel_reservation,
         name="admin_cancel_reservation",
     ),
+    path("calendar/ics/<int:reservation_id>/", views.download_ics, name="download_ics"),
+    path("calendar/ics/<int:reservation_id>/", views.download_ics, name="download_ics"),
+
 
     # --------------------------
     # UI Assets

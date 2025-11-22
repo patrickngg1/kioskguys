@@ -1,7 +1,7 @@
 """
 Django settings for kiosks project.
 """
-
+import os
 from pathlib import Path
 from datetime import timedelta
 import ssl # Import needed for SMTP_UNVERIFIED_CONTEXT
@@ -168,19 +168,14 @@ SIMPLE_JWT = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ----------------------------------------------------
-# EMAIL CONFIGURATION (GMAIL SMTP)
+# EMAIL CONFIGURATION (SENDGRID SMTP)
 # ----------------------------------------------------
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
 
-EMAIL_HOST_USER = "ersaatuta@gmail.com"
-EMAIL_HOST_PASSWORD = "wfwxwdtuxufsauyp"  # no spaces
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <no-reply@smartkiosk.uta.edu>"
 
-EMAIL_TIMEOUT = 20
+EMAIL_TIMEOUT = 30
+
 
 # Disable SMTP SSL certificate verification (dev only)
 SMTP_UNVERIFIED_CONTEXT = ssl._create_unverified_context()
