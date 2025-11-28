@@ -357,202 +357,6 @@ def create_supply_request(request):
         status=201,
     )
 
-
-def render_bulk_cancellation_email(reservations, logo_url, cancelled_by, reason):
-    """
-    **PREMIUM BULK CANCELLATION EMAIL**
-    Matches the exact visual style of reservation confirmed,
-    reservation cancelled, and supply request.
-    Shows ALL cancelled reservations in a glass card list.
-    """
-
-    if not reservations:
-        return ""
-
-    # All reservations belong to same user
-    user = reservations[0].user
-    user_first = user.first_name or user.username or "User"
-
-    # Build reservation rows
-    rows_html = ""
-    for r in reservations:
-        date_str = r.date.strftime("%Y-%m-%d")
-        time_str = f"{r.start_time.strftime('%I:%M %p')} – {r.end_time.strftime('%I:%M %p')}"
-        room_name = r.room.name
-
-        rows_html += f"""
-          <tr>
-            <td style="padding:14px 0;">
-              <table width="100%" cellpadding="0" cellspacing="0"
-                     style="background:rgba(15,23,42,0.86);
-                            border-radius:14px;
-                            border:1px solid rgba(148,163,184,0.28);
-                            padding:16px 18px;
-                            box-shadow:inset 0 0 28px rgba(3,7,18,0.32),
-                                       0 15px 45px rgba(0,0,0,0.35);">
-                <tr>
-                  <td>
-                    <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                                font-size:15px; font-weight:700; color:#e5e7eb;">
-                      {room_name}
-                    </div>
-
-                    <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                                font-size:13px; color:rgba(156,163,175,0.95);
-                                margin-top:6px;">
-                      {date_str} • {time_str}
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        """
-
-    # wrap email
-    html = f"""\
-<html>
-  <body style="margin:0; padding:0; background-color:#020617;">
-    <table width="100%" cellpadding="0" cellspacing="0"
-           style="background:#020617; padding:40px 0;">
-      <tr><td align="center">
-
-        <!-- Outer premium card -->
-        <table width="640" cellpadding="0" cellspacing="0" border="0"
-               style="max-width:640px;
-                      background:radial-gradient(circle at 20% 0%,
-                        rgba(3,7,18,0.95) 0%,
-                        rgba(2,6,23,1) 35%,
-                        #020617 100%);
-                      border-radius:26px;
-                      border:1px solid rgba(148,163,184,0.22);
-                      box-shadow:0 28px 70px rgba(0,0,0,0.75);
-                      padding:32px;">
-
-          <!-- Header -->
-          <tr><td style="padding-bottom:20px;">
-            <table width="100%">
-              <tr>
-
-                <!-- Logo -->
-                <td align="left">
-                  <table cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td style="padding-right:12px;">
-                        <img src="{logo_url}" width="46" height="46"
-                             style="display:block; border-radius:12px;
-                             border:1px solid rgba(148,163,184,0.25);" />
-                      </td>
-                      <td>
-                        <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                                    font-size:17px; font-weight:700; color:#e5e7eb;">
-                          UTA Smart Kiosk
-                        </div>
-                        <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                                    font-size:12px; color:rgba(148,163,184,0.85);">
-                          Premium Campus Services
-                        </div>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-
-                <!-- ID (Bulk) -->
-                <td align="right"
-                    style="font-family:system-ui,'Segoe UI',sans-serif;
-                           font-size:12px; color:rgba(148,163,184,0.65);">
-                  Cancellation Summary
-                </td>
-
-              </tr>
-            </table>
-          </td></tr>
-
-          <!-- Title -->
-          <tr><td>
-            <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                        font-size:26px; font-weight:800;
-                        color:#f9fafb; letter-spacing:0.02em;">
-              <span style="font-size:26px; vertical-align:middle;
-                           margin-right:10px;
-                           text-shadow:0 0 14px rgba(238,118,36,0.55);">
-                ⚠️
-              </span>
-              {len(reservations)} Reservation(s) Cancelled
-            </div>
-
-            <!-- Orange line -->
-            <div style="width:160px; height:3px; background:#EE7624;
-                        border-radius:3px; margin-top:8px; margin-bottom:12px;">
-            </div>
-
-            <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                        font-size:14px; color:rgba(209,213,219,0.96);
-                        line-height:1.55;">
-              Hello <b>{user_first}</b>, your reservations have been cancelled.
-            </div>
-            <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                        font-size:13px; color:rgba(209,213,219,0.7);
-                        padding-top:4px;">
-              Cancelled by: <b>{cancelled_by}</b>
-            </div>
-
-          </td></tr>
-
-          <!-- Cancel reason -->
-          <tr><td style="padding-top:18px;">
-            <table width="100%" cellpadding="0" cellspacing="0"
-                   style="background:rgba(15,23,42,0.86);
-                          border-radius:18px;
-                          border:1px solid rgba(148,163,184,0.3);
-                          padding:18px 22px;
-                          box-shadow:inset 0 0 35px rgba(3,7,18,0.35),
-                                     0 18px 55px rgba(0,0,0,0.4);">
-
-              <tr><td>
-                <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                            font-size:13px; color:rgba(156,163,175,0.9);">
-                  Reason:
-                </div>
-                <div style="font-family:system-ui,'Segoe UI',sans-serif;
-                            font-size:14px; color:#e5e7eb; margin-top:4px;">
-                  {reason}
-                </div>
-              </td></tr>
-
-            </table>
-          </td></tr>
-
-          <!-- Cancelled reservations list -->
-          <tr><td style="padding-top:26px;">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              {rows_html}
-            </table>
-          </td></tr>
-
-          <!-- Footer -->
-          <tr><td align="center"
-              style="padding-top:24px; font-family:system-ui,'Segoe UI',sans-serif;
-                     font-size:11px; color:rgba(148,163,184,0.9);">
-            This email confirms that these reservations are no longer active.
-          </td></tr>
-
-          <tr><td align="center"
-              style="font-family:system-ui,'Segoe UI',sans-serif; font-size:10px;
-                     color:rgba(75,85,99,0.95); padding-top:4px;">
-            This notification was generated automatically by UTA Smart Kiosk.
-          </td></tr>
-
-        </table>
-
-      </td></tr>
-    </table>
-  </body>
-</html>
-"""
-    return html
-
-
 # ---------------------------------------------------------
 # GET /api/supplies/popular/?limit=3
 # Grouped by category display name
@@ -857,7 +661,7 @@ def create_room_reservation(request):
 
         send_via_sendgrid(
             to_email=email,
-            subject=f"✔️ Reservation Confirmed — {room.name}",
+            subject=f"✅ Reservation Confirmed — {room.name}",
             html_content=html_body,
             ics_content=ics_data,   # attach ICS
         )
@@ -929,6 +733,9 @@ def my_room_reservations(request):
             "endTime": r.end_time.strftime("%H:%M"),
             "cancelled": r.cancelled,
             "cancelReason": r.cancel_reason or "",
+            "fullName": r.user.full_name if hasattr(r.user, "full_name") else r.user.username,
+            "email": r.user.email,
+            "userId": r.user.id,
         })
 
     return JsonResponse({"ok": True, "reservations": data}, status=200)

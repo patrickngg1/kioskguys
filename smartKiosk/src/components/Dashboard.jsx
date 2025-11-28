@@ -67,6 +67,7 @@ export default function Dashboard() {
           fullName: navUser.fullName,
           email: navUser.email,
         });
+        loadReservations();
         return;
       }
 
@@ -211,6 +212,10 @@ export default function Dashboard() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastShake, setToastShake] = useState(false);
+  const showToast = (message, type = 'success') => {
+    setToast(message || '');
+    setToastShake(type === 'error');
+  };
 
   // ------------------------ Reservations (local) ------------------------
   // 💡 FIX: Set to empty array, relying entirely on the modal's fetch/API
@@ -600,13 +605,13 @@ export default function Dashboard() {
           isOpen={showAdminPanel}
           onClose={() => setShowAdminPanel(false)}
           user={user}
-          // For now, pass what Dashboard already has.
-          // We'll wire real admin fetches next.
           reservations={reservations}
           itemsByCategory={itemsByCategory}
-          // rooms/users can be fetched in AdminPanel later:
           rooms={[]}
           users={[]}
+          // ⭐ Add these two:
+          showToast={showToast}
+          loadReservations={loadReservations}
         />
       )}
 

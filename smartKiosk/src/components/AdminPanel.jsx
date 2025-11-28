@@ -1,31 +1,31 @@
 import React, { useState } from 'react';
 import '../styles/AdminPanel.css';
 
-/**
- * Ultra-premium full-screen Admin Panel
- * - Deep aurora overlay (separate from regular modals)
- * - Left glass sidebar navigation
- * - Right glass content pane with cards/tables
- *
- * Props:
- *  - isOpen
- *  - onClose
- *  - user
- *  - rooms
- *  - reservations
- *  - itemsByCategory
- *  - users
- */
+const to12Hour = (time) => {
+  if (!time) return '';
+
+  let [hour, minute] = time.split(':').map(Number);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+
+  hour = hour % 12;
+  hour = hour || 12;
+
+  return `${hour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+};
+
 export default function AdminPanel({
   isOpen,
   onClose,
   user,
-  rooms = [],
   reservations = [],
   itemsByCategory = {},
+  rooms = [],
   users = [],
+  showToast,
+  loadReservations,
 }) {
   const [activeSection, setActiveSection] = useState('reservations');
+  const [confirmCancelId, setConfirmCancelId] = useState(null);
 
   if (!isOpen) return null;
 
@@ -36,6 +36,42 @@ export default function AdminPanel({
     { key: 'banners', label: 'Banner Images' },
     { key: 'users', label: 'Users' },
   ];
+
+  const adminCancelReservation = async (reservationId) => {
+    try {
+      const res = await fetch(
+        `/api/rooms/reservations/${reservationId}/admin-cancel/`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reason: 'Cancelled by administrator',
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        showToast(
+          'Error cancelling reservation: ' + (data.error || 'unknown'),
+          'error'
+        );
+        return;
+      }
+
+      showToast('Reservation cancelled successfully', 'success');
+
+      if (typeof loadReservations === 'function') {
+        loadReservations();
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Server error while cancelling reservation', 'error');
+    }
+  };
 
   return (
     <div className='admin-overlay' onClick={onClose}>
@@ -95,8 +131,13 @@ export default function AdminPanel({
           {/* Content */}
           <section className='admin-content'>
             {activeSection === 'reservations' && (
-              <ReservationsSection reservations={reservations} />
+              <ReservationsSection
+                reservations={reservations}
+                adminCancelReservation={adminCancelReservation}
+                setConfirmCancelId={setConfirmCancelId}
+              />
             )}
+
             {activeSection === 'rooms' && <RoomsSection rooms={rooms} />}
             {activeSection === 'items' && (
               <ItemsSection itemsByCategory={itemsByCategory} />
@@ -116,6 +157,50 @@ export default function AdminPanel({
             Close Admin Panel
           </button>
         </footer>
+
+        {/* ----------------------------------------------------------
+            Admin Confirmation Modal
+        ----------------------------------------------------------- */}
+        {confirmCancelId && (
+          <div className='modal-overlay'>
+            <div className='modal-box'>
+              <h2 style={{ marginBottom: '1rem', color: '#fff' }}>
+                Cancel Reservation?
+              </h2>
+
+              <p style={{ marginBottom: '1.5rem', color: '#cbd5e1' }}>
+                This will permanently remove the reservation and notify the
+                user. Are you sure you want to continue?
+              </p>
+
+              <div
+                className='modal-actions'
+                style={{
+                  display: 'flex',
+                  gap: '1rem',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <button
+                  className='btn-secondary'
+                  onClick={() => setConfirmCancelId(null)}
+                >
+                  No, Keep
+                </button>
+
+                <button
+                  className='btn-danger'
+                  onClick={() => {
+                    adminCancelReservation(confirmCancelId);
+                    setConfirmCancelId(null);
+                  }}
+                >
+                  Yes, Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -125,7 +210,11 @@ export default function AdminPanel({
 /*  Subsections                                                           */
 /* ====================================================================== */
 
-function ReservationsSection({ reservations }) {
+function ReservationsSection({
+  reservations,
+  adminCancelReservation,
+  setConfirmCancelId,
+}) {
   return (
     <div className='admin-section'>
       <div className='admin-section-header'>
@@ -144,28 +233,23 @@ function ReservationsSection({ reservations }) {
           {reservations.map((r) => (
             <div key={r.id} className='admin-list-row'>
               <div className='admin-list-main'>
-                <div className='admin-list-title'>
-                  {r.roomName || r.room || 'Room'}
+                <div className='admin-item-title'>{r.roomName}</div>
+                <div className='admin-item-time'>
+                  {r.date} — {to12Hour(r.startTime)} to {to12Hour(r.endTime)}
                 </div>
-                <div className='admin-list-meta'>
-                  <span>{r.date}</span>
-                  <span>
-                    {r.startTime} – {r.endTime}
-                  </span>
+
+                <div className='admin-item-user'>
+                  <strong>User:</strong> {r.fullName}
                 </div>
-                <div className='admin-list-meta admin-list-meta-secondary'>
-                  <span>{r.userEmail || r.email}</span>
+                <div className='admin-item-email'>
+                  <strong>Email:</strong> {r.email}
                 </div>
               </div>
+
               <div className='admin-list-actions'>
                 <button
-                  type='button'
                   className='admin-pill-button admin-pill-danger'
-                  onClick={() => {
-                    // TODO: wire backend DELETE /api/rooms/reservations/:id
-                    // eslint-disable-next-line no-alert
-                    alert(`Cancel reservation ${r.id} (hook backend next)`);
-                  }}
+                  onClick={() => setConfirmCancelId(r.id)}
                 >
                   Cancel Reservation
                 </button>

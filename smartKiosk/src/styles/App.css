@@ -97,7 +97,7 @@ html {
 *::-webkit-scrollbar-thumb {
   /* UTA Theme: Use a blue-to-orange gradient */
   background: linear-gradient(180deg, #2563eb, #f97316);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 *::-webkit-scrollbar-thumb:hover {
   /* UTA Theme: Use brighter shades on hover */

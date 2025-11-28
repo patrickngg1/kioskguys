@@ -452,7 +452,8 @@
   -webkit-backdrop-filter: blur(22px) saturate(180%);
   z-index: 9999;
   animation: fadeIn 0.3s ease;
-  padding: 0; /* ✨ remove header-offset gap */
+  padding-top: 6rem;
+  padding-bottom: 3rem;
 }
 /* ============================================================
    UNIFIED MODAL BOX — DARK GLASS, RESPONSIVE, AND SAFE BELOW HEADER
@@ -472,8 +473,6 @@
   max-height: calc(85vh - 2rem); /* ✅ gives a safe gap from bottom */
   padding: 2.5rem 2.5rem 2.25rem;
   overflow-y: auto;
-  margin-top: 8rem; /* instead of overlay padding */
-  margin-bottom: 4rem; /* breathing space */
   animation: slideUp 0.3s ease;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
