@@ -425,6 +425,132 @@ def get_rooms(request):
 
     return JsonResponse({"ok": True, "rooms": data}, status=200)
 
+@csrf_exempt
+@require_POST
+def create_room(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin privileges required"}, status=403)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    name = data.get("name", "").strip()
+    capacity = data.get("capacity")
+    has_screen = data.get("hasScreen", False)
+    has_hdmi = data.get("hasHdmi", False)
+
+    if not name:
+        return JsonResponse({"ok": False, "error": "Room name required"}, status=400)
+
+    try:
+        capacity = int(capacity)
+    except:
+        return JsonResponse({"ok": False, "error": "Capacity must be an integer"}, status=400)
+
+    room = Room.objects.create(
+        name=name,
+        capacity=capacity,
+        has_screen=bool(has_screen),
+        has_hdmi=bool(has_hdmi),
+    )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "room": {
+                "id": room.id,
+                "name": room.name,
+                "capacity": room.capacity,
+                "hasScreen": room.has_screen,
+                "hasHdmi": room.has_hdmi,
+            },
+        },
+        status=201,
+    )
+
+@csrf_exempt
+@require_POST
+def update_room(request, room_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin privileges required"}, status=403)
+
+    try:
+        room = Room.objects.get(id=room_id)
+    except Room.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Room not found"}, status=404)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    name = data.get("name")
+    capacity = data.get("capacity")
+    has_screen = data.get("hasScreen")
+    has_hdmi = data.get("hasHdmi")
+
+    if isinstance(name, str) and name.strip():
+        room.name = name.strip()
+
+    try:
+        if capacity is not None:
+            room.capacity = int(capacity)
+    except:
+        return JsonResponse({"ok": False, "error": "Capacity must be an integer"}, status=400)
+
+    if has_screen is not None:
+        room.has_screen = bool(has_screen)
+
+    if has_hdmi is not None:
+        room.has_hdmi = bool(has_hdmi)
+
+    room.save()
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "room": {
+                "id": room.id,
+                "name": room.name,
+                "capacity": room.capacity,
+                "hasScreen": room.has_screen,
+                "hasHdmi": room.has_hdmi,
+            },
+        },
+        status=200,
+    )
+
+@csrf_exempt
+@require_POST
+def delete_room(request, room_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin privileges required"}, status=403)
+
+    try:
+        room = Room.objects.get(id=room_id)
+    except Room.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Room not found"}, status=404)
+
+    # Prevent deletion if room has future reservations
+    today = timezone.localdate()
+    future_reservations = RoomReservation.objects.filter(
+        room=room,
+        date__gte=today,
+        cancelled=False
+    ).exists()
+
+    if future_reservations:
+        return JsonResponse(
+            {"ok": False, "error": "Cannot delete: room has upcoming reservations"},
+            status=409,
+        )
+
+    room.delete()
+
+    return JsonResponse({"ok": True, "message": "Room deleted"}, status=200)
+
 
 # ---------------------------------------------------------
 # Helpers for calendar link and emails (legacy)
@@ -1075,3 +1201,5 @@ def download_ics(request, reservation_id):
 
     except Exception as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+

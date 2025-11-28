@@ -667,11 +667,16 @@ function ReserveConferenceRoom({
                 }
               >
                 <option value=''>Select</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
+                {rooms.map((r) => {
+                  const label = `${r.name} —  👥 ${r.capacity} seats · ${
+                    r.hasHdmi ? '🔌 HDMI' : '🔌 No HDMI'
+                  } · ${r.hasScreen ? '🖥️ Screen' : '🖥️ No Screen'}`;
+                  return (
+                    <option key={r.id} value={r.id}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>

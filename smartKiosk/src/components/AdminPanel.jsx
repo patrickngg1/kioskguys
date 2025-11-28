@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../styles/AdminPanel.css';
 
 const to12Hour = (time) => {
@@ -138,7 +138,10 @@ export default function AdminPanel({
               />
             )}
 
-            {activeSection === 'rooms' && <RoomsSection rooms={rooms} />}
+            {activeSection === 'rooms' && (
+              <RoomsSection rooms={rooms} showToast={showToast} />
+            )}
+
             {activeSection === 'items' && (
               <ItemsSection itemsByCategory={itemsByCategory} />
             )}
@@ -262,13 +265,173 @@ function ReservationsSection({
   );
 }
 
-function RoomsSection({ rooms }) {
+function RoomsSection({ rooms, showToast }) {
+  const [roomList, setRoomList] = useState(rooms || []);
+  const [loading, setLoading] = useState(false);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [roomForm, setRoomForm] = useState({
+    id: null,
+    name: '',
+    capacity: '',
+    hasScreen: true,
+    hasHdmi: true,
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const loadRooms = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/rooms/', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        showToast?.(data.error || 'Failed to load rooms', 'error');
+        setRoomList([]);
+        return;
+      }
+      setRoomList(data.rooms || []);
+    } catch (err) {
+      console.error('Load rooms error', err);
+      showToast?.('Failed to load rooms', 'error');
+      setRoomList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRooms();
+  }, []);
+
+  const openAdd = () => {
+    setRoomForm({
+      id: null,
+      name: '',
+      capacity: '',
+      hasScreen: true,
+      hasHdmi: true,
+    });
+    setShowAddModal(true);
+  };
+
+  const openEdit = (room) => {
+    setRoomForm({
+      id: room.id,
+      name: room.name || '',
+      capacity: room.capacity ?? '',
+      hasScreen: !!room.hasScreen,
+      hasHdmi: !!room.hasHdmi,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleFormChange = (field, value) => {
+    setRoomForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    // Name required
+    if (!roomForm.name.trim()) {
+      showToast?.('Room name is required', 'error');
+      return;
+    }
+
+    // Capacity required and must be >= 1
+    const rawCapacity = String(roomForm.capacity ?? '').trim();
+    const capacityNumber = Number(rawCapacity);
+
+    if (!rawCapacity || Number.isNaN(capacityNumber) || capacityNumber < 1) {
+      showToast?.('Room capacity must be at least 1', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        name: roomForm.name.trim(),
+        capacity: capacityNumber,
+        hasScreen: roomForm.hasScreen,
+        hasHdmi: roomForm.hasHdmi,
+      };
+
+      const isEdit = !!roomForm.id;
+      const url = isEdit
+        ? `/api/rooms/${roomForm.id}/update/`
+        : '/api/rooms/create/';
+
+      const res = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        showToast?.(data.error || 'Unable to save room', 'error');
+        return;
+      }
+
+      const newRoom = data.room;
+
+      if (isEdit) {
+        setRoomList((prev) =>
+          prev.map((r) => (r.id === newRoom.id ? newRoom : r))
+        );
+        showToast?.('Room updated', 'success');
+      } else {
+        setRoomList((prev) => [...prev, newRoom]);
+        showToast?.('Room added', 'success');
+      }
+
+      setShowAddModal(false);
+      setShowEditModal(false);
+    } catch (err) {
+      console.error('Save room error', err);
+      showToast?.('Unable to save room', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = (room) => {
+    setDeleteTarget(room);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/rooms/${deleteTarget.id}/delete/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        showToast?.(data.error || 'Unable to delete room', 'error');
+        return;
+      }
+      setRoomList((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+      showToast?.('Room deleted', 'success');
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Delete room error', err);
+      showToast?.('Unable to delete room', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className='admin-section'>
       <div className='admin-section-header'>
         <h2 className='admin-section-title'>Rooms</h2>
         <p className='admin-section-subtitle'>
-          Add, remove, and configure conference rooms.
+          Add, rename, and configure conference rooms.
         </p>
       </div>
 
@@ -276,22 +439,21 @@ function RoomsSection({ rooms }) {
         <button
           type='button'
           className='admin-pill-button admin-pill-primary'
-          onClick={() => {
-            // TODO: open Add Room glass modal
-            alert('Open Add Room modal (to implement)');
-          }}
+          onClick={openAdd}
         >
           + Add Room
         </button>
       </div>
 
-      {(!rooms || rooms.length === 0) && (
+      {loading && <p className='admin-empty'>Loading rooms…</p>}
+
+      {!loading && (!roomList || roomList.length === 0) && (
         <p className='admin-empty'>No rooms configured yet.</p>
       )}
 
-      {rooms && rooms.length > 0 && (
+      {!loading && roomList && roomList.length > 0 && (
         <div className='admin-grid'>
-          {rooms.map((room) => (
+          {roomList.map((room) => (
             <div key={room.id} className='admin-card'>
               <div className='admin-card-header'>
                 <div className='admin-card-title'>{room.name}</div>
@@ -312,17 +474,148 @@ function RoomsSection({ rooms }) {
               <div className='admin-card-footer'>
                 <button
                   type='button'
-                  className='admin-pill-button admin-pill-danger'
-                  onClick={() =>
-                    // TODO: DELETE /api/rooms/:id
-                    alert(`Delete room ${room.id} (hook backend next)`)
-                  }
+                  className='admin-pill-button admin-pill-subtle'
+                  onClick={() => openEdit(room)}
                 >
-                  Delete Room
+                  Edit
+                </button>
+                <button
+                  type='button'
+                  className='admin-pill-button admin-pill-danger'
+                  onClick={() => confirmDelete(room)}
+                >
+                  Delete
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Add / Edit Room Modal */}
+      {(showAddModal || showEditModal) && (
+        <div className='modal-overlay'>
+          <div className='modal-box' onClick={(e) => e.stopPropagation()}>
+            <button
+              className='close-btn'
+              type='button'
+              onClick={() => {
+                setShowAddModal(false);
+                setShowEditModal(false);
+              }}
+            >
+              ✕
+            </button>
+
+            <h2>{roomForm.id ? 'Edit Room' : 'Add Room'}</h2>
+
+            <div className='form-row' style={{ marginTop: '1rem' }}>
+              <div style={{ flex: 2 }}>
+                <label>Room Name</label>
+                <input
+                  type='text'
+                  value={roomForm.name}
+                  onChange={(e) => handleFormChange('name', e.target.value)}
+                  placeholder='e.g. Room A'
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Capacity</label>
+                <input
+                  type='number'
+                  min='1'
+                  required
+                  value={roomForm.capacity}
+                  onChange={(e) => handleFormChange('capacity', e.target.value)}
+                  placeholder='8'
+                />
+              </div>
+            </div>
+
+            <div className='form-row'>
+              <div>
+                <label>Screen</label>
+                <select
+                  value={roomForm.hasScreen ? 'yes' : 'no'}
+                  onChange={(e) =>
+                    handleFormChange('hasScreen', e.target.value === 'yes')
+                  }
+                >
+                  <option value='yes'>Yes</option>
+                  <option value='no'>No</option>
+                </select>
+              </div>
+              <div>
+                <label>HDMI</label>
+                <select
+                  value={roomForm.hasHdmi ? 'yes' : 'no'}
+                  onChange={(e) =>
+                    handleFormChange('hasHdmi', e.target.value === 'yes')
+                  }
+                >
+                  <option value='yes'>Yes</option>
+                  <option value='no'>No</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type='button'
+              className='btn btn-primary w-full'
+              style={{ marginTop: '1.5rem' }}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving
+                ? roomForm.id
+                  ? 'Saving...'
+                  : 'Creating...'
+                : roomForm.id
+                ? 'Save Changes'
+                : 'Create Room'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className='modal-overlay'>
+          <div className='modal-box' onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ color: '#fff', marginBottom: '0.75rem' }}>
+              Delete Room?
+            </h2>
+            <p style={{ color: '#cbd5e1', marginBottom: '1.5rem' }}>
+              This will remove <strong>{deleteTarget.name}</strong>. If there
+              are future reservations for this room, deletion may be blocked.
+            </p>
+
+            <div
+              className='modal-actions'
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '1rem',
+              }}
+            >
+              <button
+                className='btn-secondary'
+                type='button'
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                Keep Room
+              </button>
+              <button
+                className='btn-danger'
+                type='button'
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete Room'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
