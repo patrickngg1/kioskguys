@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
+import '../styles/AdminPanel.css';
 
 /**
- * Full-screen Admin Panel overlay.
- * Reuses Dashboard.css modal styles:
- * - modal-overlay
- * - modal-box
- * - close-btn
- * - btn btn-primary w-full
+ * Ultra-premium full-screen Admin Panel
+ * - Deep aurora overlay (separate from regular modals)
+ * - Left glass sidebar navigation
+ * - Right glass content pane with cards/tables
+ *
+ * Props:
+ *  - isOpen
+ *  - onClose
+ *  - user
+ *  - rooms
+ *  - reservations
+ *  - itemsByCategory
+ *  - users
  */
 export default function AdminPanel({
   isOpen,
@@ -17,295 +25,398 @@ export default function AdminPanel({
   itemsByCategory = {},
   users = [],
 }) {
-  const [activeTab, setActiveTab] = useState('reservations');
+  const [activeSection, setActiveSection] = useState('reservations');
 
   if (!isOpen) return null;
 
-  const tabs = [
+  const sections = [
     { key: 'reservations', label: 'Reservations' },
     { key: 'rooms', label: 'Rooms' },
     { key: 'items', label: 'Supply Items' },
+    { key: 'banners', label: 'Banner Images' },
     { key: 'users', label: 'Users' },
   ];
 
   return (
-    <div className='modal-overlay' style={{ zIndex: 9999 }} onClick={onClose}>
+    <div className='admin-overlay' onClick={onClose}>
       <div
-        className='modal-box inactivity-modal-enter'
-        style={{
-          width: '92vw',
-          height: '88vh',
-          maxWidth: '1400px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem',
-          padding: '1.5rem 1.6rem',
-        }}
+        className='admin-shell'
         onClick={(e) => e.stopPropagation()}
+        role='dialog'
+        aria-modal='true'
+        aria-label='Admin Control Center'
       >
-        {/* Close button (same class as inactivity modal) */}
-        <button className='close-btn' onClick={onClose}>
+        {/* Close button reused from dashboard styles */}
+        <button
+          className='close-btn admin-close'
+          type='button'
+          onClick={onClose}
+          aria-label='Close admin panel'
+        >
           ✕
         </button>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ fontSize: '1.35rem', fontWeight: 700 }}>
-            Admin Panel
+        <header className='admin-header'>
+          <div>
+            <div className='admin-title'>Admin Control Center</div>
+            <div className='admin-subtitle'>
+              Signed in as{' '}
+              <span className='admin-identity'>
+                {user?.fullName || user?.email}
+              </span>
+            </div>
           </div>
-          <div style={{ opacity: 0.7 }}>
-            Signed in as {user?.fullName || user?.email}
+          <div className='admin-header-meta'>
+            <span className='admin-chip'>Role: Administrator</span>
           </div>
+        </header>
+
+        {/* Main layout: sidebar + content */}
+        <div className='admin-main'>
+          {/* Sidebar */}
+          <nav className='admin-sidebar' aria-label='Admin sections'>
+            {sections.map((s) => (
+              <button
+                key={s.key}
+                type='button'
+                className={`admin-nav-item ${
+                  activeSection === s.key ? 'active' : ''
+                }`}
+                onClick={() => setActiveSection(s.key)}
+              >
+                <span className='admin-nav-pill'>
+                  <span className='admin-nav-label'>{s.label}</span>
+                </span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Content */}
+          <section className='admin-content'>
+            {activeSection === 'reservations' && (
+              <ReservationsSection reservations={reservations} />
+            )}
+            {activeSection === 'rooms' && <RoomsSection rooms={rooms} />}
+            {activeSection === 'items' && (
+              <ItemsSection itemsByCategory={itemsByCategory} />
+            )}
+            {activeSection === 'banners' && <BannersSection />}
+            {activeSection === 'users' && <UsersSection users={users} />}
+          </section>
         </div>
 
-        {/* Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '0.6rem',
-            flexWrap: 'wrap',
-            marginTop: '0.25rem',
-          }}
-        >
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              className='btn btn-primary'
-              style={{
-                padding: '0.5rem 0.9rem',
-                borderRadius: '999px',
-                opacity: activeTab === t.key ? 1 : 0.6,
-                transform: activeTab === t.key ? 'translateY(-1px)' : 'none',
-              }}
-              onClick={() => setActiveTab(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content Area */}
-        <div
-          style={{
-            flex: 1,
-            overflow: 'auto',
-            paddingRight: '0.25rem',
-            marginTop: '0.5rem',
-          }}
-        >
-          {activeTab === 'reservations' && (
-            <AdminReservations reservations={reservations} />
-          )}
-
-          {activeTab === 'rooms' && <AdminRooms rooms={rooms} />}
-
-          {activeTab === 'items' && (
-            <AdminItems itemsByCategory={itemsByCategory} />
-          )}
-
-          {activeTab === 'users' && <AdminUsers users={users} />}
-        </div>
-
-        {/* Footer actions */}
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className='btn btn-primary w-full' onClick={onClose}>
+        {/* Footer */}
+        <footer className='admin-footer'>
+          <button
+            className='btn btn-primary w-full admin-close-btn'
+            type='button'
+            onClick={onClose}
+          >
             Close Admin Panel
           </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+/* ====================================================================== */
+/*  Subsections                                                           */
+/* ====================================================================== */
+
+function ReservationsSection({ reservations }) {
+  return (
+    <div className='admin-section'>
+      <div className='admin-section-header'>
+        <h2 className='admin-section-title'>Reservations</h2>
+        <p className='admin-section-subtitle'>
+          View and manage all reservations across the kiosk.
+        </p>
+      </div>
+
+      {(!reservations || reservations.length === 0) && (
+        <p className='admin-empty'>No reservations found.</p>
+      )}
+
+      {reservations && reservations.length > 0 && (
+        <div className='admin-list'>
+          {reservations.map((r) => (
+            <div key={r.id} className='admin-list-row'>
+              <div className='admin-list-main'>
+                <div className='admin-list-title'>
+                  {r.roomName || r.room || 'Room'}
+                </div>
+                <div className='admin-list-meta'>
+                  <span>{r.date}</span>
+                  <span>
+                    {r.startTime} – {r.endTime}
+                  </span>
+                </div>
+                <div className='admin-list-meta admin-list-meta-secondary'>
+                  <span>{r.userEmail || r.email}</span>
+                </div>
+              </div>
+              <div className='admin-list-actions'>
+                <button
+                  type='button'
+                  className='admin-pill-button admin-pill-danger'
+                  onClick={() => {
+                    // TODO: wire backend DELETE /api/rooms/reservations/:id
+                    // eslint-disable-next-line no-alert
+                    alert(`Cancel reservation ${r.id} (hook backend next)`);
+                  }}
+                >
+                  Cancel Reservation
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- Subviews (simple premium tables) ---------------- */
-
-function AdminReservations({ reservations }) {
-  if (!reservations?.length) {
-    return <p style={{ opacity: 0.7 }}>No reservations found.</p>;
-  }
-
-  return (
-    <div>
-      <h3 style={{ marginBottom: '0.75rem' }}>All Reservations</h3>
-      <div className='admin-table'>
-        {reservations.map((r) => (
-          <div
-            key={r.id}
-            className='admin-row'
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr 1fr 0.8fr',
-              gap: '0.75rem',
-              padding: '0.85rem 1rem',
-              borderRadius: '12px',
-              marginBottom: '0.6rem',
-              background: 'rgba(255,255,255,0.06)',
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 700 }}>{r.roomName}</div>
-              <div style={{ opacity: 0.8, fontSize: '0.95rem' }}>{r.date}</div>
-            </div>
-            <div>
-              {r.startTime} – {r.endTime}
-            </div>
-            <div style={{ opacity: 0.8 }}>{r.userEmail || r.email}</div>
-            <button
-              className='btn btn-primary'
-              style={{ background: '#d72638' }}
-              onClick={() => {
-                // We'll wire backend cancel later
-                alert(`Cancel reservation ${r.id} (hook backend next)`);
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AdminRooms({ rooms }) {
-  return (
-    <div>
-      <h3 style={{ marginBottom: '0.75rem' }}>Rooms</h3>
-
-      <button
-        className='btn btn-primary'
-        style={{ marginBottom: '1rem' }}
-        onClick={() => alert('Open Add Room modal next')}
-      >
-        + Add Room
-      </button>
-
-      {!rooms?.length ? (
-        <p style={{ opacity: 0.7 }}>No rooms found.</p>
-      ) : (
-        rooms.map((room) => (
-          <div
-            key={room.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 0.7fr 0.7fr auto',
-              gap: '0.75rem',
-              padding: '0.85rem 1rem',
-              borderRadius: '12px',
-              marginBottom: '0.6rem',
-              background: 'rgba(255,255,255,0.06)',
-            }}
-          >
-            <div style={{ fontWeight: 700 }}>{room.name}</div>
-            <div>Capacity: {room.capacity}</div>
-            <div>
-              Screen: {room.hasScreen ? 'Yes' : 'No'} / HDMI:{' '}
-              {room.hasHdmi ? 'Yes' : 'No'}
-            </div>
-            <button
-              className='btn btn-primary'
-              style={{ background: '#d72638' }}
-              onClick={() =>
-                alert(`Delete room ${room.id} (hook backend next)`)
-              }
-            >
-              Delete
-            </button>
-          </div>
-        ))
       )}
     </div>
   );
 }
 
-function AdminItems({ itemsByCategory }) {
-  const categories = Object.entries(itemsByCategory || {});
-  if (!categories.length) {
-    return <p style={{ opacity: 0.7 }}>No items loaded.</p>;
-  }
-
+function RoomsSection({ rooms }) {
   return (
-    <div>
-      <h3 style={{ marginBottom: '0.75rem' }}>Supply Items</h3>
+    <div className='admin-section'>
+      <div className='admin-section-header'>
+        <h2 className='admin-section-title'>Rooms</h2>
+        <p className='admin-section-subtitle'>
+          Add, remove, and configure conference rooms.
+        </p>
+      </div>
 
-      <button
-        className='btn btn-primary'
-        style={{ marginBottom: '1rem' }}
-        onClick={() => alert('Open Add Item modal next')}
-      >
-        + Add Item
-      </button>
+      <div className='admin-section-toolbar'>
+        <button
+          type='button'
+          className='admin-pill-button admin-pill-primary'
+          onClick={() => {
+            // TODO: open Add Room glass modal
+            alert('Open Add Room modal (to implement)');
+          }}
+        >
+          + Add Room
+        </button>
+      </div>
 
-      {categories.map(([cat, items]) => (
-        <div key={cat} style={{ marginBottom: '1.2rem' }}>
-          <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{cat}</div>
+      {(!rooms || rooms.length === 0) && (
+        <p className='admin-empty'>No rooms configured yet.</p>
+      )}
 
-          {items.map((it) => (
-            <div
-              key={it.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1.2fr 1fr auto',
-                gap: '0.75rem',
-                padding: '0.75rem 1rem',
-                borderRadius: '12px',
-                marginBottom: '0.5rem',
-                background: 'rgba(255,255,255,0.06)',
-              }}
-            >
-              <div>{it.name}</div>
-              <div style={{ opacity: 0.8 }}>{it.category_name || cat}</div>
-              <button
-                className='btn btn-primary'
-                style={{ background: '#d72638' }}
-                onClick={() =>
-                  alert(`Delete item ${it.id} (hook backend next)`)
-                }
-              >
-                Delete
-              </button>
+      {rooms && rooms.length > 0 && (
+        <div className='admin-grid'>
+          {rooms.map((room) => (
+            <div key={room.id} className='admin-card'>
+              <div className='admin-card-header'>
+                <div className='admin-card-title'>{room.name}</div>
+                <div className='admin-card-tag'>
+                  Capacity: {room.capacity ?? '—'}
+                </div>
+              </div>
+              <div className='admin-card-body'>
+                <div className='admin-badge-row'>
+                  <span className='admin-badge'>
+                    Screen: {room.hasScreen ? 'Yes' : 'No'}
+                  </span>
+                  <span className='admin-badge'>
+                    HDMI: {room.hasHdmi ? 'Yes' : 'No'}
+                  </span>
+                </div>
+              </div>
+              <div className='admin-card-footer'>
+                <button
+                  type='button'
+                  className='admin-pill-button admin-pill-danger'
+                  onClick={() =>
+                    // TODO: DELETE /api/rooms/:id
+                    alert(`Delete room ${room.id} (hook backend next)`)
+                  }
+                >
+                  Delete Room
+                </button>
+              </div>
             </div>
           ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
-function AdminUsers({ users }) {
-  return (
-    <div>
-      <h3 style={{ marginBottom: '0.75rem' }}>Users</h3>
+function ItemsSection({ itemsByCategory }) {
+  const entries = Object.entries(itemsByCategory || {});
 
-      {!users?.length ? (
-        <p style={{ opacity: 0.7 }}>No users loaded.</p>
-      ) : (
-        users.map((u) => (
-          <div
-            key={u.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr 0.7fr auto',
-              gap: '0.75rem',
-              padding: '0.85rem 1rem',
-              borderRadius: '12px',
-              marginBottom: '0.6rem',
-              background: 'rgba(255,255,255,0.06)',
-            }}
-          >
-            <div style={{ fontWeight: 700 }}>{u.fullName || u.email}</div>
-            <div style={{ opacity: 0.8 }}>{u.email}</div>
-            <div>{u.isAdmin ? 'Admin' : 'User'}</div>
-            <button
-              className='btn btn-primary'
-              onClick={() =>
-                alert(`Toggle admin for ${u.email} (hook backend next)`)
-              }
-            >
-              Toggle Admin
-            </button>
-          </div>
-        ))
+  return (
+    <div className='admin-section'>
+      <div className='admin-section-header'>
+        <h2 className='admin-section-title'>Supply Items</h2>
+        <p className='admin-section-subtitle'>
+          Manage the catalog of items shown in the Request Supplies modal.
+        </p>
+      </div>
+
+      <div className='admin-section-toolbar'>
+        <button
+          type='button'
+          className='admin-pill-button admin-pill-primary'
+          onClick={() => {
+            // TODO: Add Item glass modal
+            alert('Open Add Item modal (to implement)');
+          }}
+        >
+          + Add Item
+        </button>
+      </div>
+
+      {entries.length === 0 && (
+        <p className='admin-empty'>No items loaded from backend.</p>
+      )}
+
+      {entries.length > 0 && (
+        <div className='admin-list'>
+          {entries.map(([category, items]) => (
+            <div key={category} className='admin-category-block'>
+              <div className='admin-category-header'>
+                <div className='admin-category-title'>{category}</div>
+                <div className='admin-category-count'>
+                  {items?.length || 0} items
+                </div>
+              </div>
+
+              {items.map((item) => (
+                <div key={item.id} className='admin-list-row'>
+                  <div className='admin-list-main'>
+                    <div className='admin-list-title'>{item.name}</div>
+                    <div className='admin-list-meta admin-list-meta-secondary'>
+                      <span>{item.category_name || category}</span>
+                      {item.image && (
+                        <span className='admin-inline-note'>has image</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className='admin-list-actions'>
+                    <button
+                      type='button'
+                      className='admin-pill-button admin-pill-subtle'
+                      onClick={() =>
+                        alert(`Edit item ${item.id} (hook backend next)`)
+                      }
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type='button'
+                      className='admin-pill-button admin-pill-danger'
+                      onClick={() =>
+                        alert(`Delete item ${item.id} (hook backend next)`)
+                      }
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BannersSection() {
+  return (
+    <div className='admin-section'>
+      <div className='admin-section-header'>
+        <h2 className='admin-section-title'>Banner Images</h2>
+        <p className='admin-section-subtitle'>
+          Configure the hero banner & potential screensaver slideshow. This
+          hooks into your Django <code>/api/ui-assets/</code> layer.
+        </p>
+      </div>
+
+      <div className='admin-section-toolbar'>
+        <button
+          type='button'
+          className='admin-pill-button admin-pill-primary'
+          onClick={() => {
+            // TODO: open upload banner modal (future)
+            alert('Open Upload Banner modal (to implement)');
+          }}
+        >
+          + Upload Banner
+        </button>
+        <button
+          type='button'
+          className='admin-pill-button admin-pill-subtle'
+          onClick={() => {
+            // TODO: reorder banners UI
+            alert('Open banner reorder UI (to implement)');
+          }}
+        >
+          Reorder / Screensaver Settings
+        </button>
+      </div>
+
+      <p className='admin-empty'>
+        Banner management UI coming next — this section is reserved and styled
+        so we can plug in image previews & drag-and-drop ordering later.
+      </p>
+    </div>
+  );
+}
+
+function UsersSection({ users }) {
+  return (
+    <div className='admin-section'>
+      <div className='admin-section-header'>
+        <h2 className='admin-section-title'>Users</h2>
+        <p className='admin-section-subtitle'>
+          See who has logged into the kiosk and toggle admin privileges.
+        </p>
+      </div>
+
+      {(!users || users.length === 0) && (
+        <p className='admin-empty'>No users loaded.</p>
+      )}
+
+      {users && users.length > 0 && (
+        <div className='admin-list'>
+          {users.map((u) => (
+            <div key={u.id ?? u.email} className='admin-list-row'>
+              <div className='admin-list-main'>
+                <div className='admin-list-title'>
+                  {u.fullName || u.email || 'User'}
+                </div>
+                <div className='admin-list-meta admin-list-meta-secondary'>
+                  <span>{u.email}</span>
+                </div>
+              </div>
+              <div className='admin-list-actions'>
+                <span
+                  className={`admin-role-chip ${
+                    u.isAdmin ? 'admin-role-admin' : 'admin-role-user'
+                  }`}
+                >
+                  {u.isAdmin ? 'Admin' : 'User'}
+                </span>
+                <button
+                  type='button'
+                  className='admin-pill-button admin-pill-subtle'
+                  onClick={() =>
+                    alert(
+                      `Toggle admin for ${u.email} (hook backend toggle next)`
+                    )
+                  }
+                >
+                  Toggle Admin
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

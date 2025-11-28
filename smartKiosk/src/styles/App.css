@@ -91,7 +91,7 @@ html {
 
 /* --- Scrollbar Aesthetics (Applied globally for sleek kiosk look) --- */
 *::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
   background-color: transparent;
 }
 *::-webkit-scrollbar-thumb {
