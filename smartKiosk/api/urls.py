@@ -2,7 +2,7 @@
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from . import views
-from .views import login_user, get_session_user
+from .views import login_user, get_session_user, cancel_room_reservations_bulk
 
 urlpatterns = [
     # --------------------------
@@ -33,7 +33,12 @@ urlpatterns = [
     path("rooms/", views.get_rooms, name="get_rooms"),
     path("rooms/reserve/", views.create_room_reservation, name="create_room_reservation"),
     path("rooms/reservations/my/", views.my_room_reservations, name="my_room_reservations"),
-
+    # Bulk cancel (NEW)
+    path(
+        "rooms/reservations/cancel-bulk/",
+        csrf_exempt(cancel_room_reservations_bulk),
+        name="cancel_room_reservations_bulk",
+    ),
     # Cancel reservation (CSRF exempt)
     path(
         "rooms/reservations/<int:reservation_id>/cancel/",
@@ -47,6 +52,9 @@ urlpatterns = [
         views.admin_cancel_reservation,
         name="admin_cancel_reservation",
     ),
+    path("calendar/ics/<int:reservation_id>/", views.download_ics, name="download_ics"),
+    path("calendar/ics/<int:reservation_id>/", views.download_ics, name="download_ics"),
+
 
     # --------------------------
     # UI Assets

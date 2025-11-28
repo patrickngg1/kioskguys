@@ -140,6 +140,13 @@
   /* room for halo fade so no hard left/right cutoffs */
   padding-left: 18px;
   padding-right: 18px;
+  padding-top: 0.4rem;
+  padding-bottom: 6rem; /* ⭐ ADD THIS LINE */
+}
+
+/* Fix last reservation hidden behind sticky footer */
+.myres-panel.open {
+  padding-bottom: 0rem !important;
 }
 
 /* ================== Reservation cards ================== */
@@ -238,41 +245,89 @@
   font-weight: 500;
 }
 
-/* ---------------- Actions row: Cancel Selected + Clear ---------------- */
+/* -----------------------------------------------------------
+   ULTRA-PREMIUM VISIONOS FOOTER FOR RESERVATION PANEL
+   ----------------------------------------------------------- */
+
 .myres-actions {
+  position: sticky;
+  bottom: 0;
+  padding: 1rem 1.5rem 1.75rem 1.5rem;
+  z-index: 50;
+
+  /* Glassmorphism */
+  background: rgba(15, 19, 30, 0.55);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border-top: 0;
+  box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0);
+
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.9rem;
-  margin-top: 0.95rem;
-  flex-wrap: nowrap;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.myres-cancel-btn {
-  width: auto !important;
-  min-width: 170px;
-  height: 44px;
-  padding: 0 1.35rem !important;
+/* Each button fills half width */
+.myres-actions .btn {
+  flex: 1;
+  height: 48px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border-radius: 14px !important;
+
+  /* Elegant button surface */
+  background: linear-gradient(
+      180deg,
+      rgba(75, 118, 247, 0.9),
+      rgba(50, 95, 240, 0.9)
+    ),
+    rgba(255, 255, 255, 0.06);
+  border: none;
+
+  /* Smooth edges */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 rgba(255, 255, 255, 0.12);
+
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s ease, background 0.25s ease;
 }
 
-/* Clear uses btn btn-primary from Dashboard.css in JSX */
+/* Hover lift — subtle but premium */
+.myres-actions .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 72, 255, 0.28), 0 3px 8px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Tactile Press */
+.myres-actions .btn:active {
+  transform: scale(0.975) translateY(0px);
+  box-shadow: 0 3px 12px rgba(0, 72, 255, 0.25),
+    inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+/* Slightly different surface for CLEAR button */
 .myres-clear-btn {
-  width: auto !important;
-  min-width: 120px;
-  height: 44px;
-  padding: 0 1.2rem !important;
-  opacity: 0.9;
-  transition: opacity 180ms ease, transform 180ms ease;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #d5d7e0 !important;
+  backdrop-filter: blur(22px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
+
 .myres-clear-btn:hover {
-  opacity: 1;
+  background: rgba(255, 255, 255, 0.12) !important;
+  transform: translateY(-2px);
 }
+
 .myres-clear-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.975);
 }
 
 /* ---------------- Confirmation panel (Yes/Keep) ---------------- */
 .cancel-confirm-panel {
+  position: relative;
   margin-top: 0.75rem;
   padding: 1rem 1.25rem;
   border-radius: 14px;
@@ -282,6 +337,7 @@
   -webkit-backdrop-filter: blur(14px);
   animation: resConfirmDrop 380ms cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  z-index: 9999 !important;
 }
 
 .cancel-confirm-text {
@@ -297,6 +353,8 @@
   justify-content: flex-end;
   align-items: center;
   gap: 0.8rem;
+  position: relative;
+  z-index: 10000 !important;
 }
 
 .cancel-confirm-btn {
@@ -396,4 +454,36 @@
   100% {
     transform: translateX(30%) translateY(30%) rotate(360deg);
   }
+}
+
+/* -----------------------------------------------------------
+   ULTRA-PREMIUM DISABLED STATE (VisionOS-style)
+   ----------------------------------------------------------- */
+.myres-actions .btn:disabled {
+  opacity: 0.58 !important;
+  filter: saturate(45%) brightness(105%);
+  cursor: not-allowed !important;
+
+  /* Remove elevation + depth */
+  transform: none !important;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0) !important;
+  inset: 0 0 0 rgba(255, 255, 255, 0.08) !important;
+
+  /* Frosted glass feel */
+  backdrop-filter: blur(20px) saturate(120%) brightness(90%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%) brightness(90%);
+
+  /* A light frosted border, VisionOS-style */
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+
+  /* Lock the background into a frozen state */
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Disable hover/press animations on disabled buttons */
+.myres-actions .btn:disabled:hover,
+.myres-actions .btn:disabled:active {
+  transform: none !important;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.04) !important;
 }

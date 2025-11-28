@@ -7,6 +7,7 @@
 // - Multi-select cancel
 // - Confirmation panel: ONLY TWO buttons (Yes / Keep)
 // - No inline styles added
+// - ✅ Perfect pluralization for cancel UX
 // ---------------------------------------------------------------
 import '../styles/Dashboard.css';
 import '../styles/reserveModal.css';
@@ -181,6 +182,10 @@ function ReserveConferenceRoom({
   const firstSelectedId = selectedIds[0] || null;
   const selectedCount = selectedIds.length;
 
+  // ✅ Perfect pluralization helpers
+  const noun = selectedCount === 1 ? 'reservation' : 'reservations';
+  const theNoun = selectedCount === 1 ? 'the reservation' : 'the reservations';
+
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
       if (prev.includes(id)) {
@@ -292,17 +297,15 @@ function ReserveConferenceRoom({
           endTime: end24,
         }),
       });
-      // Safely parse backend response
+
       let data = null;
 
       try {
         data = await res.json();
       } catch {
-        // Backend returned no JSON body (common with 201 Created)
         data = {};
       }
 
-      // Correct success detection
       if (!res.ok || data.ok !== true) {
         if (res.status === 409) {
           setToast(
@@ -333,7 +336,6 @@ function ReserveConferenceRoom({
         cancelReason: r.cancelReason || '',
       });
 
-      // Add into local "my reservations"
       setMyReservations((prev) => [
         ...prev,
         {
@@ -352,7 +354,6 @@ function ReserveConferenceRoom({
       );
       setToastShake(false);
 
-      // Reset form
       setReservationData({
         roomId: '',
         date: '',
@@ -374,87 +375,78 @@ function ReserveConferenceRoom({
     }
   };
 
-  // In src/components/ReserveConferenceRoom.jsx (Replace the existing function with this)
   const handleConfirmCancelSelected = async () => {
     if (selectedIds.length === 0) return;
 
     setCancelSubmitting(true);
-    setToast('Cancelling reservations...');
+    setToast('Cancelling...');
     setToastShake(false);
 
-    const successes = [];
-    const failures = [];
+    try {
+      let res;
+      let data;
 
-    for (const id of selectedIds) {
-      try {
-        const res = await fetch(
+      // 🔥 SINGLE RESERVATION CANCEL — use single endpoint
+      if (selectedIds.length === 1) {
+        const id = selectedIds[0];
+
+        res = await fetch(
           `http://localhost:8000/api/rooms/reservations/${id}/cancel/`,
           {
             method: 'POST',
             credentials: 'include',
-            // 💡 FIX APPLIED: Removed headers and body to send the cleanest request possible.
-            // The backend's request.body read will handle the parsing gracefully.
           }
         );
 
-        let data = {};
-        try {
-          data = await res.json();
-        } catch {
-          data = {};
-        }
+        data = await res.json();
 
-        const msg = (data?.error || data?.message || '').toLowerCase();
-        const alreadyCanceled = msg.includes('already');
-
-        // Only count success when backend confirms it,
-        // OR when it is already canceled (race-proof).
-        if ((res.ok && data.ok) || alreadyCanceled) {
-          successes.push(id);
-          setLocallyCancelledIds((prev) => [...prev, id]);
+        if (!res.ok || data.ok !== true) {
+          setToast(data.error || 'Cancellation failed.');
+          setToastShake(true);
         } else {
-          failures.push({
-            id,
-            error:
-              data?.error ||
-              data?.message ||
-              `Cancel failed (status ${res.status})`,
-          });
+          setMyReservations((prev) => prev.filter((r) => r.id !== id));
+          setToast('Reservation cancelled.');
+          setToastShake(false);
         }
-      } catch (err) {
-        failures.push({ id, error: 'Network error' });
       }
-    }
 
-    // ✅ Only remove the ones that truly succeeded
-    if (successes.length > 0) {
-      setMyReservations((prev) =>
-        prev.filter((r) => !successes.includes(r.id))
-      );
-    }
+      // 🔥 MULTIPLE RESERVATIONS CANCEL — use bulk endpoint
+      else {
+        res = await fetch(
+          'http://localhost:8000/api/rooms/reservations/cancel-bulk/',
+          {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ids: selectedIds,
+              reason: 'User cancelled multiple reservations.',
+            }),
+          }
+        );
 
-    // ✅ Toasts that make sense in kiosk UX
-    if (failures.length > 0) {
-      if (successes.length === 0) {
-        setToast(
-          failures[0]?.error?.includes('Database unavailable')
-            ? 'Database offline — cancellation didn’t go through.'
-            : 'Unable to cancel selected reservations.'
-        );
-      } else {
-        setToast(
-          `Cancelled ${successes.length} reservation(s). ${failures.length} failed.`
-        );
+        data = await res.json();
+
+        if (!res.ok || data.ok !== true) {
+          setToast(data.error || 'Bulk cancellation failed.');
+          setToastShake(true);
+        } else {
+          setMyReservations((prev) =>
+            prev.filter((r) => !selectedIds.includes(r.id))
+          );
+          setToast(`Cancelled ${selectedIds.length} reservations.`);
+          setToastShake(false);
+        }
       }
+    } catch (err) {
+      console.error('Cancel error:', err);
+      setToast('Network error.');
       setToastShake(true);
-    } else {
-      setToast(`Cancelled ${successes.length} reservation(s).`);
-      setToastShake(false);
+    } finally {
+      clearSelection();
+      setConfirmingCancel(false);
+      setCancelSubmitting(false);
     }
-
-    clearSelection();
-    setConfirmingCancel(false);
-    setCancelSubmitting(false);
   };
 
   return (
@@ -533,12 +525,16 @@ function ReserveConferenceRoom({
                 </p>
               ) : (
                 <>
+                  {/* LIST OF RESERVATIONS */}
                   <div className='myres-list'>
                     {sortedMyReservations.map((res) => {
                       const isSelected = selectedIds.includes(res.id);
+                      const showConfirm =
+                        confirmingCancel && firstSelectedId === res.id;
 
                       return (
                         <React.Fragment key={res.id}>
+                          {/* Reservation Card */}
                           <div
                             className={`myres-card ${
                               isSelected ? 'selected' : ''
@@ -569,28 +565,40 @@ function ReserveConferenceRoom({
                             </button>
                           </div>
 
-                          {/* Slide-down confirmation under FIRST selected card */}
-                          {confirmingCancel && firstSelectedId === res.id && (
+                          {/* Are-you-sure card UNDER THE SELECTED RESERVATION */}
+                          {showConfirm && (
                             <div className='cancel-confirm-panel'>
                               <p className='cancel-confirm-text'>
-                                Cancel {selectedCount} reservation
-                                {selectedCount > 1 ? 's' : ''}?
+                                Cancel {selectedCount}{' '}
+                                {selectedCount === 1
+                                  ? 'reservation'
+                                  : 'reservations'}
+                                ?
                               </p>
+
                               <div className='cancel-confirm-actions'>
                                 <button
                                   type='button'
                                   className='btn btn-primary cancel-confirm-btn'
                                   onClick={handleConfirmCancelSelected}
+                                  disabled={cancelSubmitting}
                                 >
-                                  Yes, Cancel the reservation
+                                  Yes, Cancel{' '}
+                                  {selectedCount === 1
+                                    ? 'the reservation'
+                                    : 'the reservations'}
                                 </button>
 
                                 <button
                                   type='button'
                                   className='btn btn-primary cancel-confirm-btn keep-btn'
                                   onClick={() => setConfirmingCancel(false)}
+                                  disabled={cancelSubmitting}
                                 >
-                                  Keep the reservation
+                                  Keep{' '}
+                                  {selectedCount === 1
+                                    ? 'the reservation'
+                                    : 'the reservations'}
                                 </button>
                               </div>
                             </div>
@@ -600,14 +608,17 @@ function ReserveConferenceRoom({
                     })}
                   </div>
 
-                  {/* CTA row hidden while confirming */}
+                  {/* Bottom sticky actions – only when NOT in confirm mode */}
                   {!confirmingCancel && (
                     <div className='myres-actions'>
                       <button
                         type='button'
                         className='btn btn-primary myres-cancel-btn'
                         disabled={selectedIds.length === 0 || cancelSubmitting}
-                        onClick={() => setConfirmingCancel(true)}
+                        onClick={() => {
+                          if (selectedIds.length === 0) return;
+                          setConfirmingCancel(true);
+                        }}
                       >
                         Cancel Selected
                       </button>

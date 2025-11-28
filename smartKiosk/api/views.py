@@ -1,17 +1,26 @@
-# api/views.py
 import json
 import smtplib
+import os
+import requests
+from base64 import b64encode
+
 from email.mime.text import MIMEText
 from base64 import b64encode
 
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import F
-
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from api.utils.email_templates import render_reservation_email
+from api.utils.email_templates import render_supply_request_email
+from api.utils.email_templates import render_cancellation_email
+from api.utils.calendar_utils import build_calendar_links
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+
 
 from accounts.models import UserProfile
 
@@ -26,6 +35,61 @@ from .models import (
 
 from datetime import datetime, timedelta
 from django.utils import timezone
+
+# ---------------------------------------------------------
+# SEND EMAIL VIA SENDGRID (HTML + optional ICS attachment)
+# ---------------------------------------------------------
+def send_via_sendgrid(
+    to_email,
+    subject,
+    html_content,
+    *,
+    from_email=None,
+    from_name="UTA Smart Kiosk",
+    ics_content=None,
+):
+    api_key = getattr(settings, "SENDGRID_API_KEY", None)
+    if not api_key:
+        raise Exception("SENDGRID_API_KEY missing in settings.py")
+
+    verified_sender = getattr(settings, "SENDGRID_VERIFIED_SENDER", None)
+    if not verified_sender:
+        raise Exception("SENDGRID_VERIFIED_SENDER missing in settings.py")
+
+    if not from_email:
+        from_email = verified_sender
+
+    payload = {
+        "personalizations": [{"to": [{"email": to_email}]}],
+        "from": {"email": from_email, "name": from_name},
+        "subject": subject,
+        "content": [{"type": "text/html", "value": html_content}],
+    }
+
+    if ics_content:
+        payload["attachments"] = [
+            {
+                "content": b64encode(ics_content).decode("utf-8"),
+                "type": "text/calendar",
+                "filename": "rreservation.ics",
+                "disposition": "attachment",
+            }
+        ]
+
+    res = requests.post(
+        "https://api.sendgrid.com/v3/mail/send",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=15,
+    )
+
+    if res.status_code >= 400:
+        raise Exception(f"SendGrid error {res.status_code}: {res.text}")
+
+    return True
 
 # ---------------------------------------------------------
 # POST /api/register/
@@ -100,6 +164,7 @@ def register_user(request):
         status=201
     )
 
+
 # ---------------------------------------------------------
 # GET /api/items/
 # Returns all items grouped by category (display name)
@@ -168,7 +233,7 @@ def upload_item_image(request, item_id):
 
 # ---------------------------------------------------------
 # POST /api/supplies/request/
-# Creates a supply request, updates popularity, sends email
+# Creates a supply request, updates popularity, sends email (PREMIUM)
 # ---------------------------------------------------------
 @csrf_exempt
 @require_POST
@@ -243,45 +308,44 @@ def create_supply_request(request):
         ItemPopularity.objects.filter(pk=pop.pk).update(count=F("count") + 1)
 
     # ---------------------------------------------------------
-    # Send email notification
+    # Send PREMIUM email notification via SendGrid (FINAL)
     # ---------------------------------------------------------
-    subject = f"New Supply Request from {full_name}"
-    recipient = "optimistic.prakash@gmail.com"
-
-    body_lines = [
-        "A new supply request has been submitted.",
-        "",
-        f"Requester: {full_name}",
-        f"User ID: {user_id}",
-        f"Email: {email}",
-        "",
-        "Items Requested:",
-    ]
-    body_lines.extend([f"- {name}" for name in item_names])
-    body_lines.extend(
-        [
-            "",
-            f"Request ID: {supply_request.id}",
-            f"Requested At: {supply_request.requested_at}",
-        ]
-    )
-
-    msg = MIMEText("\n".join(body_lines))
-    msg["Subject"] = subject
-    msg["From"] = settings.EMAIL_HOST_USER
-    msg["To"] = recipient
-
     email_sent = False
     email_error = None
 
     try:
-        with smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT) as server:
-            server.starttls(context=settings.SMTP_UNVERIFIED_CONTEXT)
-            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-            server.sendmail(settings.EMAIL_HOST_USER, recipient, msg.as_string())
+        from api.utils.email_templates import render_supply_request_email
+
+        # GitHub-hosted logo (Outlook/Gmail safe)
+        logo_url = (
+            "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
+            "smartKiosk/media/ui_assets/apple-touch-icon.png"
+        )
+
+        # Build premium HTML
+        html_body = render_supply_request_email(
+            full_name=full_name,
+            email=email,
+            items=item_names,
+            request_id=supply_request.id,
+            timestamp=supply_request.requested_at,
+            logo_url=logo_url,
+        )
+
+        subject = f"📦 New Supply Request — {full_name}"
+        recipient = "prakash.sapkota@mavs.uta.edu"  # whoever brings supplies
+
+        send_via_sendgrid(
+            to_email=recipient,
+            subject=subject,
+            html_content=html_body,
+        )
+
         email_sent = True
+
     except Exception as e:
         email_error = str(e)
+        email_sent = False
 
     return JsonResponse(
         {
@@ -292,6 +356,201 @@ def create_supply_request(request):
         },
         status=201,
     )
+
+
+def render_bulk_cancellation_email(reservations, logo_url, cancelled_by, reason):
+    """
+    **PREMIUM BULK CANCELLATION EMAIL**
+    Matches the exact visual style of reservation confirmed,
+    reservation cancelled, and supply request.
+    Shows ALL cancelled reservations in a glass card list.
+    """
+
+    if not reservations:
+        return ""
+
+    # All reservations belong to same user
+    user = reservations[0].user
+    user_first = user.first_name or user.username or "User"
+
+    # Build reservation rows
+    rows_html = ""
+    for r in reservations:
+        date_str = r.date.strftime("%Y-%m-%d")
+        time_str = f"{r.start_time.strftime('%I:%M %p')} – {r.end_time.strftime('%I:%M %p')}"
+        room_name = r.room.name
+
+        rows_html += f"""
+          <tr>
+            <td style="padding:14px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0"
+                     style="background:rgba(15,23,42,0.86);
+                            border-radius:14px;
+                            border:1px solid rgba(148,163,184,0.28);
+                            padding:16px 18px;
+                            box-shadow:inset 0 0 28px rgba(3,7,18,0.32),
+                                       0 15px 45px rgba(0,0,0,0.35);">
+                <tr>
+                  <td>
+                    <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                                font-size:15px; font-weight:700; color:#e5e7eb;">
+                      {room_name}
+                    </div>
+
+                    <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                                font-size:13px; color:rgba(156,163,175,0.95);
+                                margin-top:6px;">
+                      {date_str} • {time_str}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        """
+
+    # wrap email
+    html = f"""\
+<html>
+  <body style="margin:0; padding:0; background-color:#020617;">
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:#020617; padding:40px 0;">
+      <tr><td align="center">
+
+        <!-- Outer premium card -->
+        <table width="640" cellpadding="0" cellspacing="0" border="0"
+               style="max-width:640px;
+                      background:radial-gradient(circle at 20% 0%,
+                        rgba(3,7,18,0.95) 0%,
+                        rgba(2,6,23,1) 35%,
+                        #020617 100%);
+                      border-radius:26px;
+                      border:1px solid rgba(148,163,184,0.22);
+                      box-shadow:0 28px 70px rgba(0,0,0,0.75);
+                      padding:32px;">
+
+          <!-- Header -->
+          <tr><td style="padding-bottom:20px;">
+            <table width="100%">
+              <tr>
+
+                <!-- Logo -->
+                <td align="left">
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-right:12px;">
+                        <img src="{logo_url}" width="46" height="46"
+                             style="display:block; border-radius:12px;
+                             border:1px solid rgba(148,163,184,0.25);" />
+                      </td>
+                      <td>
+                        <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                                    font-size:17px; font-weight:700; color:#e5e7eb;">
+                          UTA Smart Kiosk
+                        </div>
+                        <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                                    font-size:12px; color:rgba(148,163,184,0.85);">
+                          Premium Campus Services
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+
+                <!-- ID (Bulk) -->
+                <td align="right"
+                    style="font-family:system-ui,'Segoe UI',sans-serif;
+                           font-size:12px; color:rgba(148,163,184,0.65);">
+                  Cancellation Summary
+                </td>
+
+              </tr>
+            </table>
+          </td></tr>
+
+          <!-- Title -->
+          <tr><td>
+            <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                        font-size:26px; font-weight:800;
+                        color:#f9fafb; letter-spacing:0.02em;">
+              <span style="font-size:26px; vertical-align:middle;
+                           margin-right:10px;
+                           text-shadow:0 0 14px rgba(238,118,36,0.55);">
+                ⚠️
+              </span>
+              {len(reservations)} Reservation(s) Cancelled
+            </div>
+
+            <!-- Orange line -->
+            <div style="width:160px; height:3px; background:#EE7624;
+                        border-radius:3px; margin-top:8px; margin-bottom:12px;">
+            </div>
+
+            <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                        font-size:14px; color:rgba(209,213,219,0.96);
+                        line-height:1.55;">
+              Hello <b>{user_first}</b>, your reservations have been cancelled.
+            </div>
+            <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                        font-size:13px; color:rgba(209,213,219,0.7);
+                        padding-top:4px;">
+              Cancelled by: <b>{cancelled_by}</b>
+            </div>
+
+          </td></tr>
+
+          <!-- Cancel reason -->
+          <tr><td style="padding-top:18px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:rgba(15,23,42,0.86);
+                          border-radius:18px;
+                          border:1px solid rgba(148,163,184,0.3);
+                          padding:18px 22px;
+                          box-shadow:inset 0 0 35px rgba(3,7,18,0.35),
+                                     0 18px 55px rgba(0,0,0,0.4);">
+
+              <tr><td>
+                <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                            font-size:13px; color:rgba(156,163,175,0.9);">
+                  Reason:
+                </div>
+                <div style="font-family:system-ui,'Segoe UI',sans-serif;
+                            font-size:14px; color:#e5e7eb; margin-top:4px;">
+                  {reason}
+                </div>
+              </td></tr>
+
+            </table>
+          </td></tr>
+
+          <!-- Cancelled reservations list -->
+          <tr><td style="padding-top:26px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              {rows_html}
+            </table>
+          </td></tr>
+
+          <!-- Footer -->
+          <tr><td align="center"
+              style="padding-top:24px; font-family:system-ui,'Segoe UI',sans-serif;
+                     font-size:11px; color:rgba(148,163,184,0.9);">
+            This email confirms that these reservations are no longer active.
+          </td></tr>
+
+          <tr><td align="center"
+              style="font-family:system-ui,'Segoe UI',sans-serif; font-size:10px;
+                     color:rgba(75,85,99,0.95); padding-top:4px;">
+            This notification was generated automatically by UTA Smart Kiosk.
+          </td></tr>
+
+        </table>
+
+      </td></tr>
+    </table>
+  </body>
+</html>
+"""
+    return html
 
 
 # ---------------------------------------------------------
@@ -362,14 +621,14 @@ def get_rooms(request):
 
     return JsonResponse({"ok": True, "rooms": data}, status=200)
 
-# …………… EVERYTHING ABOVE UNCHANGED ……………
 
 # ---------------------------------------------------------
-# Helpers for calendar link and emails
+# Helpers for calendar link and emails (legacy)
 # ---------------------------------------------------------
 def build_calendar_link(reservation):
     """
     Generate a Google Calendar link using zoneinfo-safe datetimes.
+    (Kept for backward compatibility; no longer used by premium email.)
     """
     from datetime import datetime, timezone as dt_timezone
     from urllib.parse import quote
@@ -405,9 +664,11 @@ def build_calendar_link(reservation):
     return f"https://www.google.com/calendar/render?{query}"
 
 
-
-
 def send_reservation_email(reservation, calendar_link):
+    """
+    Legacy plain-text email sender (kept for compatibility).
+    Now TLS-safe for SendGrid (no unverified context required).
+    """
     subject = f"Reservation Confirmed – {reservation.room.name}"
     body = f"""
 Your conference room reservation is confirmed.
@@ -434,7 +695,12 @@ Add to your calendar:
 
     try:
         with smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT) as server:
-            server.starttls(context=settings.SMTP_UNVERIFIED_CONTEXT)
+            # use context only if it exists (dev-friendly), otherwise normal TLS
+            ctx = getattr(settings, "SMTP_UNVERIFIED_CONTEXT", None)
+            if ctx:
+                server.starttls(context=ctx)
+            else:
+                server.starttls()
             server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
             server.sendmail(
                 settings.EMAIL_HOST_USER, [reservation.email], msg.as_string()
@@ -536,9 +802,73 @@ def create_room_reservation(request):
         email=email,
     )
 
-    # Optional: send calendar email
-    calendar_link = build_calendar_link(reservation)
-    email_sent, email_error = send_reservation_email(reservation, calendar_link)
+        # ---------------------------------------------------------
+        # PREMIUM CALENDAR EMAIL (UTA + Apple Vision Glass Style)
+        # ---------------------------------------------------------
+    email_sent = False
+    email_error = None
+    calendar_link = None
+    html_body = None  # avoid NameError
+
+    try:
+        from api.utils.calendar_utils import create_ics_content, build_calendar_links
+        from api.utils.email_templates import render_reservation_email
+
+        tz = timezone.get_current_timezone()
+
+        start_naive = datetime.combine(date_value, start_value)
+        end_naive = datetime.combine(date_value, end_value)
+
+        start_dt = timezone.make_aware(start_naive, tz)
+        end_dt = timezone.make_aware(end_naive, tz)
+
+        # ICS bytes
+        ics_data = create_ics_content(
+            room_name=room.name,
+            start_dt=start_dt,
+            end_dt=end_dt,
+            reservation_id=reservation.id,
+            user_email=email,
+        )
+
+        backend_base = request.build_absolute_uri("/").rstrip("/")
+        frontend_base = backend_base
+
+        logo_url = "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/smartKiosk/media/ui_assets/apple-touch-icon.png"
+
+
+        calendar_links = build_calendar_links(
+            room_name=room.name,
+            start_dt=start_dt,
+            end_dt=end_dt,
+            details_url=f"{frontend_base}/dashboard",
+        )
+
+        # -------------------------------
+        # Build full premium HTML body
+        # -------------------------------
+        html_body = render_reservation_email(
+            request.user,
+            reservation,
+            calendar_links,
+            logo_url
+        )
+
+
+        send_via_sendgrid(
+            to_email=email,
+            subject=f"✔️ Reservation Confirmed — {room.name}",
+            html_content=html_body,
+            ics_content=ics_data,   # attach ICS
+        )
+
+        email_sent = True
+        calendar_link = calendar_links.get("google")
+
+    except Exception as e:
+        email_error = str(e)
+        email_sent = False
+
 
     return JsonResponse(
         {
@@ -563,7 +893,6 @@ def create_room_reservation(request):
     )
 
 
-# api/views.py (Replace the existing function with this)
 # ---------------------------------------------------------
 # GET /api/rooms/reservations/my/
 # List future reservations for the logged-in user
@@ -593,8 +922,8 @@ def my_room_reservations(request):
             "roomId": r.room.id,
             "roomName": r.room.name,
             "capacity": r.room.capacity,
-            "hasScreen": r.room.has_screen,   # ← FIXED
-            "hasHdmi": r.room.has_hdmi,       # ← FIXED
+            "hasScreen": r.room.has_screen,
+            "hasHdmi": r.room.has_hdmi,
             "date": str(r.date),
             "startTime": r.start_time.strftime("%H:%M"),
             "endTime": r.end_time.strftime("%H:%M"),
@@ -604,7 +933,6 @@ def my_room_reservations(request):
 
     return JsonResponse({"ok": True, "reservations": data}, status=200)
 
-# api/views.py (Replace the existing function with this)
 
 # ---------------------------------------------------------
 # POST /api/rooms/reservations/<id>/cancel/
@@ -616,14 +944,11 @@ def cancel_room_reservation(request, reservation_id):
     if not request.user.is_authenticated:
         return JsonResponse({"ok": False, "error": "Login required"}, status=401)
 
-    # 💡 CRITICAL FIX: Read the raw body stream to ensure Django's request 
-    # parsing is satisfied, resolving the persistent 400 error.
     try:
-        # Read and discard the entire body content
-        request.read() 
+        request.read()
     except Exception:
         pass
-        
+
     try:
         reservation = RoomReservation.objects.get(id=reservation_id)
 
@@ -633,7 +958,6 @@ def cancel_room_reservation(request, reservation_id):
                 status=400,
             )
 
-        # Only allow the user who booked the room (or an admin in future)
         if reservation.user != request.user:
             return JsonResponse(
                 {"ok": False, "error": "Not allowed"},
@@ -643,6 +967,10 @@ def cancel_room_reservation(request, reservation_id):
         reservation.cancelled = True
         reservation.cancel_reason = "User cancelled"
         reservation.save()
+        send_cancellation_email(reservation,
+            reason="Reservation cancelled by user.",
+            cancelled_by=reservation.user.username
+            )
 
         return JsonResponse({"ok": True})
 
@@ -654,14 +982,84 @@ def cancel_room_reservation(request, reservation_id):
     except Exception as e:
         print("Cancel error:", e)
         return JsonResponse({"ok": False, "error": "Server error"}, status=500)
+
+
+# ---------------------------------------------------------
+# POST /api/rooms/reservations/cancel-bulk/
+# Cancel multiple reservations in ONE request + send ONE email
+# ---------------------------------------------------------
+@csrf_exempt
+@require_POST
+def cancel_room_reservations_bulk(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "Login required"}, status=401)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        ids = data.get("ids", [])
+        reason = data.get("reason", "User cancelled multiple reservations.")
+    except:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    if not isinstance(ids, list) or len(ids) == 0:
+        return JsonResponse({"ok": False, "error": "ids must be a non-empty list"}, status=400)
+
+    # Fetch all reservations
+    reservations = list(
+        RoomReservation.objects.filter(
+            id__in=ids,
+            user=request.user,
+            cancelled=False
+        ).select_related("room")
+    )
+
+    if len(reservations) == 0:
+        return JsonResponse({"ok": False, "error": "No valid reservations found"}, status=404)
+
+    # Mark all as cancelled
+    for r in reservations:
+        r.cancelled = True
+        r.cancel_reason = reason
+        r.save()
+
+    # ---------- Send ONE premium bulk email ----------
+    try:
+        from api.utils.email_templates import render_bulk_cancellation_email
+
+        logo_url = (
+            "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
+            "smartKiosk/media/ui_assets/apple-touch-icon.png"
+        )
+
+        html = render_bulk_cancellation_email(
+            reservations=reservations,
+            logo_url=logo_url,
+            cancelled_by=request.user.username,
+            reason=reason,
+        )
+
+        send_via_sendgrid(
+            to_email=request.user.email,
+            subject=f"⚠️ {len(reservations)} Reservation(s) Cancelled",
+            html_content=html,
+        )
+
+    except Exception as e:
+        print("Bulk cancellation email error:", e)
+
+    return JsonResponse(
+        {"ok": True, "cancelledCount": len(reservations)},
+        status=200
+    )
+
+
 # ---------------------------------------------------------
 # POST /api/rooms/reservations/<id>/admin-cancel/
-# Admin cancels ANY reservation + sends cancellation email
+# Admin cancels ANY reservation + sends PREMIUM cancellation email
 # ---------------------------------------------------------
 @csrf_exempt
 @require_POST
 def admin_cancel_reservation(request, reservation_id):
-    # Require admin privileges
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse(
             {"ok": False, "error": "Admin privileges required"},
@@ -683,12 +1081,10 @@ def admin_cancel_reservation(request, reservation_id):
             "Your reservation has been cancelled by an administrator."
         )
 
-        # Mark cancelled
         reservation.cancelled = True
         reservation.cancel_reason = reason
         reservation.save()
 
-        # Send cancellation email
         send_cancellation_email(reservation, reason)
 
         return JsonResponse({"ok": True, "message": "Reservation cancelled"})
@@ -705,35 +1101,34 @@ def admin_cancel_reservation(request, reservation_id):
             status=500,
         )
 
-def send_cancellation_email(reservation, reason):
-    subject = f"Reservation Cancelled – {reservation.room.name}"
-    body = f"""
-    <h3>Your reservation has been cancelled</h3>
-    <p><b>Room:</b> {reservation.room.name}</p>
-    <p><b>Date:</b> {reservation.date}</p>
-    <p><b>Original Time:</b> {reservation.start_time} – {reservation.end_time}</p>
-    <p><b>Reason:</b> {reason}</p>
-    <br/>
-    <p>If you have any questions, please contact the building administrator.</p>
-    """
 
-    msg = MIMEText(body, "html")
-    msg["Subject"] = subject
-    msg["From"] = settings.EMAIL_HOST_USER
-    msg["To"] = reservation.email
-
+def send_cancellation_email(reservation, reason, cancelled_by="System"):
     try:
-        smtp = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT)
-        smtp.starttls()
-        smtp.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-        smtp.send_message(msg)
-        smtp.quit()
-        return True, None
+        from api.utils.email_templates import render_cancellation_email
+
+        logo_url = (
+            "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
+            "smartKiosk/media/ui_assets/apple-touch-icon.png"
+        )
+
+        html = render_cancellation_email(
+            reservation=reservation,
+            reason=reason,
+            logo_url=logo_url,
+            cancelled_by=cancelled_by,
+        )
+
+        send_via_sendgrid(
+            to_email=reservation.user.email,
+            subject="⚠️ Reservation Cancelled",
+            html_content=html,
+        )
+
     except Exception as e:
-        return False, str(e)
+        print("Cancellation Email Error:", e)
 
 
-# api/views.py (Replace the existing function with this)
+
 # ---------------------------------------------------------
 # POST /api/login/
 # Session-based login using Django User (TiDB-backed)
@@ -757,7 +1152,6 @@ def login_user(request):
             {"ok": False, "error": "Email and password required"}, status=400
         )
 
-    # Django User does NOT authenticate with email by default, so we find user by email
     try:
         user_obj = User.objects.get(email=email)
     except User.DoesNotExist:
@@ -765,7 +1159,6 @@ def login_user(request):
             {"ok": False, "error": "Invalid email or password"}, status=401
         )
 
-    # Use username for authenticate()
     user = authenticate(username=user_obj.username, password=password)
 
     if user is None:
@@ -773,7 +1166,6 @@ def login_user(request):
             {"ok": False, "error": "Invalid email or password"}, status=401
         )
 
-    # Create session
     login(request, user)
 
     full_name = (
@@ -781,21 +1173,19 @@ def login_user(request):
         if hasattr(user_obj, "userprofile")
         else user_obj.username
     )
-    is_admin = hasattr(user_obj, "userprofile") and getattr(
-        user_obj.userprofile, "is_admin", False
-    )
 
     return JsonResponse(
         {
             "ok": True,
             "message": "Login successful",
-            "id": user_obj.id, # 💡 FIX APPLIED: ADDED User ID
+            "id": user_obj.id,
             "fullName": full_name,
             "email": user_obj.email,
             "isAdmin": user_obj.is_staff,
         },
         status=200,
     )
+
 
 @csrf_exempt
 @require_GET
@@ -805,12 +1195,11 @@ def get_session_user(request):
 
     user = request.user
 
-    # Build user object exactly how frontend expects it
     user_data = {
         "id": user.id,
         "email": user.email,
         "fullName": user.get_full_name() or user.username or user.email,
-        "isAdmin": user.is_staff,   # KEY FIX!
+        "isAdmin": user.is_staff,
     }
 
     return JsonResponse({"ok": True, "user": user_data}, status=200)
@@ -822,11 +1211,10 @@ def get_session_user(request):
 # ---------------------------------------------------------
 @require_GET
 def get_ui_assets(request):
-    from .models import UIAsset  # safe import inside function
+    from .models import UIAsset
 
     assets = {}
 
-    # Build a dict: { "bg-campus": "http://.../media/ui_assets/bg-campus.jpg", ... }
     for asset in UIAsset.objects.all():
         assets[asset.name] = request.build_absolute_uri(asset.image.url)
 
@@ -841,7 +1229,42 @@ def get_ui_assets(request):
 @require_POST
 def logoutSession(request):
     try:
-        logout(request)  # from django.contrib.auth
+        logout(request)
         return JsonResponse({"ok": True, "message": "Logged out"}, status=200)
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
+# ---------------------------------------------------------
+# GET /api/calendar/ics/<id>/
+# Download ICS (Apple / iCal / universal)
+# ---------------------------------------------------------
+@require_GET
+def download_ics(request, reservation_id):
+    try:
+        r = RoomReservation.objects.select_related("room").get(id=reservation_id)
+    except RoomReservation.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Reservation not found"}, status=404)
+
+    try:
+        from api.utils.calendar_utils import create_ics_content as generate_ics_event
+
+        tz = timezone.get_current_timezone()
+
+        start_dt = timezone.make_aware(datetime.combine(r.date, r.start_time), tz)
+        end_dt = timezone.make_aware(datetime.combine(r.date, r.end_time), tz)
+
+        ics = generate_ics_event(
+            room_name=r.room.name,
+            start_dt=start_dt,
+            end_dt=end_dt,
+            reservation_id=r.id,
+            user_email=r.email,
+        )
+
+        response = HttpResponse(ics, content_type="text/calendar")
+        response["Content-Disposition"] = 'attachment; filename="reservation.ics"'
+        return response
+
     except Exception as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=500)
