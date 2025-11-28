@@ -990,6 +990,58 @@ def cancel_room_reservations_bulk(request):
 # POST /api/rooms/reservations/<id>/admin-cancel/
 # Admin cancels ANY reservation + sends PREMIUM cancellation email
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# GET /api/rooms/reservations/all/
+# Admin view — list ALL upcoming reservations with real names
+# ---------------------------------------------------------
+@require_GET
+def all_room_reservations(request):
+
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin privileges required"}, status=403)
+
+    today = timezone.localdate()
+
+    qs = (
+        RoomReservation.objects
+        .filter(cancelled=False, date__gte=today)
+        .select_related("room", "user")
+        .order_by("date", "start_time")
+    )
+
+    data = []
+    for r in qs:
+
+        # Full name priority:
+        # 1. UserProfile.full_name
+        # 2. Django User first_name + last_name
+        # 3. User.username (email)
+        try:
+            profile = UserProfile.objects.get(user=r.user)
+            full_name = profile.full_name
+        except UserProfile.DoesNotExist:
+            full_name = (r.user.first_name + " " + r.user.last_name).strip() or r.user.username
+
+        data.append({
+            "id": r.id,
+            "roomId": r.room.id,
+            "roomName": r.room.name,
+            "capacity": r.room.capacity,
+            "hasScreen": r.room.has_screen,
+            "hasHdmi": r.room.has_hdmi,
+            "date": str(r.date),
+            "startTime": r.start_time.strftime("%H:%M"),
+            "endTime": r.end_time.strftime("%H:%M"),
+            "fullName": full_name,
+            "email": r.user.email,
+            "userId": r.user.id,
+            "cancelled": r.cancelled,
+            "cancelReason": r.cancel_reason or "",
+        })
+
+    return JsonResponse({"ok": True, "reservations": data}, status=200)
+
+
 @csrf_exempt
 @require_POST
 def admin_cancel_reservation(request, reservation_id):

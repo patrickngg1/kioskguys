@@ -29,8 +29,8 @@
   position: fixed;
   inset: 0;
   z-index: 9998;
-  padding-top: 8rem !important;
-  padding-bottom: 2rem;
+  padding-top: 10rem !important;
+  padding-bottom: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;

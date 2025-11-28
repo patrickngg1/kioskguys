@@ -452,8 +452,8 @@
   -webkit-backdrop-filter: blur(22px) saturate(180%);
   z-index: 9999;
   animation: fadeIn 0.3s ease;
-  padding-top: 6rem;
-  padding-bottom: 3rem;
+  padding-top: 8rem;
+  padding-bottom: 2rem;
 }
 /* ============================================================
    UNIFIED MODAL BOX — DARK GLASS, RESPONSIVE, AND SAFE BELOW HEADER

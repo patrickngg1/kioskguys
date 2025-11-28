@@ -26,8 +26,7 @@ export default function AdminPanel({
 }) {
   const [activeSection, setActiveSection] = useState('reservations');
   const [confirmCancelId, setConfirmCancelId] = useState(null);
-
-  if (!isOpen) return null;
+  const [adminReservations, setAdminReservations] = useState([]);
 
   const sections = [
     { key: 'reservations', label: 'Reservations' },
@@ -36,6 +35,27 @@ export default function AdminPanel({
     { key: 'banners', label: 'Banner Images' },
     { key: 'users', label: 'Users' },
   ];
+
+  const loadAdminReservations = async () => {
+    try {
+      const res = await fetch('/api/rooms/reservations/all/', {
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        console.error('Failed to load admin reservations:', data.error);
+        showToast?.('Failed to load reservations', 'error');
+        return;
+      }
+
+      setAdminReservations(data.reservations || []);
+    } catch (err) {
+      console.error('Server error loading admin reservations', err);
+      showToast?.('Server error loading reservations', 'error');
+    }
+  };
 
   const adminCancelReservation = async (reservationId) => {
     try {
@@ -64,14 +84,24 @@ export default function AdminPanel({
 
       showToast('Reservation cancelled successfully', 'success');
 
+      // Refresh both the dashboard list (if provided) and the admin list
       if (typeof loadReservations === 'function') {
         loadReservations();
       }
+      await loadAdminReservations();
     } catch (err) {
       console.error(err);
       showToast('Server error while cancelling reservation', 'error');
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadAdminReservations();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div className='admin-overlay' onClick={onClose}>
@@ -132,7 +162,7 @@ export default function AdminPanel({
           <section className='admin-content'>
             {activeSection === 'reservations' && (
               <ReservationsSection
-                reservations={reservations}
+                reservations={adminReservations}
                 adminCancelReservation={adminCancelReservation}
                 setConfirmCancelId={setConfirmCancelId}
               />

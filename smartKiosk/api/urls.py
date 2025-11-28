@@ -33,13 +33,17 @@ urlpatterns = [
     path("rooms/", views.get_rooms, name="get_rooms"),
     path("rooms/reserve/", views.create_room_reservation, name="create_room_reservation"),
     path("rooms/reservations/my/", views.my_room_reservations, name="my_room_reservations"),
-    # Bulk cancel (NEW)
+
+    # >>> ADD THIS LINE <<<
+    path("rooms/reservations/all/", views.all_room_reservations, name="all_room_reservations"),
+
+    # Bulk cancel
     path(
         "rooms/reservations/cancel-bulk/",
         csrf_exempt(cancel_room_reservations_bulk),
         name="cancel_room_reservations_bulk",
     ),
-    # Cancel reservation (CSRF exempt)
+    # Cancel reservation
     path(
         "rooms/reservations/<int:reservation_id>/cancel/",
         csrf_exempt(views.cancel_room_reservation),
@@ -49,7 +53,6 @@ urlpatterns = [
     path("rooms/create/", views.create_room),
     path("rooms/<int:room_id>/update/", views.update_room),
     path("rooms/<int:room_id>/delete/", views.delete_room),
-
 
     # Admin cancel
     path(
