@@ -63,9 +63,27 @@ npm install -g npm@latest
 ```
 
 ---
+### 4. Establishing .env File
+Since we want emails to not be sent to spam on UTA domains, we will need to use a secure API call to send emails. This means that you need to setup your own `.env` file which will automatically be used once its created. Follow these steps:  
 
-### 4. Install frontend dependencies
-Now that Node is ready, install the frontend packages:
+#### a.) Copy the `.env.example` file
+Make sure you're in the smartKiosk/ directory and run this:
+```bash
+cp .env.example .env
+```
+
+#### b.) Edit the `.env` file
+After creating the .env file open it and paste what Prakash gave in `collaborative-documents`. I would put it here, but security reasons.
+Afterwards, your file should look like this:
+
+``` bash
+SENDGRID_API_KEY=[API KEY HERE]
+SENDGRID_VERIFIED_SENDER=[ERSA EMAIL HERE]
+```
+
+---
+### 5. Install frontend dependencies
+Now that Node is ready and your .env is setup, install the frontend packages:
 
 ```bash
 npm install --legacy-peer-deps
