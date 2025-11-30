@@ -113,7 +113,7 @@ function ReserveConferenceRoom({
     const loadRooms = async () => {
       setLoadingRooms(true);
       try {
-        const res = await fetch('http://localhost:8000/api/rooms/', {
+        const res = await fetch('/api/rooms/', {
           credentials: 'include',
         });
         const data = await res.json();
@@ -138,10 +138,9 @@ function ReserveConferenceRoom({
       }
       setLoadingMyReservations(true);
       try {
-        const res = await fetch(
-          'http://localhost:8000/api/rooms/reservations/my/',
-          { credentials: 'include' }
-        );
+        const res = await fetch('/api/rooms/reservations/my/', {
+          credentials: 'include',
+        });
         const data = await res.json();
         if (!res.ok || !data.ok) {
           console.error('My reservations load failed:', data);
@@ -166,6 +165,25 @@ function ReserveConferenceRoom({
     setLocallyCancelledIds([]);
     setMyPanelOpen(false);
   }, [isOpen, user]);
+
+  // 🔥 FIX: When user loads AFTER the modal opens, re-fetch my reservations
+  useEffect(() => {
+    if (isOpen && user) {
+      (async () => {
+        try {
+          const res = await fetch('/api/rooms/reservations/my/', {
+            credentials: 'include',
+          });
+          const data = await res.json();
+          if (res.ok && data.ok) {
+            setMyReservations(data.reservations || []);
+          }
+        } catch (err) {
+          console.error('Delayed my reservations fetch failed:', err);
+        }
+      })();
+    }
+  }, [user, isOpen]);
 
   if (!isOpen) return null;
 
@@ -286,7 +304,7 @@ function ReserveConferenceRoom({
     setToastShake(false);
 
     try {
-      const res = await fetch('http://localhost:8000/api/rooms/reserve/', {
+      const res = await fetch('/api/rooms/reserve/', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -390,13 +408,10 @@ function ReserveConferenceRoom({
       if (selectedIds.length === 1) {
         const id = selectedIds[0];
 
-        res = await fetch(
-          `http://localhost:8000/api/rooms/reservations/${id}/cancel/`,
-          {
-            method: 'POST',
-            credentials: 'include',
-          }
-        );
+        res = await fetch(`/api/rooms/reservations/${id}/cancel/`, {
+          method: 'POST',
+          credentials: 'include',
+        });
 
         data = await res.json();
 
@@ -412,18 +427,15 @@ function ReserveConferenceRoom({
 
       // 🔥 MULTIPLE RESERVATIONS CANCEL — use bulk endpoint
       else {
-        res = await fetch(
-          'http://localhost:8000/api/rooms/reservations/cancel-bulk/',
-          {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ids: selectedIds,
-              reason: 'User cancelled multiple reservations.',
-            }),
-          }
-        );
+        res = await fetch('/api/rooms/reservations/cancel-bulk/', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ids: selectedIds,
+            reason: 'User cancelled multiple reservations.',
+          }),
+        });
 
         data = await res.json();
 

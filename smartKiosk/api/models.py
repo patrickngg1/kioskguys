@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # ---------------------------------------------------------
 # CATEGORY MODEL
@@ -140,3 +143,28 @@ class UIAsset(models.Model):
 
     def __str__(self):
         return self.name
+    
+
+# ---------------------------------------------------------
+# PASSWORD RESET CODE MODEL
+# ---------------------------------------------------------
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="password_reset_codes",
+    )
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.email} – {self.code}"
+
+    @property
+    def is_expired(self):
+        # 10-minute lifetime
+        from datetime import timedelta
+
+        return self.created_at < timezone.now() - timedelta(minutes=10)
+    

@@ -450,11 +450,12 @@
   );
   backdrop-filter: blur(22px) saturate(180%);
   -webkit-backdrop-filter: blur(22px) saturate(180%);
-  z-index: 9999;
+  z-index: 9999999 !important;
   animation: fadeIn 0.3s ease;
   padding-top: 8rem;
   padding-bottom: 2rem;
 }
+
 /* ============================================================
    UNIFIED MODAL BOX — DARK GLASS, RESPONSIVE, AND SAFE BELOW HEADER
    ============================================================ */
@@ -2101,6 +2102,7 @@ select option {
     opacity: 1;
   }
 }
+
 /* ===========================================================
   RESPONSIVE DASHBOARD LAYOUT FIXES
 ===========================================================*/

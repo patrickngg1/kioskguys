@@ -4,7 +4,7 @@ Django settings for kiosks project.
 import os
 from pathlib import Path
 from datetime import timedelta
-import ssl # Import needed for SMTP_UNVERIFIED_CONTEXT
+import ssl  # Import needed for SMTP_UNVERIFIED_CONTEXT
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -12,7 +12,6 @@ SECRET_KEY = 'django-insecure-!uu)_)22cl-rk2f2wv!k(5%0shlio@%xqw!^(a%b$3d1pn9rwv
 DEBUG = True
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 SENDGRID_VERIFIED_SENDER = "ersaatuta@gmail.com"
-
 
 # ---------------------------------------------------------
 # INSTALLED APPS
@@ -40,7 +39,6 @@ INSTALLED_APPS = [
 
 SITE_ID = 1
 
-
 # ---------------------------------------------------------
 # MIDDLEWARE
 # ---------------------------------------------------------
@@ -59,15 +57,12 @@ MIDDLEWARE = [
 ]
 
 # ---------------------------------------------------------
-# CORS SETTINGS (Fixed to include Django's own port)
+# CORS SETTINGS
 # ---------------------------------------------------------
-CORS_ALLOW_CREDENTIALS = True   # allow cookies!
+CORS_ALLOW_CREDENTIALS = True   # allow cookies with cross-origin fetch
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    # 💡 Fix: Add Django's development port (8000) for local self-referencing.
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -181,32 +176,34 @@ DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <no-reply@smartkiosk.uta.edu>"
 
 EMAIL_TIMEOUT = 30
 
-
 # Disable SMTP SSL certificate verification (dev only)
 SMTP_UNVERIFIED_CONTEXT = ssl._create_unverified_context()
 
+# ---------------------------------------------------------
+# SESSION / CSRF COOKIE SETTINGS (LOCAL DEV)
+# ---------------------------------------------------------
+# NOTE: we intentionally DO NOT set *_COOKIE_DOMAIN so that the cookies
+# are bound to whatever host you’re actually using (localhost).
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_HTTPONLY = True
 
-# Allow cross-site cookies for React -> Django
-SESSION_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SECURE = True       # REQUIRED when SameSite=None
-SESSION_COOKIE_HTTPONLY = False    # ok for development
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_HTTPONLY = True
 
-CSRF_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_SECURE = True          # REQUIRED when SameSite=None
-CSRF_COOKIE_HTTPONLY = False
-# React (localhost) is trusted for CSRF POST requests
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    # Fix: Add Django's development port (8000) for local self-referencing.
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
 
-# 💡 FINAL FIX: Use a setting to instruct CSRF middleware to ignore the cancellation path
-# We ignore /api/rooms/reservations/ to cover the cancellation endpoint
+# Optional: custom list you mentioned (Django will ignore unknown settings)
 CSRF_IGNORE_PATHS = [
-    '/api/rooms/reservations/', 
+    "/api/rooms/reservations/",
+    "/api/rooms/reservations/my/",
+    "/api/rooms/reservations/all/",
 ]
 
 # ---------------------------------------------------------
@@ -214,6 +211,5 @@ CSRF_IGNORE_PATHS = [
 # ---------------------------------------------------------
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
 
 print("DEBUG SENDGRID KEY:", os.environ.get("SENDGRID_API_KEY"))

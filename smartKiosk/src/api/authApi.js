@@ -3,15 +3,15 @@
 // FINAL VERSION — FIXED FOR DJANGO SESSION AUTH + ROOM RESERVATION
 // ------------------------------------------------------------
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = '';
 
 // ------------------------------------------------------------
 // LOGIN USING DJANGO SESSION AUTH   (/api/login/)
 // ------------------------------------------------------------
 export async function loginWithSession(email, password) {
-  const res = await fetch(`${BASE_URL}/api/login/`, {
+  const res = await fetch(`/api/login/`, {
     method: 'POST',
-    credentials: 'include', // SENDS COOKIE
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -24,7 +24,15 @@ export async function loginWithSession(email, password) {
     throw new Error(data.error || 'Login failed');
   }
 
-  return data; // contains ok + message
+  // ⭐ RETURN FULL LOGIN PAYLOAD (critical)
+  return {
+    ok: true,
+    id: data.id,
+    fullName: data.fullName,
+    email: data.email,
+    isAdmin: data.isAdmin,
+    mustSetPassword: data.mustSetPassword ?? false,
+  };
 }
 
 // ------------------------------------------------------------
@@ -74,6 +82,25 @@ export async function registerWithSession(fullName, email, password) {
   const data = await res.json();
 
   if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+  return data;
+}
+
+export async function requestPasswordReset(email) {
+  const res = await fetch(`${BASE_URL}/api/password-reset/request/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || 'Unable to send reset code.');
+  }
 
   return data;
 }

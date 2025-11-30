@@ -1,4 +1,5 @@
 import html as html_lib
+import datetime
 
 # --------------------------------------------------
 # RENDER RESERVATION CONFIRMATION (PREMIUM VERSION)
@@ -820,3 +821,100 @@ def render_supply_request_email(full_name, email, items, request_id, timestamp, 
 </html>
 """
     return html
+
+
+def render_password_reset_email(logo_url: str, code: str) -> str:
+    """
+    Premium UTA Smart Kiosk email for password reset (6-digit login code).
+    Matches visual style of existing reservation & supply emails.
+    """
+    return f"""
+    <div style="
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        background: #f3f4f6;
+        padding: 40px 0;
+        color: #111827;
+    ">
+      <div style="
+          max-width: 520px;
+          margin: 0 auto;
+          background: rgba(255, 255, 255, 0.85);
+          border-radius: 20px;
+          padding: 32px;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.35);
+      ">
+        <div style="text-align:center; margin-bottom: 25px;">
+          <img src="{logo_url}" alt="UTA Smart Kiosk" style="width: 68px; height: 68px;" />
+        </div>
+
+        <h2 style="
+            font-size: 22px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 10px;
+            color: #111827;
+        ">
+          Your Smart Kiosk Reset Code
+        </h2>
+
+        <p style="
+            font-size: 15px;
+            line-height: 1.55;
+            margin-bottom: 22px;
+            text-align: center;
+        ">
+          A password reset was requested for your UTA Smart Kiosk account.
+          Use the 6-digit code below as your <strong>temporary password</strong>.
+        </p>
+
+        <div style="
+            margin: 25px auto;
+            text-align: center;
+            padding: 14px 24px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            background: #2563eb;
+            color: white;
+            width: fit-content;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(37, 99, 235, 0.32);
+        ">
+            {code}
+        </div>
+
+        <p style="
+            font-size: 15px;
+            line-height: 1.6;
+            margin-top: 24px;
+        ">
+          <strong>How to log in:</strong><br/>
+          1. Go to the kiosk login page<br/>
+          2. Enter your email<br/>
+          3. Enter the 6-digit code above as your password<br/>
+          4. After logging in, you will be prompted to create a new password
+        </p>
+
+        <p style="
+            font-size: 14px;
+            color: #6b7280;
+            margin-top: 20px;
+        ">
+          If you didn't request this, you can safely ignore this email.
+        </p>
+
+        <p style="
+            font-size: 13px;
+            color: #9ca3af;
+            margin-top: 28px;
+            text-align: center;
+        ">
+          © {datetime.datetime.now().year} UTA Smart Kiosk - All Rights Reserved.
+        </p>
+      </div>
+    </div>
+    """

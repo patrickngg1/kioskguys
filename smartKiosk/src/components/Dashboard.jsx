@@ -20,6 +20,7 @@ import AdminPanel from './AdminPanel';
 import RequestSupply from './RequestSupply';
 import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
+import SetPasswordOverlay from './SetPasswordOverlay'; // adjust path if needed
 
 // Deprecated local storage helpers removed. Only keeping necessary functions:
 const timesOverlap = (aStart, aEnd, bStart, bEnd) =>
@@ -27,13 +28,21 @@ const timesOverlap = (aStart, aEnd, bStart, bEnd) =>
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-
+  const navUser = location.state?.user || null;
+  console.log('DASHBOARD → navUser:', navUser);
   // 🔵 Global UI assets (banners, chrome) from App.jsx context
   const uiAssets = useContext(UIAssetsContext);
 
+  const initialResetRequired = sessionStorage.getItem('reset-required') === '1';
+
+  // ...
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-
+  // Initialize state based on the initial check
+  const [isSetPasswordOpen, setIsSetPasswordOpen] =
+    useState(initialResetRequired);
+  const [mustSetPassword, setMustSetPassword] = useState(initialResetRequired);
+  // ...
   // Inactivity / countdown
   const [ringProgress, setRingProgress] = useState(0);
   const [showInactivityModal, setShowInactivityModal] = useState(false);
@@ -55,42 +64,52 @@ export default function Dashboard() {
     setTimeout(() => navigate('/', { state: { startOverlay: true } }), 3000);
   }
 
-  // ------------------------ Load User ------------------------
+  // src/components/Dashboard.jsx
+
+  // ------------------------ Load User // ------------------------ Load User ------------------------
   useEffect(() => {
-    const navUser = location.state?.user || null;
-
     async function initUser() {
-      // If user was passed during login navigation
-      if (navUser) {
-        setUser(navUser);
+      try {
+        // 1️⃣ Always load session user from backend
+        const sessionUser = await getSessionUser();
+
+        // If not logged in → go back to login
+        if (!sessionUser) {
+          navigate('/');
+          return;
+        }
+
+        // 2️⃣ Put user into state
+        setUser(sessionUser);
         setProfile({
-          fullName: navUser.fullName,
-          email: navUser.email,
+          fullName: sessionUser.fullName,
+          email: sessionUser.email,
         });
-        loadReservations();
-        return;
+
+        // 3️⃣ Check backend-enforced password reset
+        const resetRequiredByServer = sessionUser.mustSetPassword === true;
+
+        // Set overlay flags
+        setMustSetPassword(resetRequiredByServer);
+        setIsSetPasswordOpen(resetRequiredByServer);
+
+        // 4️⃣ If reset is required, STOP dashboard from loading anything else
+        if (resetRequiredByServer === true) {
+          console.log(
+            '⛔ Blocking dashboard until password reset is completed.'
+          );
+          return; // 🔥 VERY IMPORTANT
+        }
+
+        // 5️⃣ Load reservations normally
+        await loadReservations();
+      } catch (err) {
+        console.error('Dashboard initUser error:', err);
       }
-
-      // Otherwise load from Django session (/api/me/)
-      const sessionUser = await getSessionUser();
-
-      // Backend returns: { ok: true, user: {...} }
-      if (!sessionUser || !sessionUser.user) {
-        navigate('/');
-        return;
-      }
-
-      const u = sessionUser.user;
-
-      setUser(u);
-      setProfile({
-        fullName: u.fullName,
-        email: u.email,
-      });
     }
 
     initUser();
-  }, [location.state, navigate]);
+  }, [navigate]);
 
   // ------------------------ Inactivity Detection ------------------------
   useEffect(() => {
@@ -234,12 +253,9 @@ export default function Dashboard() {
 
   const loadReservations = async () => {
     try {
-      const res = await fetch(
-        'http://localhost:8000/api/rooms/reservations/my/',
-        {
-          credentials: 'include',
-        }
-      );
+      const res = await fetch('/api/rooms/reservations/my/', {
+        credentials: 'include',
+      });
       const data = await res.json();
 
       if (data.ok && Array.isArray(data.reservations)) {
@@ -256,7 +272,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadItems() {
       try {
-        const res = await fetch('http://localhost:8000/api/items/');
+        const res = await fetch('/api/items/');
         const data = await res.json();
 
         let categoriesOut = {};
@@ -300,9 +316,7 @@ export default function Dashboard() {
 
   const loadPopular = async () => {
     try {
-      const res = await fetch(
-        'http://localhost:8000/api/supplies/popular/?limit=3'
-      );
+      const res = await fetch('/api/supplies/popular/?limit=3');
       const data = await res.json();
       const popular = data?.popular || {};
 
@@ -353,7 +367,7 @@ export default function Dashboard() {
       setToast('Submitting request…');
       setToastShake(false);
 
-      const res = await fetch('http://localhost:8000/api/supplies/request/', {
+      const res = await fetch('/api/supplies/request/', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -755,6 +769,33 @@ export default function Dashboard() {
           setToastShake(false);
         }}
         visible={!!toast}
+      />
+
+      <SetPasswordOverlay
+        isOpen={mustSetPassword}
+        onSuccess={(success) => {
+          if (success) {
+            // Use your REAL toast API:
+            setToast('Password updated successfully!');
+            setToastShake(false); // success toast
+          }
+
+          // Close overlay
+          setMustSetPassword(false);
+          setIsSetPasswordOpen(false);
+
+          // Make sure it NEVER reopens again
+          setUser((prev) =>
+            prev ? { ...prev, mustSetPassword: false } : prev
+          );
+        }}
+        onRequestClose={
+          mustSetPassword
+            ? undefined
+            : () => {
+                setIsSetPasswordOpen(false);
+              }
+        }
       />
     </>
   );

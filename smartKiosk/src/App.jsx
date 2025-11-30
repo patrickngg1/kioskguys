@@ -1,7 +1,7 @@
 // App.jsx
 import React, { useState, useEffect, useRef, createContext } from 'react';
 import {
-  HashRouter as Router,
+  BrowserRouter as Router,
   Routes,
   Route,
   useLocation,
@@ -86,7 +86,7 @@ export default function App() {
 
   // 🟧 Fetch UI assets ONCE from Django
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/ui-assets/')
+    fetch('/api/ui-assets/')
       .then((res) => res.json())
       .then((data) => setUIAssets(data.assets))
       .catch((e) => console.error('Failed to load UI assets', e));

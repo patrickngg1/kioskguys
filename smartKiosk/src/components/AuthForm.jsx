@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { loginWithSession, registerWithSession } from '../api/authApi';
+import {
+  loginWithSession,
+  registerWithSession,
+  requestPasswordReset, // 🔹 NEW helper
+} from '../api/authApi';
 import AuthToast from './AuthToast';
 
 /* ===== Helpers ===== */
 function validateEmailDomain(email) {
-  const v = email.toLowerCase(); // 🔥 FIX: always lowercase first
+  const v = email.toLowerCase();
   const domain = v.substring(v.lastIndexOf('@'));
   return domain === '@mavs.uta.edu' || domain === '@uta.edu';
 }
@@ -36,7 +40,7 @@ function getPasswordStrength(password) {
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++; // ✔ fixed: reward special character
+  if (/[^A-Za-z0-9]/.test(password)) score++;
 
   if (score === 0) return { label: '', level: 0 };
   if (score === 1) return { label: 'Weak', level: 1 };
@@ -75,7 +79,8 @@ function PasswordInput({
 }
 
 export default function AuthForm({ onLoginSuccess }) {
-  const [view, setView] = useState('login');
+  const [view, setView] = useState('login'); // 'login' | 'register'
+  const [resetMode, setResetMode] = useState(false); // 🔹 NEW: login vs reset-email mode
 
   const [toast, setToast] = useState(null);
   const showToast = (type, message) => setToast({ type, message });
@@ -99,6 +104,8 @@ export default function AuthForm({ onLoginSuccess }) {
     level: 0,
   });
 
+  const [resetLoading, setResetLoading] = useState(false); // 🔹 NEW
+
   /* ===== Live validation helpers ===== */
   const validateFullNameLive = (value) => {
     const v = value.trim();
@@ -115,7 +122,7 @@ export default function AuthForm({ onLoginSuccess }) {
   };
 
   const validateEmailLive = (value) => {
-    const v = value.trim().toLowerCase(); // 🔥 FIX
+    const v = value.trim().toLowerCase();
     if (!v) return 'Email is required.';
     if (!validateEmailDomain(v)) return 'Must be @mavs.uta.edu or @uta.edu';
     return '';
@@ -149,7 +156,7 @@ export default function AuthForm({ onLoginSuccess }) {
     !errors.password &&
     !errors.confirmPassword;
 
-  /* ===== Login handler ===== */
+  /* ===== LOGIN handler (normal or with 6-digit code) ===== */
   async function handleLogin(e) {
     e.preventDefault();
 
@@ -189,12 +196,12 @@ export default function AuthForm({ onLoginSuccess }) {
 
       showToast('success', 'Login successful!');
 
-      // 💡 FIX APPLIED: Capture all critical user fields for Dashboard
       const userPayload = {
         id: response.id,
         email: response.email,
         fullName: response.fullName,
-        isAdmin: response.isAdmin, // ⭐ IMPORTANT ⭐
+        isAdmin: response.isAdmin,
+        mustSetPassword: !!response.mustSetPassword,
       };
 
       setTimeout(() => {
@@ -205,9 +212,59 @@ export default function AuthForm({ onLoginSuccess }) {
         type: 'error',
         message: err.message.includes('Failed to fetch')
           ? 'Server unreachable. Try again.'
-          : 'Invalid email or password.',
+          : 'Invalid email, password, or reset code.',
       });
       triggerShake();
+    }
+  }
+
+  /* ===== RESET CODE REQUEST handler ===== */
+  async function handleResetRequest(e) {
+    e.preventDefault();
+
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedEmail) {
+      showToast('error', 'Email is required.');
+      triggerShake();
+      return;
+    }
+
+    if (!validateEmailDomain(trimmedEmail)) {
+      showToast('error', 'Must use @mavs.uta.edu or @uta.edu email.');
+      triggerShake();
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      showToast('success', 'Sending reset code…');
+
+      await requestPasswordReset(trimmedEmail);
+
+      showToast(
+        'success',
+        'Reset code sent! Check your email and spam folder.'
+      );
+      setResetMode(false);
+      setPassword('');
+
+      // ✅ Back to login view with email prefilled; user now types the 6-digit code as password
+      setResetMode(false);
+      setView('login');
+      setPassword(''); // clear password
+
+      setTimeout(() => {
+        document.querySelector('input[type="password"]')?.focus();
+      }, 10);
+    } catch (err) {
+      showToast(
+        'error',
+        err?.message || 'Could not send reset code. Please try again.'
+      );
+      triggerShake();
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -215,7 +272,6 @@ export default function AuthForm({ onLoginSuccess }) {
   async function handleRegister(e) {
     e.preventDefault();
 
-    // 🔥 Always lowercase email before validating/sending
     const lowerEmail = email.trim().toLowerCase();
 
     const fullNameErr = validateFullNameLive(fullName);
@@ -259,11 +315,11 @@ export default function AuthForm({ onLoginSuccess }) {
     }
 
     try {
-      // 💡 FIX APPLIED: Match the signature (fullName, email, password) from authApi.js
       await registerWithSession(fullName, lowerEmail, password);
 
       showToast('success', 'Account created! Please sign in.');
       setView('login');
+      setResetMode(false);
 
       setPassword('');
       setConfirmPassword('');
@@ -311,6 +367,7 @@ export default function AuthForm({ onLoginSuccess }) {
             className={`tab-button ${view === 'login' ? 'active' : ''}`}
             onClick={() => {
               setView('login');
+              setResetMode(false); // 🔹 reset mode off when switching tabs
               setTimeout(() => {
                 document.getElementById('login-email-input')?.focus();
               }, 10);
@@ -324,6 +381,7 @@ export default function AuthForm({ onLoginSuccess }) {
             className={`tab-button ${view === 'register' ? 'active' : ''}`}
             onClick={() => {
               setView('register');
+              setResetMode(false); // 🔹 reset mode off when switching tabs
               setTimeout(() => {
                 document.getElementById('register-fullname-input')?.focus();
               }, 10);
@@ -335,34 +393,95 @@ export default function AuthForm({ onLoginSuccess }) {
 
         <div className={`form-body ${shake ? 'shake' : ''}`}>
           {view === 'login' ? (
-            /* ========== LOGIN FORM ========== */
-            <form onSubmit={handleLogin}>
-              <div className='form-group'>
-                <label>Email</label>
-                <input
-                  id='login-email-input'
-                  className='input-field'
-                  type='email'
-                  placeholder='email@uta.edu'
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete='username'
-                />
-              </div>
+            /* ========== LOGIN VIEW (normal or reset mode) ========== */
+            resetMode ? (
+              /* ------ RESET EMAIL MODE ------ */
+              <form onSubmit={handleResetRequest}>
+                <div className='form-group'>
+                  <label>UTA Email</label>
+                  <input
+                    id='reset-email-input'
+                    className='input-field'
+                    type='email'
+                    placeholder='email@mavs.uta.edu'
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete='email'
+                  />
+                </div>
 
-              <div className='form-group'>
-                <label>Password</label>
-                <PasswordInput
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder='Enter your password'
-                  inputClass='input-field'
-                  autoComplete='current-password'
-                />
-              </div>
+                <p
+                  style={{
+                    fontSize: '0.85rem',
+                    opacity: 0.85,
+                    marginTop: '0.25rem',
+                    marginBottom: '1rem',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  We will email you a 6-digit reset code you can use to sign in.
+                  Please check your inbox and your spam folder.
+                </p>
 
-              <button className='auth-button'>Sign In</button>
-            </form>
+                <button className='auth-button' disabled={resetLoading}>
+                  {resetLoading ? 'Sending reset code…' : 'Send Reset Code'}
+                </button>
+              </form>
+            ) : (
+              /* ------ NORMAL LOGIN MODE ------ */
+              <form onSubmit={handleLogin}>
+                <div className='form-group'>
+                  <label>Email</label>
+                  <input
+                    id='login-email-input'
+                    className='input-field'
+                    type='email'
+                    placeholder='email@uta.edu'
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete='username'
+                  />
+                </div>
+
+                <div className='form-group'>
+                  <label>Password</label>
+                  <PasswordInput
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder='Enter your password or the reset code'
+                    inputClass='input-field'
+                    autoComplete='current-password'
+                  />
+                  {/* 🔹 "Reset password" link, right-aligned under the password input (Option A) */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      marginTop: '0.35rem',
+                    }}
+                  >
+                    <div className='forgot-password-container'>
+                      <button
+                        type='button'
+                        className='forgot-password-link'
+                        onClick={() => {
+                          setResetMode(true);
+                          setTimeout(() => {
+                            document
+                              .getElementById('reset-email-input')
+                              ?.focus();
+                          }, 10);
+                        }}
+                      >
+                        Reset password
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button className='auth-button'>Sign In</button>
+              </form>
+            )
           ) : (
             /* ========== REGISTER FORM ========== */
             <form onSubmit={handleRegister}>
@@ -425,7 +544,7 @@ export default function AuthForm({ onLoginSuccess }) {
                       setEmail(v);
                       setErrors((prev) => ({
                         ...prev,
-                        email: validateEmailLive(v.toLowerCase()), // 🔥 FIX
+                        email: validateEmailLive(v.toLowerCase()),
                       }));
                     }}
                     autoComplete='email'

@@ -18,8 +18,10 @@ from api.utils.email_templates import render_reservation_email
 from api.utils.email_templates import render_supply_request_email
 from api.utils.email_templates import render_cancellation_email
 from api.utils.calendar_utils import build_calendar_links
+from api.utils.email_templates import render_password_reset_email
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
+from django.contrib.auth import update_session_auth_hash
 
 
 from accounts.models import UserProfile
@@ -31,11 +33,12 @@ from .models import (
     ItemPopularity,
     Room,
     RoomReservation,
+    PasswordResetCode,
 )
 
 from datetime import datetime, timedelta
 from django.utils import timezone
-
+import random
 # ---------------------------------------------------------
 # SEND EMAIL VIA SENDGRID (HTML + optional ICS attachment)
 # ---------------------------------------------------------
@@ -847,6 +850,14 @@ def my_room_reservations(request):
 
     data = []
     for r in qs:
+        # Get full name from UserProfile (correct source)
+        try:
+            profile = UserProfile.objects.get(user=r.user)
+            full_name = profile.full_name
+        except UserProfile.DoesNotExist:
+            # fallback: Django's first_name + last_name OR username
+            full_name = (r.user.first_name + " " + r.user.last_name).strip() or r.user.username
+
         data.append({
             "id": r.id,
             "roomId": r.room.id,
@@ -859,12 +870,13 @@ def my_room_reservations(request):
             "endTime": r.end_time.strftime("%H:%M"),
             "cancelled": r.cancelled,
             "cancelReason": r.cancel_reason or "",
-            "fullName": r.user.full_name if hasattr(r.user, "full_name") else r.user.username,
+            "fullName": full_name,     # <-- fixed
             "email": r.user.email,
             "userId": r.user.id,
         })
 
     return JsonResponse({"ok": True, "reservations": data}, status=200)
+
 
 
 # ---------------------------------------------------------
@@ -1116,78 +1128,201 @@ def send_cancellation_email(reservation, reason, cancelled_by="System"):
 
 # ---------------------------------------------------------
 # POST /api/login/
-# Session-based login using Django User (TiDB-backed)
+# Session-based login (email + password OR reset-code)
 # ---------------------------------------------------------
 @csrf_exempt
 @require_POST
 def login_user(request):
+    data = json.loads(request.body.decode("utf-8"))
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "").strip()
+   
+# 1️⃣ RESET-CODE LOGIN
+    if len(password) == 6 and password.isdigit():
+        # Load the user by email (required!)
+        try:
+            user_obj = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({"ok": False, "error": "User not found"}, status=400)
+
+        # Look up code
+       # Always fetch the most recent unused reset code
+        reset_obj = (
+            PasswordResetCode.objects
+            .filter(user=user_obj, used=False)
+            .order_by('-created_at')
+            .first()
+        )
+
+        if not reset_obj:
+            return JsonResponse({"ok": False, "error": "Invalid code"}, status=400)
+
+        # Fix = ALWAYS compare strings
+        if str(reset_obj.code) != str(password):
+            return JsonResponse({"ok": False, "error": "Invalid code"}, status=400)
+
+
+        # Mark code used
+        reset_obj.used = True
+        reset_obj.save()
+
+        # Login user
+        user_obj.backend = "django.contrib.auth.backends.ModelBackend"
+        login(request, user_obj)
+
+        # Update profile: MUST set must_set_password = True here
+        profile, _ = UserProfile.objects.get_or_create(user=user_obj)
+        profile.must_set_password = True
+        profile.save()
+
+        return JsonResponse({
+            "ok": True,
+            "id": user_obj.id,
+            "fullName": profile.full_name,
+            "email": user_obj.email,
+            "isAdmin": user_obj.is_staff,
+            "mustSetPassword": True,
+        })
+
+    # -----------------------------------------------------
+    # 2️⃣ NORMAL LOGIN (email + password)
+    # -----------------------------------------------------
+    # Convert email → actual Django username
+    try:
+        real_user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Invalid credentials"}, status=400)
+
+    user = authenticate(request, username=real_user.username, password=password)
+    if user is None:
+        return JsonResponse({"ok": False, "error": "Invalid credentials"}, status=400)
+
+    # LOGIN (this creates session + sends sessionid cookie)
+    login(request, user)
+
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    # profile.must_set_password = False # <-- REMOVED THIS LINE
+    profile.save()
+
+    return JsonResponse({
+        "ok": True,
+        "id": user.id,
+        "fullName": profile.full_name or user.username,
+        "email": user.email,
+        "isAdmin": user.is_staff,
+        "mustSetPassword": profile.must_set_password, # <-- Use the actual value from the profile
+    })
+
+
+
+# ============================================================
+# GET /api/me/
+# Return logged-in user's session info (used by Dashboard)
+# ============================================================
+def get_session_user(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "user": None}, status=200)
+
+    user = request.user
+
+    # Load UserProfile safely
+    try:
+        user_profile = UserProfile.objects.get(user=user)
+        full_name = user_profile.full_name or f"{user.first_name} {user.last_name}".strip()
+        must_set_password = user_profile.must_set_password   # FIXED
+    except UserProfile.DoesNotExist:
+        full_name = f"{user.first_name} {user.last_name}".strip()
+        must_set_password = False
+
+    data = {
+        "id": user.id,
+        "email": user.email,
+        "fullName": full_name,
+        "isAdmin": user.is_staff,       # correct
+        "mustSetPassword": must_set_password,  # FIXED
+    }
+
+    return JsonResponse({"ok": True, "user": data}, status=200)
+
+
+
+# ---------------------------------------------------------
+# POST /api/password-reset/request/
+# Sends a one-time code to the user's email for login reset
+# ---------------------------------------------------------
+@csrf_exempt
+@require_POST
+def password_reset_request(request):
     """
-    Login using Django User table (stored in TiDB).
-    Expects JSON: { "email": "...", "password": "..." }
+    POST /api/password-reset/request/
+    Body: { "email": "user@mavs.uta.edu" }
+
+    Sends a 6-digit one-time code to the user's email.
+    The code can then be used in place of the password to log in.
     """
     try:
         data = json.loads(request.body.decode("utf-8"))
-        email = data.get("email")
-        password = data.get("password")
     except Exception:
         return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
 
-    if not email or not password:
-        return JsonResponse(
-            {"ok": False, "error": "Email and password required"}, status=400
-        )
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return JsonResponse({"ok": False, "error": "Email required"}, status=400)
 
     try:
-        user_obj = User.objects.get(email=email)
+        user = User.objects.get(email=email)
     except User.DoesNotExist:
+        # Don't leak which emails exist: pretend success
         return JsonResponse(
-            {"ok": False, "error": "Invalid email or password"}, status=401
+            {
+                "ok": True,
+                "message": "If that email is registered, a reset code has been sent.",
+            },
+            status=200,
         )
 
-    user = authenticate(username=user_obj.username, password=password)
+    # Invalidate any previous unused codes for this user
+    PasswordResetCode.objects.filter(user=user, used=False).update(used=True)
 
-    if user is None:
-        return JsonResponse(
-            {"ok": False, "error": "Invalid email or password"}, status=401
-        )
+    # Generate 6-digit numeric code
+    code = f"{random.randint(0, 999999):06d}"
 
-    login(request, user)
+    reset_obj = PasswordResetCode.objects.create(user=user, code=code)
 
-    full_name = (
-        user_obj.userprofile.full_name
-        if hasattr(user_obj, "userprofile")
-        else user_obj.username
+    # Build a simple, clean HTML email
+    # Same logo used everywhere in your app
+    logo_url = (
+        "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
+        "smartKiosk/media/ui_assets/apple-touch-icon.png"
     )
+
+    subject = "Your Smart Kiosk Reset Code"
+
+    # Use your premium HTML template
+    html_content = render_password_reset_email(
+        logo_url=logo_url,
+        code=code,
+    )
+
+    try:
+        send_via_sendgrid(
+            to_email=email,
+            subject=subject,
+            html_content=html_content,
+        )
+    except Exception as e:
+        print("Password reset send error:", e)
+        return JsonResponse(
+            {"ok": False, "error": "Could not send reset email."}, status=500
+        )
 
     return JsonResponse(
         {
             "ok": True,
-            "message": "Login successful",
-            "id": user_obj.id,
-            "fullName": full_name,
-            "email": user_obj.email,
-            "isAdmin": user_obj.is_staff,
+            "message": "Reset code sent. Please check your inbox and spam folder.",
         },
         status=200,
     )
-
-
-@csrf_exempt
-@require_GET
-def get_session_user(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({"ok": False, "user": None}, status=401)
-
-    user = request.user
-
-    user_data = {
-        "id": user.id,
-        "email": user.email,
-        "fullName": user.get_full_name() or user.username or user.email,
-        "isAdmin": user.is_staff,
-    }
-
-    return JsonResponse({"ok": True, "user": user_data}, status=200)
 
 
 # ---------------------------------------------------------
@@ -1255,3 +1390,30 @@ def download_ics(request, reservation_id):
         return JsonResponse({"ok": False, "error": str(e)}, status=500)
 
 
+@csrf_exempt
+@require_POST
+def set_password(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "Not authenticated"}, status=401)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    new_password = data.get("password")
+    if not new_password:
+        return JsonResponse({"ok": False, "error": "Password required"}, status=400)
+
+    user = request.user
+    user.set_password(new_password)
+    user.save()
+    update_session_auth_hash(request, user)
+
+
+    # Update user profile flag
+    profile = UserProfile.objects.get(user=user)
+    profile.must_set_password = False
+    profile.save()
+
+    return JsonResponse({"ok": True, "message": "Password updated successfully"})

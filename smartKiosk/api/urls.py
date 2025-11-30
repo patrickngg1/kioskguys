@@ -2,7 +2,7 @@
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from . import views
-from .views import login_user, get_session_user, cancel_room_reservations_bulk
+from .views import login_user, get_session_user, cancel_room_reservations_bulk, password_reset_request
 
 urlpatterns = [
     # --------------------------
@@ -12,6 +12,8 @@ urlpatterns = [
     path("logout/", views.logoutSession, name="logout_user"),          # ✅ Added safely
     path("register/", views.register_user, name="register_user"),      # ✅ Added safely
     path("me/", get_session_user, name="get_session_user"),
+    path("password-reset/request/", password_reset_request, name="password_reset_request"),
+    path("set-password/", views.set_password),
 
     # --------------------------
     # Supplies

@@ -716,6 +716,38 @@ input.input-field:-webkit-autofill {
   }
 }
 
+/* ============================================
+   RESET PASSWORD LINK (Premium, Visible)
+   ============================================ */
+
+.forgot-password-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.45rem;
+}
+
+.forgot-password-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2563eb; /* Clear UTA-blue */
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.forgot-password-link:hover {
+  opacity: 0.8;
+  transform: translateX(1px);
+}
+
+.forgot-password-link:focus {
+  outline: none;
+  opacity: 0.9;
+}
+
 /* Large Mobile/Vertical Layout Breakpoint (900px) - App Layout & Header */
 @media (max-width: 900px) {
   #map-container {
