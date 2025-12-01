@@ -150,10 +150,10 @@ def register_user(request):
         # ---------------------------------------------------------
         # Create UserProfile and store full_name there too
         # ---------------------------------------------------------
-        UserProfile.objects.create(
-            user=user,
-            full_name=full_name
-        )
+        profile = UserProfile.objects.get(user=user)
+        profile.full_name = full_name
+        profile.must_set_password = False  # New users do NOT need forced reset
+        profile.save()
 
     except Exception as e:
         print("Registration error:", e)
