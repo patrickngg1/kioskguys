@@ -1,14 +1,3 @@
-// src/components/ReserveConferenceRoom.jsx
-// ---------------------------------------------------------------
-// PREMIUM OPTION A + C FINAL
-// - Room cards show only when there are 1–2 rooms
-//   and animate out when rooms >= 3
-// - My Reservations panel: Vision-style
-// - Multi-select cancel
-// - Confirmation panel: ONLY TWO buttons (Yes / Keep)
-// - No inline styles added
-// - ✅ Perfect pluralization for cancel UX
-// ---------------------------------------------------------------
 import '../styles/Dashboard.css';
 import '../styles/reserveModal.css';
 import React, { useEffect, useMemo, useState } from 'react';

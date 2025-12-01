@@ -1,4 +1,3 @@
-// src/components/SetPasswordOverlay.jsx
 import React, { useState, useMemo } from 'react';
 
 // Helper to read csrftoken cookie

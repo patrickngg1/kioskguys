@@ -1,14 +1,3 @@
-// src/components/Dashboard.jsx
-// --------------------------------------------------------------------
-// - Uses TiDB-backed popularity via /api/supplies/popular/?limit=3
-// - Uses dynamic categories via /api/items/ (TiDB)
-// - Shows top-3 "Frequently Requested" per category, then the rest
-// - RequestSupply modal is fully dynamic (admin can add categories)
-// - Toasts are clean, premium, and not duplicated
-// - UI chrome images (banners, etc.) come from Django /api/ui-assets/
-//   via UIAssetsContext from App.jsx
-// --------------------------------------------------------------------
-
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UIAssetsContext } from '../App';
@@ -561,54 +550,96 @@ export default function Dashboard() {
           )}
 
           {/* MAP */}
-          <div className='map-container' style={{ gridArea: 'map' }}>
+          {/* MAP – span both reserve + supplies rows */}
+          {/* MAP */}
+          <div
+            className='map-container'
+            style={{
+              gridArea: 'map',
+              gridRow: 'reserve / supplies', // spans reserve → supplies rows
+            }}
+          >
             <KioskMap />
           </div>
-
           {/* RESERVE CARD */}
-          <div className='card action-card' style={{ gridArea: 'reserve' }}>
-            <div className='action-head'>
-              <div className='action-title'>Reserve Conference Room</div>
-            </div>
-            <p className='action-copy'>Book a meeting space by date & time.</p>
+          <div
+            className='card action-card premium-card'
+            style={{ gridArea: 'reserve' }}
+          >
+            <div className='premium-card-content'>
+              <div className='action-head'>
+                <div className='action-title'>Reserve Conference Room</div>
+              </div>
 
-            <button
-              onClick={() => {
-                setReservationData({
-                  room: '',
-                  date: '',
-                  startHour: '',
-                  startMin: '',
-                  startPeriod: 'AM',
-                  endHour: '',
-                  endMin: '',
-                  endPeriod: 'AM',
-                });
-                setShowReserveModal(true);
-              }}
-              className='btn btn-primary wl-ful'
-            >
-              Open Scheduler
-            </button>
+              <p className='action-copy'>
+                Book a meeting space by date & time.
+              </p>
+
+              {/* Premium cute image */}
+              {uiAssets?.banner1 && (
+                <img
+                  src={uiAssets.banner1}
+                  alt='Reserve Preview'
+                  className='card-preview-img'
+                />
+              )}
+
+              {/* CTA Button */}
+              <button
+                onClick={() => {
+                  setReservationData({
+                    room: '',
+                    date: '',
+                    startHour: '',
+                    startMin: '',
+                    startPeriod: 'AM',
+                    endHour: '',
+                    endMin: '',
+                    endPeriod: 'AM',
+                  });
+                  setShowReserveModal(true);
+                }}
+                className='btn btn-primary wl-ful'
+              >
+                Open Scheduler
+              </button>
+            </div>
           </div>
 
           {/* SUPPLIES CARD */}
-          <div className='card action-card' style={{ gridArea: 'supplies' }}>
-            <div className='action-head'>
-              <div className='action-title'>Request Supplies</div>
+          <div
+            className='card action-card premium-card'
+            style={{ gridArea: 'supplies' }}
+          >
+            <div className='premium-card-content'>
+              <div className='action-head'>
+                <div className='action-title'>Request Supplies</div>
+              </div>
+
+              <p className='action-copy'>
+                Tap pictures to select items you need.
+              </p>
+
+              {/* Premium cute image */}
+              {uiAssets?.banner2 && (
+                <img
+                  src={uiAssets.banner2}
+                  alt='Supplies Preview'
+                  className='card-preview-img'
+                />
+              )}
+
+              {/* CTA Button */}
+              <button
+                onClick={() => {
+                  setSelectedSupplies([]);
+                  setShowSuppliesModal(true);
+                }}
+                className='btn btn-primary w-full'
+              >
+                Open Request Form
+              </button>
             </div>
-            <p className='action-copy'>
-              Tap pictures to select items you need.
-            </p>
-            <button
-              onClick={() => {
-                setSelectedSupplies([]);
-                setShowSuppliesModal(true);
-              }}
-              className='btn btn-primary w-full'
-            >
-              Open Request Form
-            </button>
           </div>
         </div>
       </div>
