@@ -254,15 +254,12 @@
   bottom: 0;
   padding: 1rem 1.5rem 1.75rem 1.5rem;
   z-index: 50;
-
+  border-radius: 15px;
   /* Glassmorphism */
   background: rgba(15, 19, 30, 0.55);
   backdrop-filter: blur(22px) saturate(180%);
   -webkit-backdrop-filter: blur(22px) saturate(180%);
-  border-top: 0;
-  box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0);
-
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   gap: 0.75rem;
   width: 100%;
@@ -455,7 +452,6 @@
     transform: translateX(30%) translateY(30%) rotate(360deg);
   }
 }
-
 /* -----------------------------------------------------------
    ULTRA-PREMIUM DISABLED STATE (VisionOS-style)
    ----------------------------------------------------------- */
@@ -464,26 +460,503 @@
   filter: saturate(45%) brightness(105%);
   cursor: not-allowed !important;
 
-  /* Remove elevation + depth */
   transform: none !important;
   box-shadow: 0 0 0 rgba(0, 0, 0, 0) !important;
   inset: 0 0 0 rgba(255, 255, 255, 0.08) !important;
 
-  /* Frosted glass feel */
   backdrop-filter: blur(20px) saturate(120%) brightness(90%);
   -webkit-backdrop-filter: blur(20px) saturate(120%) brightness(90%);
 
-  /* A light frosted border, VisionOS-style */
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
 
-  /* Lock the background into a frozen state */
   background: rgba(255, 255, 255, 0.04) !important;
 }
 
-/* Disable hover/press animations on disabled buttons */
 .myres-actions .btn:disabled:hover,
 .myres-actions .btn:disabled:active {
   transform: none !important;
   box-shadow: none !important;
   background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* -----------------------------------------------------------
+   DAY AVAILABILITY GRID — ULTRA PREMIUM VISION STYLE (LARGE)
+   WITH APPLE-STYLE 12H HOUR ROW + AM/PM LABELS
+   ----------------------------------------------------------- */
+
+.day-availability-shell {
+  margin-top: 1.3rem;
+  padding: 1.45rem 1.7rem 1.9rem;
+  border-radius: 22px;
+
+  background: radial-gradient(
+    circle at top,
+    rgba(59, 130, 246, 0.22),
+    rgba(15, 23, 42, 0.94)
+  );
+  border: 1px solid rgba(148, 163, 184, 0.32);
+
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.92),
+    inset 0 0 28px rgba(255, 255, 255, 0.04);
+
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+}
+
+.day-availability-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.day-availability-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 800;
+  font-size: 1.17rem;
+  letter-spacing: 0.26px;
+  color: rgba(241, 245, 249, 0.98);
+}
+
+.day-availability-pill-dot {
+  width: 11px;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(
+    130deg,
+    rgba(59, 130, 246, 0.95),
+    rgba(249, 115, 22, 0.95)
+  );
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.95);
+}
+
+.day-availability-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 0.88rem;
+  opacity: 0.95;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.legend-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(148, 163, 184, 0.7);
+}
+
+.legend-dot.free {
+  background: rgba(34, 197, 94, 0.95);
+}
+
+.legend-dot.partial {
+  background: rgba(251, 191, 36, 0.98);
+}
+
+.legend-dot.full {
+  background: rgba(248, 113, 113, 1);
+}
+
+.day-availability-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.3rem;
+}
+
+/* -----------------------------------------------------------
+   APPLE-STYLE HOUR LABEL ROW (12H CLEAN FORMAT, FIXED)
+   ----------------------------------------------------------- */
+
+/* Top hour row (12,1,2,...11 | 12,1,...11) */
+.hour-label-row {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  padding: 0 0.75rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.25rem;
+
+  font-size: 0.86rem;
+  font-weight: 600;
+  opacity: 0.9;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.hour-label {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Bottom AM/PM section labels */
+.ampm-section-row {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  padding: 0 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.ampm-section {
+  font-size: 0.74rem;
+  opacity: 0.7;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+
+/* AM is hour slots 0–11 */
+.ampm-section.am {
+  grid-column: 1 / span 12;
+}
+
+/* PM is hour slots 12–23 */
+.ampm-section.pm {
+  grid-column: 13 / span 12;
+}
+
+/* -----------------------------------------------------------
+   ROOM ROWS (UNCHANGED)
+   ----------------------------------------------------------- */
+
+.day-grid-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 1rem;
+  padding: 0.8rem 0.15rem;
+  border-radius: 16px;
+  transition: background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.day-grid-row.selected {
+  background: radial-gradient(
+    circle at center,
+    rgba(37, 99, 235, 0.35),
+    rgba(37, 99, 235, 0.05) 70%
+  );
+  transform: translateY(-2px);
+  padding-top: 1.1rem !important;
+  padding-bottom: 1.1rem !important;
+  border-radius: 20px;
+}
+
+.day-grid-row.selected .day-grid-track {
+  margin-top: 0.4rem;
+}
+
+.day-grid-roomMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding-left: 0.15rem;
+}
+
+.day-grid-roomName {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: rgba(248, 250, 252, 0.98);
+}
+
+/* Base status row */
+.day-grid-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.day-grid-status .status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.7); /* neutral fallback */
+}
+
+/* Dynamic colors based on statusClass */
+.day-grid-status.free .status-dot {
+  background: rgba(34, 197, 94, 0.95); /* green */
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+}
+
+.day-grid-status.partial .status-dot {
+  background: rgba(251, 191, 36, 0.98); /* yellow */
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.9);
+}
+
+.day-grid-status.full .status-dot {
+  background: rgba(248, 113, 113, 1); /* red */
+  box-shadow: 0 0 12px rgba(248, 113, 113, 0.95);
+}
+
+/* -----------------------------------------------------------
+   BAR TRACK (48 slots → 24 hours × 30 mins)
+   ----------------------------------------------------------- */
+
+.day-grid-track {
+  --day-grid-slot-count: 48;
+  display: grid;
+  grid-template-columns: repeat(var(--day-grid-slot-count), minmax(0, 1fr));
+  column-gap: 3px;
+
+  padding: 0.45rem 0.75rem;
+  height: 22px;
+
+  border-radius: 20px;
+
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.96),
+    rgba(15, 23, 42, 0.88)
+  );
+
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35),
+    inset 0 2px 18px rgba(255, 255, 255, 0.05);
+}
+
+.day-grid-track.selected {
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.6),
+    inset 0 0 0 1px rgba(59, 130, 246, 0.75),
+    inset 0 2px 22px rgba(59, 130, 246, 0.25);
+}
+
+/* -----------------------------------------------------------
+   CELLS
+   ----------------------------------------------------------- */
+
+.day-grid-cell {
+  height: 16px;
+  border-radius: 10px;
+  border: 1px solid #67a1ff3f;
+  background: radial-gradient(
+    circle at center,
+    rgba(148, 163, 184, 0.35),
+    rgba(42, 26, 15, 0.15)
+  );
+
+  transition: opacity 180ms ease, transform 200ms ease, box-shadow 220ms ease,
+    background 220ms ease;
+}
+
+.day-grid-cell.free:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.65);
+}
+
+/* BOOKED */
+.day-grid-cell.booked {
+  opacity: 1;
+
+  box-shadow: 0 0 22px rgba(59, 130, 246, 1), 0 0 36px rgba(15, 118, 255, 0.85),
+    inset 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
+/* -----------------------------------------------------------
+   FLOATING HOUR LABEL ABOVE CAPSULE (Apple-style time bubble)
+   ----------------------------------------------------------- */
+.day-grid-cell.capsule:hover::after {
+  content: attr(data-time);
+  position: absolute;
+  top: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35),
+    inset 0 0 8px rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+
+  animation: timeBubbleFade 160ms ease forwards;
+}
+
+@keyframes timeBubbleFade {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0px) scale(1);
+  }
+}
+
+/* -----------------------------------------------------------
+   OPTION C — LONG BOOKED CAPSULES (Merged Blocks)
+   ----------------------------------------------------------- */
+
+.day-grid-cell.capsule.grouped {
+  height: 18px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(59, 130, 246, 1),
+    rgba(249, 115, 22, 1)
+  );
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.85), 0 0 1px rgba(249, 115, 22, 0.85),
+    inset 0 0 14px rgba(255, 255, 255, 0.25);
+  transition: transform 180ms ease, box-shadow 220ms ease;
+}
+
+.day-grid-cell.capsule.grouped:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 1), 0 0 5px rgba(249, 115, 22, 1),
+    inset 0 0 18ßpx rgba(255, 255, 255, 0.35);
+}
+
+/* -----------------------------------------------------------
+   STATE TEXT
+   ----------------------------------------------------------- */
+
+.day-grid-loading,
+.day-grid-error,
+.day-grid-empty {
+  margin-top: 0.9rem;
+  font-size: 0.95rem;
+  opacity: 0.92;
+}
+
+.day-grid-error {
+  color: #fecaca;
+}
+
+.day-grid-loading {
+  opacity: 0.9;
+}
+
+/* -----------------------------------------------------------
+   VISIONOS FLOATING HINT PILL — Option A
+   ----------------------------------------------------------- */
+
+.availability-hint-pill {
+  margin: 0.8rem 0 1rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(240, 244, 255, 0.92);
+
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38);
+  position: relative;
+  overflow: hidden;
+
+  animation: hintFadeIn 0.6s ease forwards;
+}
+
+.availability-hint-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 25% 50%,
+    rgba(59, 130, 246, 0.35),
+    transparent 70%
+  );
+  opacity: 0.25;
+  pointer-events: none;
+  animation: hintShimmer 3.8s linear infinite;
+}
+
+@keyframes hintFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes hintShimmer {
+  0% {
+    transform: translateX(-20%) translateY(-20%);
+  }
+  100% {
+    transform: translateX(20%) translateY(20%);
+  }
+}
+
+.overnight-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.overnight-modal {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  padding: 1.8rem 2rem;
+  width: 420px;
+  color: #fff;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(18px) saturate(180%);
+}
+
+.overnight-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+
+.btn-cancel,
+.btn-confirm {
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-cancel {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.btn-confirm {
+  background: linear-gradient(135deg, #3b82f6, #f97316);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);
 }

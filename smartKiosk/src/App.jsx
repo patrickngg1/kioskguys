@@ -94,10 +94,10 @@ export default function App() {
 
   // 🟧 Update favicon dynamically when assets load
   useEffect(() => {
-    if (!uiAssets || !uiAssets.favicon) return;
+    if (!uiAssets || !uiAssets['favicon-32x32']) return;
 
     const link = document.querySelector("link[rel='icon']");
-    if (link) link.href = uiAssets.favicon;
+    if (link) link.href = uiAssets['favicon-32x32'];
   }, [uiAssets]);
 
   // Wait for assets BEFORE showing anything

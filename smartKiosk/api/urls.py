@@ -51,6 +51,11 @@ urlpatterns = [
         csrf_exempt(views.cancel_room_reservation),
         name="cancel_room_reservation",
     ),
+    path(
+        "rooms/reservations/by-date/",
+        views.reservations_by_date,
+        name="reservations_by_date",
+    ),
     # Room Admin Routes
     path("rooms/create/", views.create_room),
     path("rooms/<int:room_id>/update/", views.update_room),

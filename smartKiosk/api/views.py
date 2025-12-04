@@ -11,7 +11,7 @@ from django.conf import settings
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
-from django.db.models import F
+from django.db.models import F, Q
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from api.utils.email_templates import render_reservation_email
@@ -35,8 +35,7 @@ from .models import (
     RoomReservation,
     PasswordResetCode,
 )
-
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from django.utils import timezone
 import random
 # ---------------------------------------------------------
@@ -642,7 +641,6 @@ Add to your calendar:
     except Exception as e:
         return False, str(e)
 
-
 # ---------------------------------------------------------
 # POST /api/rooms/reserve/
 # Create a reservation (requires login)
@@ -650,7 +648,7 @@ Add to your calendar:
 @csrf_exempt
 @require_POST
 def create_room_reservation(request):
-    # 🔐 Require logged-in user (session-based)
+    # 🔐 Ensure user is logged in
     if not request.user.is_authenticated:
         return JsonResponse({"ok": False, "error": "Login required"}, status=401)
 
@@ -677,63 +675,110 @@ def create_room_reservation(request):
     except Room.DoesNotExist:
         return JsonResponse({"ok": False, "error": "Room not found"}, status=404)
 
-    # Convert date and time strings → proper objects
+    # Convert date
     try:
-        date_value = datetime.strptime(date_str, "%Y-%m-%d").date()
+        base_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
-        return JsonResponse(
-            {"ok": False, "error": "Invalid date format (expected YYYY-MM-DD)"},
-            status=400,
-        )
+        return JsonResponse({"ok": False, "error": "Invalid date format"}, status=400)
 
+    # Convert times
     try:
-        start_value = datetime.strptime(start_str, "%H:%M").time()
-        end_value = datetime.strptime(end_str, "%H:%M").time()
+        start_t = datetime.strptime(start_str, "%H:%M").time()
+        end_t = datetime.strptime(end_str, "%H:%M").time()
     except ValueError:
-        return JsonResponse(
-            {"ok": False, "error": "Invalid time format (expected HH:MM)"},
-            status=400,
-        )
+        return JsonResponse({"ok": False, "error": "Invalid time format"}, status=400)
 
-    # Check for conflicting reservations
-    conflict = RoomReservation.objects.filter(
+    # ------------------------------------------------------
+    # 🔥 Convert into full datetime objects
+    # ------------------------------------------------------
+    start_dt = datetime.combine(base_date, start_t)
+    end_dt = datetime.combine(base_date, end_t)
+
+    # Overnight support (e.g., 11 PM → 2 AM)
+    if end_dt <= start_dt:
+        end_dt += timedelta(days=1)
+
+    # ------------------------------------------------------
+    # 🔥 True conflict detection (cross-midnight safe)
+    # A_start < B_end AND A_end > B_start
+    # ------------------------------------------------------
+    existing = RoomReservation.objects.filter(
         room=room,
-        date=date_value,
-        cancelled=False,
-        start_time__lt=end_value,
-        end_time__gt=start_value,
-    ).exists()
+        cancelled=False
+    )
 
-    if conflict:
-        return JsonResponse(
-            {
-                "ok": False,
-                "error": "This room is already reserved for that time.",
-            },
-            status=409,
-        )
+    for r in existing:
+        r_start = datetime.combine(r.date, r.start_time)
+        r_end = datetime.combine(r.date, r.end_time)
 
-    # Figure out full_name + email from the logged-in user
+        # Fix old overnight reservations in DB
+        if r_end <= r_start:
+            r_end += timedelta(days=1)
+
+        # Overlap rule:
+        # if NEW.start < EXISTING.end AND NEW.end > EXISTING.start → conflict
+        if start_dt < r_end and end_dt > r_start:
+            return JsonResponse(
+                {"ok": False,
+                 "error": "This room is already reserved during this time."},
+                status=409,
+            )
+
+    # ------------------------------------------------------
+    # Build full_name (from profile)
+    # ------------------------------------------------------
     user = request.user
     email = user.email
 
-    full_name = ""
     try:
         profile = UserProfile.objects.get(user=user)
         full_name = profile.full_name or user.get_full_name() or user.username
     except UserProfile.DoesNotExist:
-        full_name = user.get_full_name() or user.username or user.email
+        full_name = user.get_full_name() or user.username or email
 
-    # Create reservation
+    # ------------------------------------------------------
+    # SAVE reservation
+    # Make sure stored date/time is correct for overnight
+    # ------------------------------------------------------
     reservation = RoomReservation.objects.create(
         user=user,
         room=room,
-        date=date_value,
-        start_time=start_value,
-        end_time=end_value,
+        date=start_dt.date(),        # if overnight, moves into next day
+        start_time=start_dt.time(),
+        end_time=end_dt.time(),
         full_name=full_name,
         email=email,
     )
+
+    # ------------------------------------------------------
+    # Send email confirmation (does not block reservation)
+    # ------------------------------------------------------
+    try:
+        email_reservation_confirmation(reservation)
+    except Exception as e:
+        print("Email error:", e)
+
+    # ------------------------------------------------------
+    # Return success response
+    # ------------------------------------------------------
+    return JsonResponse({
+        "ok": True,
+        "reservation": {
+            "id": reservation.id,
+            "roomId": reservation.room.id,
+            "roomName": reservation.room.name,
+            "capacity": reservation.room.capacity,
+            "hasScreen": reservation.room.has_screen,
+            "hasHdmi": reservation.room.has_hdmi,
+            "date": reservation.date.strftime("%Y-%m-%d"),
+            "startTime": reservation.start_time.strftime("%H:%M"),
+            "endTime": reservation.end_time.strftime("%H:%M"),
+            "cancelled": reservation.cancelled,
+            "cancelReason": reservation.cancel_reason or "",
+        }
+    })
+
+
 
         # ---------------------------------------------------------
         # PREMIUM CALENDAR EMAIL (UTA + Apple Vision Glass Style)
@@ -877,7 +922,68 @@ def my_room_reservations(request):
 
     return JsonResponse({"ok": True, "reservations": data}, status=200)
 
+@require_GET
+def reservations_by_date(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "Login required"}, status=401)
 
+    # --------------------------------------------
+    # Parse date
+    # --------------------------------------------
+    date_str = request.GET.get("date")
+    if not date_str:
+        return JsonResponse(
+            {"ok": False, "error": "Missing date query param (YYYY-MM-DD)"},
+            status=400,
+        )
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse(
+            {"ok": False, "error": "Invalid date format (YYYY-MM-DD)"},
+            status=400,
+        )
+
+    # Start-of-day reference for spillover logic
+    start_of_day = datetime.combine(target_date, time(0, 0))
+
+    # --------------------------------------------
+    # Query reservations for:
+    # 1) Same-day reservations
+    # 2) Overnight reservations that STARTED previous day
+    #    (end_time <= start_time means it spills past midnight)
+    # --------------------------------------------
+    qs = (
+        RoomReservation.objects
+        .filter(cancelled=False)
+        .filter(
+            Q(date=target_date) |
+            Q(
+                date=target_date - timedelta(days=1),
+                end_time__lte=F('start_time')   # Overnight reservation
+            )
+        )
+        .select_related("room")
+        .order_by("room__name", "start_time")
+    )
+
+    # --------------------------------------------
+    # Serialize output
+    # --------------------------------------------
+    data = [
+        {
+            "id": r.id,
+            "roomId": r.room.id,
+            "roomName": r.room.name,
+            "startTime": r.start_time.strftime("%H:%M"),
+            "endTime": r.end_time.strftime("%H:%M"),
+            "date": r.date.strftime("%Y-%m-%d"),
+        }
+        for r in qs
+    ]
+
+    return JsonResponse({"ok": True, "reservations": data}, status=200)
 
 # ---------------------------------------------------------
 # POST /api/rooms/reservations/<id>/cancel/
@@ -1007,51 +1113,48 @@ def cancel_room_reservations_bulk(request):
 # Admin view — list ALL upcoming reservations with real names
 # ---------------------------------------------------------
 @require_GET
+@require_GET
 def all_room_reservations(request):
-
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin privileges required"}, status=403)
 
-    today = timezone.localdate()
-
+    # Get ALL reservations (no date filter)
     qs = (
         RoomReservation.objects
-        .filter(cancelled=False, date__gte=today)
-        .select_related("room", "user")
+        .filter(cancelled=False)
+        .select_related("room")
         .order_by("date", "start_time")
     )
 
-    data = []
+    reservations = []
     for r in qs:
-
-        # Full name priority:
-        # 1. UserProfile.full_name
-        # 2. Django User first_name + last_name
-        # 3. User.username (email)
+        # get full name safely
         try:
             profile = UserProfile.objects.get(user=r.user)
             full_name = profile.full_name
         except UserProfile.DoesNotExist:
-            full_name = (r.user.first_name + " " + r.user.last_name).strip() or r.user.username
+            full_name = (f"{r.user.first_name} {r.user.last_name}").strip()
+            if not full_name:
+                full_name = r.user.username
 
-        data.append({
+        reservations.append({
             "id": r.id,
-            "roomId": r.room.id,
+            "roomId": r.room_id,
             "roomName": r.room.name,
             "capacity": r.room.capacity,
             "hasScreen": r.room.has_screen,
             "hasHdmi": r.room.has_hdmi,
-            "date": str(r.date),
+            "date": r.date.strftime("%Y-%m-%d"),
             "startTime": r.start_time.strftime("%H:%M"),
             "endTime": r.end_time.strftime("%H:%M"),
-            "fullName": full_name,
-            "email": r.user.email,
-            "userId": r.user.id,
             "cancelled": r.cancelled,
-            "cancelReason": r.cancel_reason or "",
+            "fullName": full_name,
+            "email": r.user.email,   # ← NEW IMPORTANT LINE
         })
 
-    return JsonResponse({"ok": True, "reservations": data}, status=200)
+
+    return JsonResponse({"ok": True, "reservations": reservations})
+
 
 
 @csrf_exempt

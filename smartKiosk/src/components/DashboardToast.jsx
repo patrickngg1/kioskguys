@@ -1,5 +1,6 @@
 // src/components/DashboardToast.jsx
 import React, { useEffect, useState } from 'react';
+import '../styles/Dashboard.css';
 
 export default function DashboardToast({ type, message, visible, onClose }) {
   const [fadeOut, setFadeOut] = useState(false);
@@ -60,9 +61,24 @@ export default function DashboardToast({ type, message, visible, onClose }) {
           `${fadeOut ? 'fade-out' : 'fade-in'}`
         }
       >
+        {/* EMOJI */}
         <span className='dash-toast-emoji'>{getEmoji()}</span>
+
+        {/* TEXT */}
         <span className='dash-toast-text' style={{ whiteSpace: 'pre-line' }}>
           {message}
+        </span>
+
+        {/* PREMIUM CLOSE BUTTON (NEW) */}
+        {/* Orange-glow premium close X */}
+        <span
+          className='close-btn'
+          onClick={() => {
+            setFadeOut(true);
+            setTimeout(() => onClose(), 200);
+          }}
+        >
+          ✕
         </span>
       </div>
     </div>

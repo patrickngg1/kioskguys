@@ -37,6 +37,279 @@ const to12HourDisplay = (timeStr) => {
   return `${hour12}:${minute.toString().padStart(2, '0')} ${suffix}`;
 };
 
+// Convert "HH:MM" → minutes since midnight
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return null;
+  const [h, m] = timeStr.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+};
+
+// Ultra-premium day grid constants
+const DAY_START_HOUR = 0; // 8 AM
+const DAY_END_HOUR = 24; // 10 PM (not inclusive)
+const SLOT_MINUTES = 30; // can set to 15 later if you want denser grid
+
+function RoomDayAvailability({ rooms, reservations, selectedRoomId, date }) {
+  if (!date || !rooms || rooms.length === 0) return null;
+
+  // Build slots for the day (8am → 10pm)
+  const slots = [];
+  for (let hour = DAY_START_HOUR; hour < DAY_END_HOUR; hour += 1) {
+    for (let minute = 0; minute < 60; minute += SLOT_MINUTES) {
+      const label24 = `${String(hour).padStart(2, '0')}:${String(
+        minute
+      ).padStart(2, '0')}`;
+      const suffix = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = ((hour + 11) % 12) + 1;
+      const displayHour = `${hour12}${
+        minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`
+      } ${suffix}`;
+      slots.push({
+        key: label24,
+        label24,
+        displayHour,
+        hour,
+        minute,
+      });
+    }
+  }
+
+  const totalSlots = slots.length;
+  const dayStartMinutes = DAY_START_HOUR * 60;
+  const dayEndMinutes = DAY_END_HOUR * 60;
+
+  // Map room → slot array with optional label for booked ranges
+  const slotsByRoom = {};
+  rooms.forEach((r) => {
+    slotsByRoom[r.id] = new Array(totalSlots).fill(null);
+  });
+
+  // ----------------------------------------------------------
+  // PREMIUM SLOT MAPPING (supports overnight spillovers)
+  // ----------------------------------------------------------
+  (reservations || []).forEach((res) => {
+    const roomSlots = slotsByRoom[res.roomId];
+    if (!roomSlots) return;
+
+    // Convert reservation start/end → minutes
+    let startMin = timeToMinutes(res.startTime);
+    let endMin = timeToMinutes(res.endTime);
+
+    if (startMin == null || endMin == null) return;
+
+    // Convert dates for correct spillover identification
+    const gridDateObj = new Date(`${date}T00:00:00`);
+    const resDateObj = new Date(`${res.date}T00:00:00`);
+
+    const diffDays = Math.round((gridDateObj - resDateObj) / 86400000);
+    const isOvernight = endMin <= startMin;
+
+    // --------------------------------------------------
+    // CASE 1 — Reservation starts today
+    // --------------------------------------------------
+    if (diffDays === 0) {
+      if (isOvernight) {
+        // Example: 23:00 → 02:00
+        // Today shows 23:00 → 24:00
+        endMin += 1440;
+      }
+    }
+
+    // --------------------------------------------------
+    // CASE 2 — Reservation started yesterday but spills into today
+    // --------------------------------------------------
+    else if (diffDays === 1 && isOvernight) {
+      // Glow from midnight → endMin
+      startMin = 0;
+      // keep original endMin (e.g., 180 for 03:00)
+    }
+
+    // --------------------------------------------------
+    // CASE 3 — Not relevant for today
+    // --------------------------------------------------
+    else {
+      return;
+    }
+
+    // Clamp to grid range
+    const clampedStart = Math.max(startMin, dayStartMinutes);
+    const clampedEnd = Math.min(endMin, dayEndMinutes);
+    if (clampedEnd <= clampedStart) return;
+
+    // Determine which 30min slots to glow
+    const firstSlot = Math.floor(
+      (clampedStart - dayStartMinutes) / SLOT_MINUTES
+    );
+    const lastSlot = Math.ceil((clampedEnd - dayStartMinutes) / SLOT_MINUTES);
+
+    const label = `${to12HourDisplay(res.startTime)} – ${to12HourDisplay(
+      res.endTime
+    )}`;
+
+    for (let i = firstSlot; i < lastSlot; i++) {
+      if (i < 0 || i >= totalSlots) continue;
+      roomSlots[i] = label;
+    }
+  });
+
+  const prettyDate = (() => {
+    try {
+      const d = new Date(`${date}T00:00:00`);
+      return d.toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return date;
+    }
+  })();
+
+  const anyReservations = (reservations || []).length > 0;
+
+  return (
+    <div className='day-availability-shell'>
+      <div className='day-availability-header'>
+        <div className='day-availability-title'>
+          <span className='day-availability-pill-dot' />
+          <span>Room availability for {prettyDate}</span>
+        </div>
+
+        <div className='day-availability-legend'>
+          <span className='legend-item'>
+            <span className='legend-dot free' />
+            Free
+          </span>
+          <span className='legend-item'>
+            <span className='legend-dot partial' />
+            Partially booked
+          </span>
+          <span className='legend-item'>
+            <span className='legend-dot full' />
+            Booked
+          </span>
+        </div>
+      </div>
+
+      {!anyReservations && (
+        <p className='day-grid-empty'>
+          All rooms are currently available for this day. 🟢
+        </p>
+      )}
+
+      <div className='day-availability-grid'>
+        {/* ---------------------------------------------------------
+        APPLE-STYLE HOUR HEADER (12-HOUR CLOCK + AM/PM)
+       --------------------------------------------------------- */}
+        <div className='hour-label-row'>
+          {Array.from({ length: 24 }).map((_, hour) => {
+            const hour12 = ((hour + 11) % 12) + 1;
+            return (
+              <span key={hour} className='hour-label'>
+                {hour12}
+              </span>
+            );
+          })}
+        </div>
+
+        <div className='ampm-section-row'>
+          <span className='ampm-section am'>AM</span>
+          <span className='ampm-section pm'>PM</span>
+        </div>
+
+        {/* ---------------------------------------------------------
+        ROOM ROWS
+       --------------------------------------------------------- */}
+        {rooms.map((room) => {
+          const roomSlots = slotsByRoom[room.id] || [];
+          const busyCount = roomSlots.filter(Boolean).length;
+
+          const totalRoomSlots = roomSlots.length;
+
+          let statusLabel = 'Partially booked';
+          let statusClass = 'partial';
+
+          if (busyCount === 0) {
+            statusLabel = 'Free all day';
+            statusClass = 'free';
+          } else if (busyCount === totalRoomSlots) {
+            statusLabel = 'Fully booked';
+            statusClass = 'full';
+          }
+
+          const isSelected =
+            selectedRoomId && String(selectedRoomId) === String(room.id);
+
+          return (
+            <div
+              key={room.id}
+              className={`day-grid-row ${isSelected ? 'selected' : ''}`}
+            >
+              <div className='day-grid-roomMeta'>
+                <div className='day-grid-roomName'>{room.name}</div>
+                <div className={`day-grid-status ${statusClass}`}>
+                  <span className='status-dot' />
+                  <span>{statusLabel}</span>
+                </div>
+              </div>
+
+              <div
+                className={`day-grid-track ${isSelected ? 'selected' : ''}`}
+                style={{ '--day-grid-slot-count': slots.length }}
+              >
+                {/* ---- OPTION C: GROUPED CAPSULES ---- */}
+                {(() => {
+                  const cells = [];
+                  let i = 0;
+
+                  while (i < slots.length) {
+                    const label = roomSlots[i];
+
+                    if (!label) {
+                      // Free slot
+                      cells.push(
+                        <div
+                          key={`${room.id}-${slots[i].key}`}
+                          className='day-grid-cell capsule free'
+                          data-time={slots[i].displayHour}
+                          title={`${room.name}\nAvailable`}
+                        />
+                      );
+                      i++;
+                      continue;
+                    }
+
+                    // Find contiguous booked stretch
+                    let j = i + 1;
+                    while (j < slots.length && roomSlots[j] === label) j++;
+
+                    // Compute span width as CSS grid-column: span N
+                    const span = j - i;
+
+                    cells.push(
+                      <div
+                        key={`${room.id}-${slots[i].key}-group`}
+                        className='day-grid-cell capsule booked grouped'
+                        style={{ gridColumn: `span ${span}` }}
+                        data-time={label}
+                      />
+                    );
+
+                    i = j;
+                  }
+
+                  return cells;
+                })()}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ReserveConferenceRoom({
   isOpen,
   onClose,
@@ -49,6 +322,9 @@ function ReserveConferenceRoom({
   const [rooms, setRooms] = useState([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Overnight confirmation modal
+  const [showOvernightModal, setShowOvernightModal] = useState(false);
+  const [pendingRequest, setPendingRequest] = useState(null);
 
   const [reservationData, setReservationData] = useState({
     roomId: '',
@@ -65,6 +341,11 @@ function ReserveConferenceRoom({
   const [myPanelOpen, setMyPanelOpen] = useState(false);
   const [loadingMyReservations, setLoadingMyReservations] = useState(false);
   const [myReservations, setMyReservations] = useState([]);
+
+  // NEW: per-day availability grid data
+  const [dayReservations, setDayReservations] = useState([]);
+  const [loadingDayReservations, setLoadingDayReservations] = useState(false);
+  const [dayReservationsError, setDayReservationsError] = useState(null);
 
   // Multi-select cancellation
   const [selectedIds, setSelectedIds] = useState([]);
@@ -174,6 +455,65 @@ function ReserveConferenceRoom({
     }
   }, [user, isOpen]);
 
+  // Load all reservations for the selected date (for availability grid)
+  useEffect(() => {
+    if (!isOpen || !reservationData.date) {
+      setDayReservations([]);
+      setDayReservationsError(null);
+      setLoadingDayReservations(false);
+      return;
+    }
+    if (!user) {
+      setDayReservations([]);
+      setDayReservationsError(null);
+      setLoadingDayReservations(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadForDay = async () => {
+      setLoadingDayReservations(true);
+      setDayReservationsError(null);
+
+      try {
+        const res = await fetch(
+          `/api/rooms/reservations/by-date/?date=${reservationData.date}`,
+          {
+            credentials: 'include',
+            signal: controller.signal,
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          console.error('Day reservations load failed:', data);
+          setDayReservations([]);
+          setDayReservationsError(
+            data.error || 'Could not load room availability for this day.'
+          );
+        } else {
+          setDayReservations(data.reservations || []);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Day reservations error:', err);
+          setDayReservations([]);
+          setDayReservationsError(
+            'Could not load room availability for this day.'
+          );
+        }
+      } finally {
+        setLoadingDayReservations(false);
+      }
+    };
+
+    loadForDay();
+
+    return () => controller.abort();
+  }, [isOpen, reservationData.date, user]);
+
   if (!isOpen) return null;
 
   // Sort future reservations
@@ -245,16 +585,48 @@ function ReserveConferenceRoom({
       return;
     }
 
-    if (end24 <= start24) {
-      setToast('End time must be after start time.');
+    // Build start/end as Date objects for SAME day first
+    const startDT = combineDateTime(date, start24);
+    let endDT = combineDateTime(date, end24);
+
+    if (!startDT || !endDT) {
+      setToast('Invalid date/time.');
       setToastShake(true);
       return;
     }
 
-    // Prevent past times on today
+    // Determine if this becomes an overnight reservation
+    const isOvernight = endDT <= startDT;
+
+    // 🔥 Ask user for confirmation BEFORE modifying the end date
+    if (isOvernight) {
+      setPendingRequest({
+        roomId,
+        date,
+        startTime: start24,
+        endTime: end24,
+      });
+      setShowOvernightModal(true);
+      return; // stop until user clicks Yes
+    }
+
+    // ---------------------------------------------------------
+    // If we reach here, user is NOT creating overnight
+    // ---------------------------------------------------------
+
+    // Prevent past times on the current day
     const now = new Date();
-    const startDT = combineDateTime(date, start24);
-    const endDT = combineDateTime(date, end24);
+
+    if (date === todayISO && endDT <= now) {
+      setToast('Please choose a time later today.');
+      setToastShake(true);
+      return;
+    }
+
+    // After all checks, adjust overnight if needed
+    if (endDT <= startDT) {
+      endDT = new Date(endDT.getTime() + 24 * 60 * 60 * 1000);
+    }
 
     if (!startDT || !endDT) {
       setToast('Invalid date/time selection.');
@@ -278,8 +650,17 @@ function ReserveConferenceRoom({
       if (r.cancelled) return false;
       if (locallyCancelledIds.includes(r.id)) return false;
       if (String(r.roomId) !== String(roomId)) return false;
-      if (r.date !== date) return false;
-      return overlaps(start24, end24, r.startTime, r.endTime);
+
+      // Build Date objects to handle overnight
+      const rStart = new Date(`${r.date}T${r.startTime}`);
+      let rEnd = new Date(`${r.date}T${r.endTime}`);
+
+      if (rEnd <= rStart) rEnd.setDate(rEnd.getDate() + 1);
+
+      const myStart = startDT;
+      const myEnd = endDT;
+
+      return myStart < rEnd && myEnd > rStart;
     });
 
     if (conflict) {
@@ -356,9 +737,26 @@ function ReserveConferenceRoom({
         },
       ]);
 
-      setToast(
-        `Room Reserved:\n${r.roomName} ${r.date} ${r.startTime}–${r.endTime}`
+      // ----------------------------------------
+      // PREMIUM APPLE-STYLE TOAST
+      // ----------------------------------------
+      const prettyDate = new Date(`${r.date}T00:00:00`).toLocaleDateString(
+        undefined,
+        { weekday: 'short', month: 'short', day: 'numeric' }
       );
+
+      const prettyStart = to12HourDisplay(r.startTime);
+      const prettyEnd = to12HourDisplay(r.endTime);
+
+      const overnight =
+        timeToMinutes(r.endTime) <= timeToMinutes(r.startTime)
+          ? ' (overnight)'
+          : '';
+
+      setToast(
+        `Room Reserved:\n${r.roomName}\n${prettyDate}\n${prettyStart} → ${prettyEnd}${overnight}`
+      );
+
       setToastShake(false);
 
       setReservationData({
@@ -414,7 +812,7 @@ function ReserveConferenceRoom({
         }
       }
 
-      // 🔥 MULTIPLE RESERVATIONS CANCEL — use bulk endpoint
+      // MULTIPLE RESERVATIONS CANCEL — use bulk endpoint
       else {
         res = await fetch('/api/rooms/reservations/cancel-bulk/', {
           method: 'POST',
@@ -447,6 +845,103 @@ function ReserveConferenceRoom({
       clearSelection();
       setConfirmingCancel(false);
       setCancelSubmitting(false);
+    }
+  };
+
+  {
+    /* 🔥 Overnight Confirmation Modal — FIXED JSX RENDERING */
+  }
+  {
+    showOvernightModal && (
+      <div className='overnight-modal-backdrop'>
+        <div className='overnight-modal'>
+          <h2>Confirm Overnight Reservation</h2>
+
+          <p>
+            Your end time is earlier than your start time.
+            <br />
+            This means your reservation will extend past midnight.
+          </p>
+
+          <p className='overnight-time-preview'>
+            {to12HourDisplay(pendingRequest.startTime)} →{' '}
+            {to12HourDisplay(pendingRequest.endTime)}
+          </p>
+
+          <div className='overnight-actions'>
+            <button
+              type='button'
+              className='btn-cancel'
+              onClick={() => {
+                setPendingRequest(null);
+                setShowOvernightModal(false);
+              }}
+            >
+              No, go back
+            </button>
+
+            <button
+              type='button'
+              className='btn-confirm'
+              onClick={() => {
+                setShowOvernightModal(false);
+                finalizeReservation(pendingRequest);
+                setPendingRequest(null);
+              }}
+            >
+              Yes, continue
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const finalizeReservation = async (req) => {
+    const { roomId, date, startTime, endTime } = req;
+
+    setSubmitting(true);
+    setToast('Submitting...');
+
+    try {
+      const res = await fetch('/api/rooms/reserve/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, date, startTime, endTime }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setToast(data.error || 'Reservation failed.');
+        setToastShake(true);
+        return;
+      }
+
+      const r = data.reservation;
+
+      // Pretty toast
+      const prettyDate = new Date(`${r.date}T00:00:00`).toLocaleDateString(
+        undefined,
+        { weekday: 'short', month: 'short', day: 'numeric' }
+      );
+
+      setToast(
+        `Room Reserved:\n${r.roomName}\n${prettyDate}\n${to12HourDisplay(
+          r.startTime
+        )} → ${to12HourDisplay(r.endTime)}`
+      );
+
+      setToastShake(false);
+      onReservationCreated(r);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setToast('Network error.');
+      setToastShake(true);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -642,6 +1137,51 @@ function ReserveConferenceRoom({
           )}
         </div>
 
+        {/* 🔥 Overnight Confirmation Modal */}
+        {showOvernightModal && (
+          <div className='overnight-modal-backdrop'>
+            <div className='overnight-modal'>
+              <h2>Confirm Overnight Reservation</h2>
+
+              <p>
+                Your end time is earlier than your start time.
+                <br />
+                This means your reservation will extend past midnight.
+              </p>
+
+              <p className='overnight-time-preview'>
+                {to12HourDisplay(pendingRequest.startTime)} →{' '}
+                {to12HourDisplay(pendingRequest.endTime)}
+              </p>
+
+              <div className='overnight-actions'>
+                <button
+                  type='button'
+                  className='btn-cancel'
+                  onClick={() => {
+                    setPendingRequest(null);
+                    setShowOvernightModal(false);
+                  }}
+                >
+                  No, go back
+                </button>
+
+                <button
+                  type='button'
+                  className='btn-confirm'
+                  onClick={() => {
+                    setShowOvernightModal(false);
+                    finalizeReservation(pendingRequest);
+                    setPendingRequest(null);
+                  }}
+                >
+                  Yes, continue
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* FORM */}
         <form onSubmit={handleSubmit} className='reserve-form'>
           <div className='form-row'>
@@ -657,7 +1197,6 @@ function ReserveConferenceRoom({
                 }
               />
             </div>
-
             <div>
               <label>Room</label>
               <select
@@ -681,6 +1220,32 @@ function ReserveConferenceRoom({
               </select>
             </div>
           </div>
+
+          {/* VisionOS floating hint -- shown only when no date chosen */}
+          {!reservationData.date && (
+            <div className='availability-hint-pill'>
+              <span className='availability-hint-glow' />
+              <span>💬 Select a date to view room availability</span>
+            </div>
+          )}
+
+          {/* Ultra-premium per-day room availability grid */}
+          {reservationData.date && (
+            <>
+              {loadingDayReservations ? (
+                <p className='day-grid-loading'>Loading room availability…</p>
+              ) : dayReservationsError ? (
+                <p className='day-grid-error'>{dayReservationsError}</p>
+              ) : (
+                <RoomDayAvailability
+                  rooms={rooms}
+                  reservations={dayReservations}
+                  selectedRoomId={reservationData.roomId}
+                  date={reservationData.date}
+                />
+              )}
+            </>
+          )}
 
           <div className='form-row'>
             <div>
