@@ -145,7 +145,7 @@ function RoomDayAvailability({ rooms, reservations, selectedRoomId, date }) {
 
     const label = `${to12HourDisplay(res.startTime)} – ${to12HourDisplay(
       res.endTime
-    )}`;
+    )} Reserved`;
 
     for (let i = firstSlot; i < lastSlot; i++) {
       if (i < 0 || i >= totalSlots) continue;

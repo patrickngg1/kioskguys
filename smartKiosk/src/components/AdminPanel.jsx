@@ -27,6 +27,8 @@ export default function AdminPanel({
   const [activeSection, setActiveSection] = useState('reservations');
   const [confirmCancelId, setConfirmCancelId] = useState(null);
   const [adminReservations, setAdminReservations] = useState([]);
+  const [loadingAdminReservations, setLoadingAdminReservations] =
+    useState(true);
 
   const sections = [
     { key: 'reservations', label: 'Reservations' },
@@ -37,24 +39,25 @@ export default function AdminPanel({
   ];
 
   const loadAdminReservations = async () => {
+    setLoadingAdminReservations(true); // <-- Start loading
+
     try {
       const res = await fetch('/api/rooms/reservations/all/', {
         credentials: 'include',
       });
-
       const data = await res.json();
 
-      if (!data.ok) {
-        console.error('Failed to load admin reservations:', data.error);
-        showToast?.('Failed to load reservations', 'error');
-        return;
+      if (data.ok) {
+        setAdminReservations(data.reservations || []);
+      } else {
+        setAdminReservations([]);
       }
-
-      setAdminReservations(data.reservations || []);
     } catch (err) {
-      console.error('Server error loading admin reservations', err);
-      showToast?.('Server error loading reservations', 'error');
+      console.error('Failed to load admin reservations:', err);
+      setAdminReservations([]);
     }
+
+    setLoadingAdminReservations(false); // <-- Done loading
   };
 
   const adminCancelReservation = async (reservationId) => {
@@ -165,6 +168,7 @@ export default function AdminPanel({
                 reservations={adminReservations}
                 adminCancelReservation={adminCancelReservation}
                 setConfirmCancelId={setConfirmCancelId}
+                loading={loadingAdminReservations} // <-- FIX
               />
             )}
 
@@ -247,6 +251,7 @@ function ReservationsSection({
   reservations,
   adminCancelReservation,
   setConfirmCancelId,
+  loading,
 }) {
   return (
     <div className='admin-section'>
@@ -257,8 +262,38 @@ function ReservationsSection({
         </p>
       </div>
 
-      {(!reservations || reservations.length === 0) && (
+      {loading ? (
+        <div className='admin-loading'>
+          <div className='admin-spinner'></div>
+          <p className='admin-loading-text'>Loading reservations...</p>
+        </div>
+      ) : reservations.length === 0 ? (
         <p className='admin-empty'>No reservations found.</p>
+      ) : (
+        reservations.map((r) => (
+          <div key={r.id} className='admin-list-row'>
+            <div className='admin-list-main'>
+              <div className='admin-item-title'>{r.roomName}</div>
+              <div className='admin-item-time'>
+                {r.date} — {to12Hour(r.startTime)} to {to12Hour(r.endTime)}
+              </div>
+              <div className='admin-item-user'>
+                <strong>User:</strong> {r.fullName}
+              </div>
+              <div className='admin-item-email'>
+                <strong>Email:</strong> {r.email}
+              </div>
+            </div>
+            <div className='admin-list-actions'>
+              <button
+                className='admin-pill-button admin-pill-danger'
+                onClick={() => setConfirmCancelId(r.id)}
+              >
+                Cancel Reservation
+              </button>
+            </div>
+          </div>
+        ))
       )}
 
       {reservations && reservations.length > 0 && (
