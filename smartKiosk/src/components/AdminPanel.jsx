@@ -30,6 +30,14 @@ export default function AdminPanel({
   const [loadingAdminReservations, setLoadingAdminReservations] =
     useState(true);
 
+  // Filters
+  const [filterRoom, setFilterRoom] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+  const [filterUser, setFilterUser] = useState('');
+
+  // Dynamic room list for filters (seeded from prop for safety)
+  const [allRooms, setAllRooms] = useState(rooms || []);
+
   const sections = [
     { key: 'reservations', label: 'Reservations' },
     { key: 'rooms', label: 'Rooms' },
@@ -39,7 +47,7 @@ export default function AdminPanel({
   ];
 
   const loadAdminReservations = async () => {
-    setLoadingAdminReservations(true); // <-- Start loading
+    setLoadingAdminReservations(true);
 
     try {
       const res = await fetch('/api/rooms/reservations/all/', {
@@ -57,7 +65,7 @@ export default function AdminPanel({
       setAdminReservations([]);
     }
 
-    setLoadingAdminReservations(false); // <-- Done loading
+    setLoadingAdminReservations(false);
   };
 
   const adminCancelReservation = async (reservationId) => {
@@ -98,13 +106,59 @@ export default function AdminPanel({
     }
   };
 
+  // Load reservations whenever panel opens
   useEffect(() => {
     if (isOpen) {
       loadAdminReservations();
     }
   }, [isOpen]);
 
+  // Load ALL rooms from backend for dropdown filters
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadRoomsForFilter = async () => {
+      try {
+        const res = await fetch('/api/rooms/', { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok && data.ok && Array.isArray(data.rooms)) {
+          setAllRooms(data.rooms);
+        } else {
+          // fall back to whatever rooms prop had
+          if (rooms && rooms.length > 0) {
+            setAllRooms(rooms);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load rooms for admin filters:', err);
+        if (rooms && rooms.length > 0) {
+          setAllRooms(rooms);
+        }
+      }
+    };
+
+    loadRoomsForFilter();
+  }, [isOpen, rooms]);
+
   if (!isOpen) return null;
+
+  // --- FILTERED RESERVATIONS LOGIC ---
+  const filteredReservations = adminReservations.filter((r) => {
+    // Match by room name if selected
+    const matchesRoom = !filterRoom || r.roomName === filterRoom;
+
+    // Match by date if selected
+    const matchesDate = !filterDate || r.date === filterDate;
+
+    // Match by user name or email if search term entered
+    const matchesUser =
+      !filterUser ||
+      (r.fullName &&
+        r.fullName.toLowerCase().includes(filterUser.toLowerCase())) ||
+      (r.email && r.email.toLowerCase().includes(filterUser.toLowerCase()));
+
+    return matchesRoom && matchesDate && matchesUser;
+  });
 
   return (
     <div className='admin-overlay' onClick={onClose}>
@@ -165,21 +219,34 @@ export default function AdminPanel({
           <section className='admin-content'>
             {activeSection === 'reservations' && (
               <ReservationsSection
-                reservations={adminReservations}
+                reservations={filteredReservations}
                 adminCancelReservation={adminCancelReservation}
                 setConfirmCancelId={setConfirmCancelId}
-                loading={loadingAdminReservations} // <-- FIX
+                loading={loadingAdminReservations}
+                filterRoom={filterRoom}
+                setFilterRoom={setFilterRoom}
+                filterDate={filterDate}
+                setFilterDate={setFilterDate}
+                filterUser={filterUser}
+                setFilterUser={setFilterUser}
+                rooms={allRooms}
               />
             )}
 
+            {/* Rooms List */}
             {activeSection === 'rooms' && (
               <RoomsSection rooms={rooms} showToast={showToast} />
             )}
 
+            {/* Items List */}
             {activeSection === 'items' && (
               <ItemsSection itemsByCategory={itemsByCategory} />
             )}
+
+            {/* Banners section */}
             {activeSection === 'banners' && <BannersSection />}
+
+            {/* Users section */}
             {activeSection === 'users' && <UsersSection users={users} />}
           </section>
         </div>
@@ -195,9 +262,7 @@ export default function AdminPanel({
           </button>
         </footer>
 
-        {/* ----------------------------------------------------------
-            Admin Confirmation Modal
-        ----------------------------------------------------------- */}
+        {/* Admin Confirmation Modal */}
         {confirmCancelId && (
           <div className='modal-overlay'>
             <div className='modal-box'>
@@ -252,6 +317,13 @@ function ReservationsSection({
   adminCancelReservation,
   setConfirmCancelId,
   loading,
+  filterRoom,
+  setFilterRoom,
+  filterDate,
+  setFilterDate,
+  filterUser,
+  setFilterUser,
+  rooms,
 }) {
   return (
     <div className='admin-section'>
@@ -262,6 +334,37 @@ function ReservationsSection({
         </p>
       </div>
 
+      {/* FILTER BAR BELOW TITLE & SUBTITLE */}
+      <div className='admin-filter-bar'>
+        <select
+          value={filterRoom}
+          onChange={(e) => setFilterRoom(e.target.value)}
+          className='admin-filter-input'
+        >
+          <option value=''>All Rooms</option>
+          {rooms.map((room) => (
+            <option key={room.id} value={room.name}>
+              {room.name}
+            </option>
+          ))}
+        </select>
+
+        <input
+          type='date'
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+          className='admin-filter-input'
+        />
+
+        <input
+          type='text'
+          value={filterUser}
+          onChange={(e) => setFilterUser(e.target.value)}
+          className='admin-filter-input'
+          placeholder='Search user…'
+        />
+      </div>
+
       {loading ? (
         <div className='admin-loading'>
           <div className='admin-spinner'></div>
@@ -270,33 +373,6 @@ function ReservationsSection({
       ) : reservations.length === 0 ? (
         <p className='admin-empty'>No reservations found.</p>
       ) : (
-        reservations.map((r) => (
-          <div key={r.id} className='admin-list-row'>
-            <div className='admin-list-main'>
-              <div className='admin-item-title'>{r.roomName}</div>
-              <div className='admin-item-time'>
-                {r.date} — {to12Hour(r.startTime)} to {to12Hour(r.endTime)}
-              </div>
-              <div className='admin-item-user'>
-                <strong>User:</strong> {r.fullName}
-              </div>
-              <div className='admin-item-email'>
-                <strong>Email:</strong> {r.email}
-              </div>
-            </div>
-            <div className='admin-list-actions'>
-              <button
-                className='admin-pill-button admin-pill-danger'
-                onClick={() => setConfirmCancelId(r.id)}
-              >
-                Cancel Reservation
-              </button>
-            </div>
-          </div>
-        ))
-      )}
-
-      {reservations && reservations.length > 0 && (
         <div className='admin-list'>
           {reservations.map((r) => (
             <div key={r.id} className='admin-list-row'>
