@@ -1,0 +1,126 @@
+/* BACKDROP */
+.premium-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: modalFadeIn 0.25s ease;
+}
+
+/* MODAL BODY */
+.premium-modal-container {
+  background: rgba(8, 14, 35, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 26px;
+  padding: 2.75rem 2.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), 0 0 30px rgba(42, 123, 255, 0.2);
+  text-align: center;
+  max-width: 90vw;
+  animation: modalPopIn 0.25s ease;
+  color: white;
+}
+
+/* TITLE */
+.premium-modal-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 1.25rem;
+  color: #ffb86c;
+}
+
+/* MESSAGE */
+.premium-modal-message {
+  font-size: 1.15rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+/* CUSTOM BODY (for forms/content) */
+.premium-modal-body {
+  margin-bottom: 2rem;
+}
+
+/* ACTION BUTTON ROW */
+.premium-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* BASE BUTTON STYLE */
+.premium-btn {
+  padding: 0.75rem 1.75rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.22s ease;
+  border: none;
+}
+
+/* Default (glass) */
+.premium-btn.default {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+}
+.premium-btn.default:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Cancel */
+.premium-btn.cancel {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.premium-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Primary (your UTA blue button) */
+.premium-btn.primary {
+  background: linear-gradient(135deg, #226bff, #1444c4);
+  color: white;
+  box-shadow: 0 0 20px rgba(34, 107, 255, 0.4);
+}
+.premium-btn.primary:hover {
+  background: linear-gradient(135deg, #2d7aff, #1850d1);
+}
+
+/* Delete / Destructive */
+.premium-btn.delete {
+  background: linear-gradient(135deg, #d93025, #b1251c);
+  color: white;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.35);
+}
+.premium-btn.delete:hover {
+  background: linear-gradient(135deg, #ea483d, #cb2f26);
+  box-shadow: 0 0 28px rgba(255, 70, 70, 0.45);
+}
+
+/* ANIMATIONS */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPopIn {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

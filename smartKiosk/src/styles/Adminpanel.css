@@ -382,7 +382,8 @@
   min-height: 0 !important; /* FIX 2 */
   display: flex;
   flex-direction: column;
-  overflow: hidden !important;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .admin-list {
@@ -390,6 +391,220 @@
   overflow-y: auto !important; /* FIX 3 */
   max-height: 100%;
   overflow-x: hidden !important ;
+}
+
+/* Supply items thumbnails in Admin panel */
+.admin-item-row {
+  align-items: center;
+  gap: 1rem;
+}
+
+.admin-item-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    circle at 30% 0%,
+    rgba(255, 255, 255, 0.15),
+    rgba(15, 23, 42, 0.9)
+  );
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+.admin-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.admin-item-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: #e5e7eb;
+  text-transform: uppercase;
+}
+
+.admin-item-thumb-preview {
+  max-width: 96px;
+  max-height: 96px;
+}
+
+/* ============================================================
+   PREMIUM ITEM THUMBNAILS — VisionOS / Apple-Grade Styling
+   ============================================================ */
+
+.admin-item-card {
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.15);
+
+  background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.02)
+    ),
+    var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.3);
+
+  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+    box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* Subtle hover variant matching reservation behavior */
+.admin-item-card:hover {
+  transform: translateY(-2px); /* same lift as reservation row */
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  transition: background 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+/* ============================================================
+   ITEM THUMBNAIL CONTAINER
+   ============================================================ */
+
+.admin-item-thumb {
+  width: 90px;
+  height: 90px;
+  border-radius: 20px;
+  overflow: hidden;
+
+  background: radial-gradient(
+      circle at 30% 20%,
+      rgba(255, 255, 255, 0.12),
+      rgba(15, 23, 42, 0.85)
+    ),
+    rgba(255, 255, 255, 0.04);
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+
+  position: relative;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.admin-item-card:hover .admin-item-thumb {
+  transform: scale(1.03);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65), 0 0 14px rgba(37, 99, 235, 0.4),
+    inset 0 0 0 1px rgba(99, 102, 241, 0.3);
+}
+
+/* Glowing ring border for items with an image */
+.admin-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 2;
+  transition: transform 0.25s ease;
+  filter: brightness(1.5) contrast(1);
+}
+
+.admin-item-card:hover .admin-item-thumb img {
+  transform: scale(1.06);
+}
+
+/* ============================================================
+   PLACEHOLDER STYLE — If no image exists
+   ============================================================ */
+
+.admin-item-placeholder {
+  width: 100%;
+  height: 100%;
+  font-size: 2rem;
+  font-weight: 800;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: rgba(255, 255, 255, 0.75);
+
+  background: radial-gradient(
+      circle at 30% 20%,
+      rgba(255, 255, 255, 0.1),
+      rgba(15, 23, 42, 0.85) 60%
+    ),
+    linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(168, 85, 247, 0.15));
+
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  border-radius: 20px;
+}
+
+/* ============================================================
+   PREVIEW (Inside Modal)
+   ============================================================ */
+
+.admin-item-thumb-preview {
+  width: 110px;
+  height: 110px;
+  border-radius: 22px;
+  overflow: hidden;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.admin-item-thumb-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Hover glow in modal */
+.admin-item-thumb-preview:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.65), 0 0 12px rgba(56, 189, 248, 0.35);
+}
+
+/* ============================================================
+   CATEGORY HEADER UPGRADE
+   ============================================================ */
+
+.admin-category-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-shadow: 0 0 12px rgba(59, 130, 246, 0.35);
+  letter-spacing: 0.5px;
+}
+
+.admin-category-count {
+  color: #94a3b8;
+  font-size: 0.95rem;
 }
 
 /* =====================================================================
@@ -494,11 +709,18 @@
 }
 
 /* ROOM CARDS */
+/* ROOM CARDS / SUPPLY ITEMS GRID */
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1.8rem !important;
-  overflow: visible !important;
+
+  /* 🔥 Breathing room INSIDE the scroll area so top borders/glows aren't clipped */
+  padding-top: 0.75rem;
+
+  overflow-y: auto !important; /* scrolls cards */
+  overflow-x: hidden !important; /* no horizontal scroll */
+  max-height: 100%;
 }
 
 /* Premium Room Card */
@@ -516,10 +738,11 @@
 }
 
 .admin-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.35);
-  position: relative;
-  z-index: 20;
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateY(-2px); /* same as reservation row */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28); /* reduced intensity */
+  border-color: rgba(255, 255, 255, 0.18);
+  transition: background 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
 }
 
 .admin-card-header {
@@ -689,6 +912,160 @@
 .admin-loading-text {
   font-size: 0.9rem;
   color: #cbd5e1;
+}
+
+/* Add consistent breathing room under the Add button/toolbar */
+.admin-section-toolbar {
+  margin-bottom: 1rem; /* Adjust between 1rem – 2rem based on your taste */
+}
+
+/* Adds breathing room so grid/list items don't clip under the toolbar */
+.admin-list,
+.admin-grid {
+  margin-top: 0.75rem; /* perfect value for your design */
+}
+
+/* Prevent top cards from clipping their border/glow under the toolbar */
+.admin-category-block .admin-grid,
+.admin-grid {
+  margin-top: 1rem; /* 1rem is perfect for your layout */
+}
+
+/* PREMIUM GLASS MODAL */
+.premium-modal {
+  background: rgba(8, 14, 35, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 26px;
+  padding: 3rem 2.5rem;
+
+  width: 520px;
+  max-width: 88vw;
+
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 32px rgba(56, 149, 255, 0.2);
+
+  animation: modalFadeIn 0.25s ease;
+  text-align: center;
+  color: white;
+}
+
+/* TITLE */
+.premium-modal-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 1.3rem;
+  color: #ffb86c; /* your brand orange glow */
+}
+
+/* MESSAGE */
+.premium-modal-message {
+  font-size: 1.15rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  margin-bottom: 2.2rem;
+}
+
+/* ACTION ROW */
+.premium-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+/* BUTTONS (match your existing dashboard styles) */
+.modal-btn {
+  padding: 0.75rem 1.75rem;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: none;
+}
+
+/* Cancel (Glass outline) */
+.modal-btn.cancel {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+}
+.modal-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Delete (Destructive red glow) */
+.modal-btn.delete {
+  background: linear-gradient(135deg, #d93025, #b1251c);
+  color: white;
+  box-shadow: 0 0 14px rgba(255, 68, 68, 0.35);
+}
+.modal-btn.delete:hover {
+  background: linear-gradient(135deg, #e6453a, #c53028);
+  box-shadow: 0 0 20px rgba(255, 50, 50, 0.45);
+}
+
+/* Animations */
+@keyframes modalFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Center preview image and label beautifully */
+.item-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.item-preview-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 0.25rem;
+}
+
+.item-preview-thumb {
+  width: 110px;
+  height: 110px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.item-preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+/* Center the preview under its label in the item modal */
+.item-preview-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.item-preview-field label {
+  margin-bottom: 0.75rem;
+  width: 100%;
+  text-align: center;
 }
 
 /* =====================================================================

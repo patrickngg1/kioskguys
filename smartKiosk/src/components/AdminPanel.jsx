@@ -29,14 +29,21 @@ export default function AdminPanel({
   const [adminReservations, setAdminReservations] = useState([]);
   const [loadingAdminReservations, setLoadingAdminReservations] =
     useState(true);
+  // Rooms used for the Reservations filter dropdown
+  const [filterRoomsList, setFilterRoomsList] = useState(rooms || []);
 
-  // Filters
+  // Reservation filters
   const [filterRoom, setFilterRoom] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterUser, setFilterUser] = useState('');
 
-  // Dynamic room list for filters (seeded from prop for safety)
-  const [allRooms, setAllRooms] = useState(rooms || []);
+  // Supply items admin state
+  const [adminItemsByCategory, setAdminItemsByCategory] = useState(
+    itemsByCategory || {}
+  );
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
 
   const sections = [
     { key: 'reservations', label: 'Reservations' },
@@ -46,6 +53,9 @@ export default function AdminPanel({
     { key: 'users', label: 'Users' },
   ];
 
+  // -----------------------------------
+  // Reservations loading + admin cancel
+  // -----------------------------------
   const loadAdminReservations = async () => {
     setLoadingAdminReservations(true);
 
@@ -63,9 +73,28 @@ export default function AdminPanel({
     } catch (err) {
       console.error('Failed to load admin reservations:', err);
       setAdminReservations([]);
+      if (showToast) {
+        showToast('Failed to load reservations', 'error');
+      }
+    } finally {
+      setLoadingAdminReservations(false);
     }
+  };
 
-    setLoadingAdminReservations(false);
+  const loadAdminRooms = async () => {
+    try {
+      const res = await fetch('/api/rooms/', { credentials: 'include' });
+      const data = await res.json();
+
+      if (data.ok) {
+        setFilterRoomsList(data.rooms || []);
+      } else {
+        setFilterRoomsList([]);
+      }
+    } catch (err) {
+      console.error('Failed to load rooms for admin filter:', err);
+      setFilterRoomsList([]);
+    }
   };
 
   const adminCancelReservation = async (reservationId) => {
@@ -77,6 +106,7 @@ export default function AdminPanel({
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({
             reason: 'Cancelled by administrator',
           }),
@@ -86,71 +116,102 @@ export default function AdminPanel({
       const data = await res.json();
 
       if (!data.ok) {
-        showToast(
-          'Error cancelling reservation: ' + (data.error || 'unknown'),
-          'error'
-        );
+        showToast &&
+          showToast(
+            'Error cancelling reservation: ' + (data.error || 'unknown'),
+            'error'
+          );
         return;
       }
 
-      showToast('Reservation cancelled successfully', 'success');
+      showToast && showToast('Reservation cancelled successfully', 'success');
 
-      // Refresh both the dashboard list (if provided) and the admin list
+      // Refresh both dashboard list and admin list
       if (typeof loadReservations === 'function') {
         loadReservations();
       }
       await loadAdminReservations();
     } catch (err) {
       console.error(err);
-      showToast('Server error while cancelling reservation', 'error');
+      showToast &&
+        showToast('Server error while cancelling reservation', 'error');
     }
   };
 
-  // Load reservations whenever panel opens
+  // -----------------------------------
+  // Supply Items loading
+  // -----------------------------------
+  const loadAdminItems = async () => {
+    setLoadingItems(true);
+    try {
+      const res = await fetch('/api/items/', { credentials: 'include' });
+      const data = await res.json();
+
+      if (data.ok) {
+        setAdminItemsByCategory(data.categories || {});
+      } else {
+        setAdminItemsByCategory({});
+        if (showToast) {
+          showToast(data.error || 'Failed to load items', 'error');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load admin items:', err);
+      setAdminItemsByCategory({});
+      if (showToast) {
+        showToast('Failed to load items', 'error');
+      }
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  const openAddItemModal = () => {
+    setEditingItem(null);
+    setShowItemModal(true);
+  };
+
+  const openEditItemModal = (item) => {
+    setEditingItem(item);
+    setShowItemModal(true);
+  };
+
+  const handleItemSaved = () => {
+    loadAdminItems();
+    if (showToast) {
+      showToast('Item saved successfully', 'success');
+    }
+  };
+
+  const [deleteItemTarget, setDeleteItemTarget] = useState(null);
+
+  const handleDeleteItem = (item) => {
+    setDeleteItemTarget(item); // opens premium modal
+  };
+
+  // -----------------------------------
+  // Effects
+  // -----------------------------------
   useEffect(() => {
     if (isOpen) {
       loadAdminReservations();
+      loadAdminRooms();
     }
   }, [isOpen]);
 
-  // Load ALL rooms from backend for dropdown filters
   useEffect(() => {
     if (!isOpen) return;
-
-    const loadRoomsForFilter = async () => {
-      try {
-        const res = await fetch('/api/rooms/', { credentials: 'include' });
-        const data = await res.json();
-        if (res.ok && data.ok && Array.isArray(data.rooms)) {
-          setAllRooms(data.rooms);
-        } else {
-          // fall back to whatever rooms prop had
-          if (rooms && rooms.length > 0) {
-            setAllRooms(rooms);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load rooms for admin filters:', err);
-        if (rooms && rooms.length > 0) {
-          setAllRooms(rooms);
-        }
-      }
-    };
-
-    loadRoomsForFilter();
-  }, [isOpen, rooms]);
+    if (activeSection === 'items') {
+      loadAdminItems();
+    }
+  }, [isOpen, activeSection]);
 
   if (!isOpen) return null;
 
   // --- FILTERED RESERVATIONS LOGIC ---
   const filteredReservations = adminReservations.filter((r) => {
-    // Match by room name if selected
-    const matchesRoom = !filterRoom || r.roomName === filterRoom;
-
-    // Match by date if selected
+    const matchesRoom = !filterRoom || r.roomId === Number(filterRoom);
     const matchesDate = !filterDate || r.date === filterDate;
-
-    // Match by user name or email if search term entered
     const matchesUser =
       !filterUser ||
       (r.fullName &&
@@ -229,27 +290,95 @@ export default function AdminPanel({
                 setFilterDate={setFilterDate}
                 filterUser={filterUser}
                 setFilterUser={setFilterUser}
-                rooms={allRooms}
+                rooms={filterRoomsList}
               />
             )}
 
-            {/* Rooms List */}
             {activeSection === 'rooms' && (
               <RoomsSection rooms={rooms} showToast={showToast} />
             )}
 
-            {/* Items List */}
             {activeSection === 'items' && (
-              <ItemsSection itemsByCategory={itemsByCategory} />
+              <ItemsSection
+                itemsByCategory={adminItemsByCategory}
+                loading={loadingItems}
+                onAddItem={openAddItemModal}
+                onEditItem={openEditItemModal}
+                onDeleteItem={handleDeleteItem}
+              />
             )}
 
-            {/* Banners section */}
             {activeSection === 'banners' && <BannersSection />}
 
-            {/* Users section */}
             {activeSection === 'users' && <UsersSection users={users} />}
           </section>
         </div>
+
+        {/* DELETE SUPPLY ITEM MODAL */}
+        {deleteItemTarget && (
+          <div
+            className='modal-overlay'
+            onClick={() => setDeleteItemTarget(null)}
+          >
+            <div
+              className='premium-modal'
+              onClick={(e) => e.stopPropagation()}
+              role='dialog'
+              aria-modal='true'
+            >
+              <h2 className='premium-modal-title'>Delete Item?</h2>
+
+              <p className='premium-modal-message'>
+                You are about to permanently delete{' '}
+                <strong>{deleteItemTarget.name}</strong>.
+                <br />
+                This action cannot be undone.
+              </p>
+
+              <div className='premium-modal-actions'>
+                <button
+                  className='modal-btn cancel'
+                  type='button'
+                  onClick={() => setDeleteItemTarget(null)}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  className='modal-btn delete'
+                  type='button'
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(
+                        `/api/items/${deleteItemTarget.id}/delete/`,
+                        {
+                          method: 'POST',
+                          credentials: 'include',
+                          headers: { 'Content-Type': 'application/json' },
+                        }
+                      );
+
+                      const data = await res.json();
+                      if (!data.ok) throw new Error();
+
+                      showToast?.(
+                        `Deleted "${deleteItemTarget.name}"`,
+                        'success'
+                      );
+                      loadAdminItems();
+                    } catch {
+                      showToast?.('Failed to delete item', 'error');
+                    } finally {
+                      setDeleteItemTarget(null);
+                    }
+                  }}
+                >
+                  Delete Item
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className='admin-footer'>
@@ -262,55 +391,67 @@ export default function AdminPanel({
           </button>
         </footer>
 
-        {/* Admin Confirmation Modal */}
+        {/* Reservation cancel confirmation */}
         {confirmCancelId && (
-          <div className='modal-overlay'>
-            <div className='modal-box'>
-              <h2 style={{ marginBottom: '1rem', color: '#fff' }}>
-                Cancel Reservation?
-              </h2>
+          <div
+            className='modal-overlay'
+            onClick={() => setConfirmCancelId(null)}
+          >
+            <div
+              className='premium-modal'
+              onClick={(e) => e.stopPropagation()}
+              role='dialog'
+              aria-modal='true'
+            >
+              <h2 className='premium-modal-title'>Cancel Reservation?</h2>
 
-              <p style={{ marginBottom: '1.5rem', color: '#cbd5e1' }}>
-                This will permanently remove the reservation and notify the
-                user. Are you sure you want to continue?
+              <p className='premium-modal-message'>
+                This reservation will be permanently removed and the user will
+                be notified.
+                <br />
+                Are you sure you want to continue?
               </p>
 
-              <div
-                className='modal-actions'
-                style={{
-                  display: 'flex',
-                  gap: '1rem',
-                  justifyContent: 'flex-end',
-                }}
-              >
+              <div className='premium-modal-actions'>
                 <button
-                  className='btn-secondary'
+                  className='modal-btn cancel'
                   onClick={() => setConfirmCancelId(null)}
                 >
-                  No, Keep
+                  Keep Reservation
                 </button>
 
                 <button
-                  className='btn-danger'
+                  className='modal-btn delete'
                   onClick={() => {
                     adminCancelReservation(confirmCancelId);
                     setConfirmCancelId(null);
                   }}
                 >
-                  Yes, Cancel
+                  Cancel Reservation
                 </button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Item add/edit modal */}
+        {showItemModal && (
+          <ItemEditModal
+            isOpen={showItemModal}
+            onClose={() => setShowItemModal(false)}
+            item={editingItem}
+            itemsByCategory={adminItemsByCategory}
+            onSaved={handleItemSaved}
+          />
         )}
       </div>
     </div>
   );
 }
 
-/* ====================================================================== */
-/*  Subsections                                                           */
-/* ====================================================================== */
+// ======================================================================
+// Subsections
+// ======================================================================
 
 function ReservationsSection({
   reservations,
@@ -334,7 +475,7 @@ function ReservationsSection({
         </p>
       </div>
 
-      {/* FILTER BAR BELOW TITLE & SUBTITLE */}
+      {/* Filter bar directly under title/subtitle */}
       <div className='admin-filter-bar'>
         <select
           value={filterRoom}
@@ -343,7 +484,7 @@ function ReservationsSection({
         >
           <option value=''>All Rooms</option>
           {rooms.map((room) => (
-            <option key={room.id} value={room.name}>
+            <option key={room.id} value={room.id}>
               {room.name}
             </option>
           ))}
@@ -636,7 +777,7 @@ function RoomsSection({ rooms, showToast }) {
       {/* Add / Edit Room Modal */}
       {(showAddModal || showEditModal) && (
         <div className='modal-overlay'>
-          <div className='modal-box' onClick={(e) => e.stopPropagation()}>
+          <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
             <button
               className='close-btn'
               type='button'
@@ -721,37 +862,33 @@ function RoomsSection({ rooms, showToast }) {
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className='modal-overlay'>
-          <div className='modal-box' onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ color: '#fff', marginBottom: '0.75rem' }}>
-              Delete Room?
-            </h2>
-            <p style={{ color: '#cbd5e1', marginBottom: '1.5rem' }}>
-              This will remove <strong>{deleteTarget.name}</strong>. If there
-              are future reservations for this room, deletion may be blocked.
+        <div className='modal-overlay' onClick={() => setDeleteTarget(null)}>
+          <div
+            className='premium-modal'
+            onClick={(e) => e.stopPropagation()}
+            role='dialog'
+          >
+            <h2 className='premium-modal-title'>Delete Room?</h2>
+
+            <p className='premium-modal-message'>
+              You are about to delete <strong>{deleteTarget.name}</strong>.
+              <br />
+              If this room has future reservations, deletion may be blocked.
             </p>
 
-            <div
-              className='modal-actions'
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '1rem',
-              }}
-            >
+            <div className='premium-modal-actions'>
               <button
-                className='btn-secondary'
-                type='button'
+                className='modal-btn cancel'
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
               >
                 Keep Room
               </button>
+
               <button
-                className='btn-danger'
-                type='button'
-                onClick={handleDelete}
+                className='modal-btn delete'
                 disabled={deleting}
+                onClick={handleDelete}
               >
                 {deleting ? 'Deleting…' : 'Delete Room'}
               </button>
@@ -763,7 +900,13 @@ function RoomsSection({ rooms, showToast }) {
   );
 }
 
-function ItemsSection({ itemsByCategory }) {
+function ItemsSection({
+  itemsByCategory,
+  loading,
+  onAddItem,
+  onEditItem,
+  onDeleteItem,
+}) {
   const entries = Object.entries(itemsByCategory || {});
 
   return (
@@ -779,20 +922,20 @@ function ItemsSection({ itemsByCategory }) {
         <button
           type='button'
           className='admin-pill-button admin-pill-primary'
-          onClick={() => {
-            // TODO: Add Item glass modal
-            alert('Open Add Item modal (to implement)');
-          }}
+          onClick={onAddItem}
         >
           + Add Item
         </button>
       </div>
 
-      {entries.length === 0 && (
+      {loading && <p className='admin-empty'>Loading items…</p>}
+
+      {!loading && entries.length === 0 && (
         <p className='admin-empty'>No items loaded from backend.</p>
       )}
 
-      {entries.length > 0 && (
+      {/* 🔥 Scroll container, just like Reservations */}
+      {!loading && entries.length > 0 && (
         <div className='admin-list'>
           {entries.map(([category, items]) => (
             <div key={category} className='admin-category-block'>
@@ -803,43 +946,280 @@ function ItemsSection({ itemsByCategory }) {
                 </div>
               </div>
 
-              {items.map((item) => (
-                <div key={item.id} className='admin-list-row'>
-                  <div className='admin-list-main'>
-                    <div className='admin-list-title'>{item.name}</div>
-                    <div className='admin-list-meta admin-list-meta-secondary'>
-                      <span>{item.category_name || category}</span>
-                      {item.image && (
-                        <span className='admin-inline-note'>has image</span>
-                      )}
+              {/* Grid of cards INSIDE the scrollable list */}
+              <div className='admin-grid'>
+                {items.map((item) => (
+                  <div key={item.id} className='admin-card admin-item-card'>
+                    <div className='admin-card-header admin-item-card-header'>
+                      <div className='admin-item-thumb'>
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} />
+                        ) : (
+                          <div className='admin-item-placeholder'>
+                            {(item.name || '?').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className='admin-card-body admin-item-card-body'>
+                      <div className='admin-card-title'>{item.name}</div>
+                      <div className='admin-list-meta admin-list-meta-secondary'>
+                        <span>{item.category_name || category}</span>
+                        {!item.image && (
+                          <span className='admin-inline-note'>
+                            No image — using fallback
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className='admin-card-footer admin-item-card-footer'>
+                      <button
+                        type='button'
+                        className='admin-pill-button admin-pill-subtle'
+                        onClick={() => onEditItem(item)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type='button'
+                        className='admin-pill-button admin-pill-danger'
+                        onClick={() => onDeleteItem(item)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-                  <div className='admin-list-actions'>
-                    <button
-                      type='button'
-                      className='admin-pill-button admin-pill-subtle'
-                      onClick={() =>
-                        alert(`Edit item ${item.id} (hook backend next)`)
-                      }
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type='button'
-                      className='admin-pill-button admin-pill-danger'
-                      onClick={() =>
-                        alert(`Delete item ${item.id} (hook backend next)`)
-                      }
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
+  const isEdit = !!item;
+
+  const [name, setName] = useState(item?.name || '');
+  const [categoryKey, setCategoryKey] = useState(item?.category_key || '');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [imageFile, setImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(item?.image || null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const categoryOptions = React.useMemo(() => {
+    const opts = [];
+    const seen = new Set();
+
+    Object.entries(itemsByCategory || {}).forEach(([label, items]) => {
+      if (!items || !items.length) return;
+      const any = items[0];
+      if (any.category_key && !seen.has(any.category_key)) {
+        seen.add(any.category_key);
+        opts.push({ key: any.category_key, label });
+      }
+    });
+
+    return opts;
+  }, [itemsByCategory]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setName(item?.name || '');
+    setCategoryKey(item?.category_key || '');
+    setNewCategoryName('');
+    setImageFile(null);
+    setPreviewUrl(item?.image || null);
+    setSaving(false);
+    setError('');
+  }, [isOpen, item]);
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Name is required.');
+      return;
+    }
+
+    const payload = {
+      id: item?.id || null,
+      name: trimmedName,
+    };
+
+    if (categoryKey && categoryKey !== '__new__') {
+      payload.category_key = categoryKey;
+    } else if (categoryKey === '__new__' && newCategoryName.trim()) {
+      payload.new_category_name = newCategoryName.trim();
+    }
+
+    try {
+      setSaving(true);
+
+      // 1) Save name + category
+      const res = await fetch('/api/items/save/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        throw new Error(data.error || 'Failed to save item');
+      }
+
+      let savedItem = data.item;
+
+      // 2) If there is a new image, upload it
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+
+        const imgRes = await fetch(`/api/items/${savedItem.id}/upload-image/`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+        const imgData = await imgRes.json();
+        if (!imgData.ok) {
+          console.error('Image upload failed:', imgData.error);
+        } else if (imgData.image) {
+          savedItem = { ...savedItem, image: imgData.image };
+        }
+      }
+
+      onSaved && onSaved(savedItem);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Failed to save item.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className='modal-overlay' onClick={onClose}>
+      <div
+        className='premium-modal'
+        style={{ maxWidth: '640px' }}
+        onClick={(e) => e.stopPropagation()}
+        role='dialog'
+        aria-modal='true'
+      >
+        <button
+          type='button'
+          className='close-btn'
+          onClick={onClose}
+          aria-label='Close'
+        >
+          ✕
+        </button>
+
+        <h2>{isEdit ? 'Edit Supply Item' : 'Add Supply Item'}</h2>
+
+        <form onSubmit={handleSubmit} className='reserve-form'>
+          {error && <p className='admin-error-text'>{error}</p>}
+
+          <div className='form-row'>
+            <div>
+              <label>Item name</label>
+              <input
+                type='text'
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder='e.g., AA Batteries'
+              />
+            </div>
+
+            <div>
+              <label>Category</label>
+              <select
+                value={categoryKey || ''}
+                onChange={(e) => setCategoryKey(e.target.value)}
+              >
+                <option value=''>Select existing…</option>
+                {categoryOptions.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.label}
+                  </option>
+                ))}
+                <option value='__new__'>+ New category…</option>
+              </select>
+            </div>
+          </div>
+
+          {categoryKey === '__new__' && (
+            <div className='form-row'>
+              <div>
+                <label>New category name</label>
+                <input
+                  type='text'
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder='e.g., Storage Closet'
+                />
+              </div>
+            </div>
+          )}
+
+          <div className='form-row'>
+            <div>
+              <label>Item image (optional)</label>
+              <input
+                type='file'
+                accept='image/*'
+                onChange={handleImageChange}
+              />
+            </div>
+
+            <div className='item-preview-field'>
+              <label>Preview</label>
+              <div className='admin-item-thumb admin-item-thumb-preview'>
+                {previewUrl ? (
+                  <img src={previewUrl} alt='Preview' />
+                ) : (
+                  <div className='admin-item-placeholder'>
+                    {(name || '?').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type='submit'
+            className='btn btn-primary w-full mt-2'
+            disabled={saving}
+          >
+            {saving
+              ? isEdit
+                ? 'Saving…'
+                : 'Creating…'
+              : isEdit
+              ? 'Save Changes'
+              : 'Create Item'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -860,7 +1240,6 @@ function BannersSection() {
           type='button'
           className='admin-pill-button admin-pill-primary'
           onClick={() => {
-            // TODO: open upload banner modal (future)
             alert('Open Upload Banner modal (to implement)');
           }}
         >
@@ -870,7 +1249,6 @@ function BannersSection() {
           type='button'
           className='admin-pill-button admin-pill-subtle'
           onClick={() => {
-            // TODO: reorder banners UI
             alert('Open banner reorder UI (to implement)');
           }}
         >

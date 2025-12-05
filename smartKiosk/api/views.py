@@ -234,6 +234,105 @@ def upload_item_image(request, item_id):
 
 
 # ---------------------------------------------------------
+# POST /api/items/save/
+# Create or update an item (name + category)
+# Body: { id?, name, category_key?, new_category_name? }
+# ---------------------------------------------------------
+@csrf_exempt
+@require_POST
+def admin_save_item(request):
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    item_id = data.get("id")
+    name = (data.get("name") or "").strip()
+    category_key = (data.get("category_key") or "").strip()
+    new_category_name = (data.get("new_category_name") or "").strip()
+
+    if not name:
+        return JsonResponse({"ok": False, "error": "Name is required"}, status=400)
+
+    category = None
+
+    # Existing category by key
+    if category_key and category_key != "__new__":
+        try:
+            category = Category.objects.get(key=category_key)
+        except Category.DoesNotExist:
+            return JsonResponse(
+                {"ok": False, "error": "Category not found"}, status=404
+            )
+
+    # Create a new category if requested
+    if not category and new_category_name:
+        # simple slug-ish key
+        key = (
+            new_category_name.lower()
+            .replace(" ", "_")
+            .replace("/", "_")
+            .replace("&", "and")
+        )
+        category, _ = Category.objects.get_or_create(
+            key=key,
+            defaults={"name": new_category_name},
+        )
+
+    if not category:
+        return JsonResponse(
+            {"ok": False, "error": "Category is required"}, status=400
+        )
+
+    # Create or update the item
+    if item_id:
+        try:
+            item = Item.objects.get(id=item_id)
+        except Item.DoesNotExist:
+            return JsonResponse({"ok": False, "error": "Item not found"}, status=404)
+        item.name = name
+        item.category = category
+        item.save()
+        status_code = 200
+    else:
+        item = Item.objects.create(name=name, category=category)
+        status_code = 201
+
+    image_url = request.build_absolute_uri(item.image.url) if item.image else None
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "item": {
+                "id": item.id,
+                "name": item.name,
+                "image": image_url,
+                "category_key": item.category.key,
+                "category_name": item.category.name,
+            },
+        },
+        status=status_code,
+    )
+
+
+# ---------------------------------------------------------
+# POST /api/items/<item_id>/delete/
+# Soft/simple delete for admin
+# ---------------------------------------------------------
+@csrf_exempt
+@require_POST
+def admin_delete_item(request, item_id):
+    try:
+        item = Item.objects.get(id=item_id)
+    except Item.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Item not found"}, status=404)
+
+    item.delete()
+    return JsonResponse({"ok": True, "message": "Item deleted"})
+
+
+
+# ---------------------------------------------------------
 # POST /api/supplies/request/
 # Creates a supply request, updates popularity, sends email (PREMIUM)
 # ---------------------------------------------------------

@@ -29,6 +29,11 @@ urlpatterns = [
         name="upload_item_image",
     ),
 
+    # Admin: create/update/delete items
+    path("items/save/", views.admin_save_item, name="admin_save_item"),
+    path("items/<int:item_id>/delete/", views.admin_delete_item, name="admin_delete_item"),
+
+
     # --------------------------
     # Rooms
     # --------------------------
