@@ -13,6 +13,8 @@ class BannerImage(models.Model):
     label = models.CharField(max_length=128, blank=True)
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

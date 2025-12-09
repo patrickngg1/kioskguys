@@ -23,6 +23,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth import update_session_auth_hash
 from accounts.models import UserProfile
+from django.utils.dateparse import parse_date
 
 from .models import (
     Category,
@@ -38,14 +39,51 @@ from datetime import datetime, timedelta, time
 from django.utils import timezone
 import random
 
+def auto_update_banner_state():
+    """
+    Ensure scheduled banners obey their date ranges.
+    - If a banner has start_date/end_date and 'today' is in that range,
+      it becomes the one active banner.
+    - If no schedule matches today, scheduled banners that are out of range
+      get deactivated, but manually activated non-scheduled banners are left alone.
+    """
+    today = timezone.localdate()
+
+    # Banners that have a full schedule
+    scheduled_qs = BannerImage.objects.filter(
+        start_date__isnull=False,
+        end_date__isnull=False,
+    )
+
+    # Pick the newest scheduled banner that is valid today
+    active_candidate = (
+        scheduled_qs
+        .filter(start_date__lte=today, end_date__gte=today)
+        .order_by('-created_at')
+        .first()
+    )
+
+    if active_candidate:
+        # Make this one the only active banner
+        BannerImage.objects.update(is_active=False)
+        active_candidate.is_active = True
+        active_candidate.save()
+    else:
+        # No schedule is valid today → make sure scheduled ones are not active
+        for b in scheduled_qs.filter(is_active=True):
+            if not (b.start_date <= today <= b.end_date):
+                b.is_active = False
+                b.save()
 
 # ---------------------------
 #  LIST ALL BANNERS (ADMIN)
 # ---------------------------
-@require_GET
 def list_banners(request):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    # Make sure scheduled banners are in the correct state before we return them
+    auto_update_banner_state()
 
     banners = []
     for b in BannerImage.objects.all():
@@ -54,6 +92,8 @@ def list_banners(request):
             "image_url": request.build_absolute_uri(b.image.url),
             "label": b.label,
             "is_active": b.is_active,
+            "start_date": b.start_date.isoformat() if b.start_date else None,
+            "end_date": b.end_date.isoformat() if b.end_date else None,
         })
 
     return JsonResponse({"ok": True, "banners": banners}, status=200)
@@ -74,7 +114,12 @@ def upload_banner(request):
 
     label = request.POST.get("label", "")
 
-    banner = BannerImage.objects.create(image=file, label=label)
+    banner = BannerImage.objects.create(
+        image=file,
+        label=label,
+        start_date=None,
+        end_date=None,
+    )
 
     return JsonResponse({
         "ok": True,
@@ -83,9 +128,42 @@ def upload_banner(request):
             "image_url": request.build_absolute_uri(banner.image.url),
             "label": banner.label,
             "is_active": banner.is_active,
+            "start_date": None,
+            "end_date": None,
         },
     }, status=201)
 
+
+@csrf_exempt
+@require_POST
+def schedule_banner(request, banner_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    try:
+        banner = BannerImage.objects.get(id=banner_id)
+    except BannerImage.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Not found"}, status=404)
+
+    start = request.POST.get("start_date")
+    end = request.POST.get("end_date")
+
+    from django.utils.dateparse import parse_date
+    banner.start_date = parse_date(start) if start else None
+    banner.end_date = parse_date(end) if end else None
+    banner.save()
+
+    auto_update_banner_state()
+
+    return JsonResponse({
+        "ok": True,
+        "banner": {
+            "id": banner.id,
+            "start_date": banner.start_date.isoformat() if banner.start_date else None,
+            "end_date": banner.end_date.isoformat() if banner.end_date else None,
+            "is_active": banner.is_active,
+        }
+    })
 
 # ---------------------------
 #  ACTIVATE BANNER (ADMIN)
@@ -136,6 +214,8 @@ def delete_banner(request, banner_id):
 # ---------------------------
 @require_GET
 def get_active_banner(request):
+    auto_update_banner_state()
+
     banner = BannerImage.objects.filter(is_active=True).first()
 
     if not banner:

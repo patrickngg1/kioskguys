@@ -48,7 +48,8 @@ export default function AdminPanel({
   const [editingItem, setEditingItem] = useState(null);
   const [deleteItemTarget, setDeleteItemTarget] = useState(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
-  // --- USERS STATE (New) ---
+
+  // --- USERS STATE ---
   const [adminUsers, setAdminUsers] = useState(users || []);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
@@ -130,23 +131,20 @@ export default function AdminPanel({
     }
   };
 
-  // 4. Load Users (New)
+  // 4. Load Users
   const loadAdminUsers = async () => {
     setLoadingUsers(true);
     try {
-      // Assumes /api/users/ exists. If using a different endpoint, update here.
       const res = await fetch('/api/users/', { credentials: 'include' });
       const data = await res.json();
 
       if (data.ok) {
         setAdminUsers(data.users || []);
       } else {
-        // Fallback to prop if fetch fails logically but returns valid JSON
         setAdminUsers(users || []);
       }
     } catch (err) {
       console.error('Failed to load users:', err);
-      // Fallback to prop on network error
       setAdminUsers(users || []);
     } finally {
       setLoadingUsers(false);
@@ -166,7 +164,6 @@ export default function AdminPanel({
         return;
       }
 
-      // Update UI
       setAdminUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, isAdmin: data.isAdmin } : u))
       );
@@ -194,7 +191,6 @@ export default function AdminPanel({
         return;
       }
 
-      // Remove from list
       setAdminUsers((prev) => prev.filter((u) => u.id !== userId));
 
       showToast?.(
@@ -270,13 +266,12 @@ export default function AdminPanel({
   // Initial load
   useEffect(() => {
     if (isOpen) {
-      // By default load the data for the default tab (reservations) + filter data
       loadAdminReservations();
       loadAdminRooms();
     }
   }, [isOpen]);
 
-  // Tab Switching Logic - Refreshes data when clicking a tab
+  // Tab Switching Logic
   useEffect(() => {
     if (!isOpen) return;
 
@@ -291,8 +286,7 @@ export default function AdminPanel({
         loadAdminUsers();
         break;
       case 'rooms':
-        // RoomsSection handles its own fetching on mount.
-        // Since we conditionally render it, it remounts (refreshes) automatically.
+        // RoomsSection reloads itself on mount
         break;
       default:
         break;
@@ -403,7 +397,7 @@ export default function AdminPanel({
                 loading={loadingUsers}
                 toggleUserAdmin={toggleUserAdmin}
                 deleteUser={deleteUser}
-                setConfirmDeleteUser={setConfirmDeleteUser} // ✅ ADD THIS
+                setConfirmDeleteUser={setConfirmDeleteUser}
               />
             )}
           </section>
@@ -1010,7 +1004,6 @@ function ItemsSection({
   onEditItem,
   onDeleteItem,
 }) {
-  // ✅ Search state MUST come before it is used!
   const [searchQuery, setSearchQuery] = useState('');
 
   const highlightMatch = (text) => {
@@ -1029,12 +1022,10 @@ function ItemsSection({
         break;
       }
 
-      // push text before match
       if (matchIndex > i) {
         parts.push(text.slice(i, matchIndex));
       }
 
-      // push the highlighted match
       parts.push(
         <span key={matchIndex} className='highlight-text'>
           {text.slice(matchIndex, matchIndex + query.length)}
@@ -1047,7 +1038,6 @@ function ItemsSection({
     return parts;
   };
 
-  // ✅ Filter items AFTER searchQuery is defined
   const entries = Object.entries(itemsByCategory || {})
     .map(([category, items]) => {
       const filteredItems = items.filter((item) =>
@@ -1082,7 +1072,6 @@ function ItemsSection({
         </button>
       </div>
 
-      {/* SEARCH BAR */}
       <div className='admin-filter-bar' style={{ marginTop: '1rem' }}>
         <input
           type='text'
@@ -1180,32 +1169,12 @@ function BannersSection() {
   const [confirmDeleteBanner, setConfirmDeleteBanner] = useState(null);
   const [uploadFile, setUploadFile] = useState(null);
   const [previewBanner, setPreviewBanner] = useState(null);
+  const [scheduleDrafts, setScheduleDrafts] = useState({});
 
   const openPreview = (banner) => {
     setPreviewBanner(banner);
   };
 
-  const deactivateBanner = async () => {
-    setConfirmDeactivateBanner(true);
-    try {
-      const res = await fetch('/api/banners/deactivate/', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      const data = await res.json();
-
-      if (data.ok) {
-        loadBanners();
-      } else {
-        alert(data.error || 'Failed to deactivate banner.');
-      }
-    } catch (err) {
-      console.error('Deactivate error:', err);
-    }
-  };
-
-  // Load banners
   const loadBanners = async () => {
     setLoading(true);
     try {
@@ -1214,7 +1183,20 @@ function BannersSection() {
       });
       const data = await res.json();
       if (data.ok) {
-        setBanners(data.banners || []);
+        const list = data.banners || [];
+        setBanners(list);
+
+        // Seed per-banner schedule drafts from backend
+        setScheduleDrafts(() => {
+          const drafts = {};
+          list.forEach((b) => {
+            drafts[b.id] = {
+              start_date: b.start_date || '',
+              end_date: b.end_date || '',
+            };
+          });
+          return drafts;
+        });
       } else {
         setBanners([]);
       }
@@ -1226,18 +1208,16 @@ function BannersSection() {
     }
   };
 
-  // Trigger load when component mounts (tab opens)
   useEffect(() => {
     loadBanners();
   }, []);
 
-  // Upload banner
   const handleUpload = async () => {
     if (!uploadFile) return;
 
     const formData = new FormData();
     formData.append('file', uploadFile);
-    formData.append('label', bannerTitle); // ⭐ add title
+    formData.append('label', bannerTitle);
 
     try {
       const res = await fetch('/api/banners/upload/', {
@@ -1251,7 +1231,7 @@ function BannersSection() {
       if (data.ok) {
         setShowUploadModal(false);
         setUploadFile(null);
-        setBannerTitle(''); // reset
+        setBannerTitle('');
         loadBanners();
       } else {
         alert(data.error || 'Upload failed.');
@@ -1262,7 +1242,29 @@ function BannersSection() {
     }
   };
 
-  // Set active banner
+  const handleClearSchedule = async (id) => {
+    const formData = new FormData();
+    formData.append('start_date', '');
+    formData.append('end_date', '');
+
+    try {
+      const res = await fetch(`/api/banners/${id}/schedule/`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        alert(data.error || 'Failed to clear schedule.');
+        return;
+      }
+      loadBanners();
+    } catch (err) {
+      console.error('Clear schedule error:', err);
+      alert('Failed to clear schedule.');
+    }
+  };
+
   const activateBanner = async (id) => {
     try {
       const res = await fetch(`/api/banners/${id}/activate/`, {
@@ -1280,7 +1282,6 @@ function BannersSection() {
     }
   };
 
-  // Delete banner
   const deleteBanner = async (id) => {
     if (!window.confirm('Delete this banner?')) return;
     try {
@@ -1297,6 +1298,73 @@ function BannersSection() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Save schedule only (S1 behavior)
+  const handleSaveSchedule = async (id) => {
+    const draft = scheduleDrafts[id] || {};
+    const formData = new FormData();
+
+    if (draft.start_date) {
+      formData.append('start_date', draft.start_date);
+    }
+    if (draft.end_date) {
+      formData.append('end_date', draft.end_date);
+    }
+
+    try {
+      const res = await fetch(`/api/banners/${id}/schedule/`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        alert(data.error || 'Failed to save schedule.');
+        return;
+      }
+      loadBanners();
+    } catch (err) {
+      console.error('Schedule save error:', err);
+      alert('Failed to save schedule.');
+    }
+  };
+
+  const computeStatus = (b) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { start_date, end_date, is_active } = b;
+
+    let statusText = '';
+    let chipClass = 'banner-status-chip';
+    let scheduleText = 'No schedule';
+
+    if (start_date || end_date) {
+      if (start_date && end_date) {
+        scheduleText = `${start_date} → ${end_date}`;
+      } else if (start_date) {
+        scheduleText = `From ${start_date}`;
+      } else if (end_date) {
+        scheduleText = `Until ${end_date}`;
+      }
+    }
+
+    if (is_active) {
+      statusText = 'Active';
+    } else if (end_date && today > end_date) {
+      statusText = 'Expired';
+      chipClass += ' expired';
+    } else if (start_date && today < start_date) {
+      statusText = 'Scheduled';
+      chipClass += ' scheduled';
+    } else if (start_date || end_date) {
+      statusText = 'Inactive';
+      chipClass += ' scheduled';
+    } else {
+      statusText = 'No Schedule';
+      chipClass += ' scheduled';
+    }
+
+    return { statusText, chipClass, scheduleText };
   };
 
   return (
@@ -1333,68 +1401,173 @@ function BannersSection() {
         <p className='admin-empty'>No banners uploaded yet.</p>
       ) : (
         <div className='admin-grid'>
-          {banners.map((b) => (
-            <div
-              key={b.id}
-              className={`admin-card banner-card ${
-                b.is_active ? 'active' : ''
-              }`}
-            >
-              {/* IMAGE */}
-              <div className='admin-card-header'>
-                <img
-                  src={b.image_url}
-                  alt='Banner'
-                  style={{
-                    width: '100%',
-                    height: '120px',
-                    objectFit: 'cover',
-                    borderRadius: '10px',
-                  }}
-                  onClick={() => openPreview(b)}
-                />
-              </div>
+          {banners.map((b) => {
+            const { statusText, chipClass } = computeStatus(b);
 
-              {/* TITLE UNDER IMAGE */}
-              <div className='admin-card-body' style={{ textAlign: 'center' }}>
-                <div className='banner-title'>
-                  {b.label && b.label.trim() !== '' ? b.label : '(No title)'}
+            return (
+              <div
+                key={b.id}
+                className={`admin-card banner-card ${
+                  b.is_active ? 'active' : ''
+                }`}
+              >
+                <div className='admin-card-header'>
+                  <img
+                    src={b.image_url}
+                    alt='Banner'
+                    style={{
+                      width: '100%',
+                      height: '120px',
+                      objectFit: 'cover',
+                      borderRadius: '10px',
+                    }}
+                    onClick={() => openPreview(b)}
+                  />
+                </div>
+
+                {/* TITLE + STATUS */}
+                <div
+                  className='admin-card-body'
+                  style={{ textAlign: 'center' }}
+                >
+                  <div className='banner-title'>
+                    {b.label && b.label.trim() !== '' ? b.label : '(No title)'}
+                  </div>
+                  <div className='banner-meta-row'>
+                    <span className={chipClass}>{statusText}</span>
+                  </div>
+                </div>
+
+                {/* SCHEDULING (P1 stacked layout) */}
+                <div className='admin-card-body banner-schedule-block'>
+                  <div className='form-row'>
+                    <label>Start Date</label>
+                    <input
+                      type='date'
+                      value={
+                        (scheduleDrafts[b.id] &&
+                          scheduleDrafts[b.id].start_date) ||
+                        b.start_date ||
+                        ''
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setScheduleDrafts((prev) => ({
+                          ...prev,
+                          [b.id]: {
+                            ...(prev[b.id] || {}),
+                            start_date: value,
+                          },
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  <div className='form-row'>
+                    <label>End Date</label>
+                    <input
+                      type='date'
+                      value={
+                        (scheduleDrafts[b.id] &&
+                          scheduleDrafts[b.id].end_date) ||
+                        b.end_date ||
+                        ''
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setScheduleDrafts((prev) => ({
+                          ...prev,
+                          [b.id]: {
+                            ...(prev[b.id] || {}),
+                            end_date: value,
+                          },
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  <div
+                    className='form-row'
+                    style={{
+                      marginTop: '1rem',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    <button
+                      type='button'
+                      className='admin-pill-button admin-pill-subtle'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSaveSchedule(b.id);
+                      }}
+                    >
+                      Save Schedule
+                    </button>
+
+                    {(b.start_date || b.end_date) && (
+                      <button
+                        type='button'
+                        className='admin-pill-button admin-pill-danger'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleClearSchedule(b.id);
+                        }}
+                      >
+                        Clear Schedule
+                      </button>
+                    )}
+                  </div>
+
+                  <div
+                    className='admin-list-meta admin-list-meta-secondary'
+                    style={{ marginTop: '0.5rem', textAlign: 'center' }}
+                  >
+                    {b.start_date || b.end_date ? (
+                      <span>
+                        Scheduled: {b.start_date ? b.start_date : '—'} to{' '}
+                        {b.end_date ? b.end_date : '—'}
+                      </span>
+                    ) : (
+                      <span>No schedule set.</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* BUTTONS */}
+                <div className='admin-card-footer' style={{ gap: '0.5rem' }}>
+                  {!b.is_active && (
+                    <button
+                      className='admin-pill-button admin-pill-primary'
+                      onClick={() => activateBanner(b.id)}
+                    >
+                      Set Active
+                    </button>
+                  )}
+
+                  {b.is_active && (
+                    <button
+                      className='admin-pill-button admin-pill-subtle'
+                      onClick={() => setConfirmDeactivateBanner(b)}
+                    >
+                      Remove Active
+                    </button>
+                  )}
+
+                  <button
+                    className='admin-pill-button admin-pill-danger'
+                    onClick={() => setConfirmDeleteBanner(b)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
-
-              {/* BUTTONS */}
-              <div className='admin-card-footer' style={{ gap: '0.5rem' }}>
-                {!b.is_active && (
-                  <button
-                    className='admin-pill-button admin-pill-primary'
-                    onClick={() => activateBanner(b.id)}
-                  >
-                    Set Active
-                  </button>
-                )}
-
-                {b.is_active && (
-                  <button
-                    className='admin-pill-button admin-pill-subtle'
-                    onClick={() => setConfirmDeactivateBanner(b)}
-                  >
-                    Remove Active
-                  </button>
-                )}
-
-                <button
-                  className='admin-pill-button admin-pill-danger'
-                  onClick={() => setConfirmDeleteBanner(b)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Upload modal */}
       {showUploadModal && (
         <div className='modal-overlay'>
           <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
@@ -1411,7 +1584,6 @@ function BannersSection() {
 
             <h2>Upload Banner</h2>
 
-            {/* Banner Title */}
             <div style={{ maxWidth: '400px', margin: '0 auto', width: '100%' }}>
               <div className='form-row'>
                 <label>Banner Title</label>
@@ -1431,6 +1603,7 @@ function BannersSection() {
                   onChange={(e) => setUploadFile(e.target.files[0])}
                 />
               </div>
+
               <div
                 className='form-row'
                 style={{
@@ -1494,8 +1667,7 @@ function BannersSection() {
                     const data = await res.json();
                     if (!data.ok) throw new Error();
 
-                    // reload list
-                    if (typeof loadBanners === 'function') loadBanners();
+                    loadBanners();
                   } catch (err) {
                     console.error(err);
                   } finally {
@@ -1550,8 +1722,7 @@ function BannersSection() {
 
                     if (!data.ok) throw new Error();
 
-                    // reload banners
-                    if (typeof loadBanners === 'function') loadBanners();
+                    loadBanners();
                   } catch (err) {
                     console.error(err);
                   } finally {
@@ -1559,7 +1730,7 @@ function BannersSection() {
                   }
                 }}
               >
-                Delete Banner
+                Delete
               </button>
             </div>
           </div>
@@ -1569,18 +1740,20 @@ function BannersSection() {
       {previewBanner && (
         <div className='modal-overlay' onClick={() => setPreviewBanner(null)}>
           <div className='preview-modal' onClick={(e) => e.stopPropagation()}>
-            <img
-              src={previewBanner.image_url}
-              alt='Banner Preview'
-              className='preview-banner-img'
-            />
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <img
+                src={previewBanner.image_url}
+                alt='Banner Preview'
+                className='preview-banner-img'
+              />
 
-            <button
-              className='modal-close-x'
-              onClick={() => setPreviewBanner(null)}
-            >
-              ✕
-            </button>
+              <button
+                className='preview-close-x'
+                onClick={() => setPreviewBanner(null)}
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1593,7 +1766,7 @@ function UsersSection({
   loading,
   toggleUserAdmin,
   deleteUser,
-  setConfirmDeleteUser, // ✅ ADD THIS
+  setConfirmDeleteUser,
 }) {
   return (
     <div className='admin-section'>

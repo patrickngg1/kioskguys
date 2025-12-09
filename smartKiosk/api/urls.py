@@ -96,5 +96,6 @@ urlpatterns = [
     path("banners/<int:banner_id>/delete/", views.delete_banner),
     path("banners/active/", views.get_active_banner),
     path("banners/deactivate/", views.deactivate_active_banner),
+    path("banners/<int:banner_id>/schedule/", views.schedule_banner),
 
 ]
