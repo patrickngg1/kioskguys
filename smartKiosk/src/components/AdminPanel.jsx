@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import '../styles/AdminPanel.css';
 
 const to12Hour = (time) => {
@@ -26,24 +27,30 @@ export default function AdminPanel({
 }) {
   const [activeSection, setActiveSection] = useState('reservations');
   const [confirmCancelId, setConfirmCancelId] = useState(null);
+
+  // --- RESERVATIONS STATE ---
   const [adminReservations, setAdminReservations] = useState([]);
   const [loadingAdminReservations, setLoadingAdminReservations] =
     useState(true);
-  // Rooms used for the Reservations filter dropdown
-  const [filterRoomsList, setFilterRoomsList] = useState(rooms || []);
 
-  // Reservation filters
+  // --- ROOMS FILTER STATE ---
+  const [filterRoomsList, setFilterRoomsList] = useState(rooms || []);
   const [filterRoom, setFilterRoom] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterUser, setFilterUser] = useState('');
 
-  // Supply items admin state
+  // --- ITEMS STATE ---
   const [adminItemsByCategory, setAdminItemsByCategory] = useState(
     itemsByCategory || {}
   );
   const [loadingItems, setLoadingItems] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [deleteItemTarget, setDeleteItemTarget] = useState(null);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
+  // --- USERS STATE (New) ---
+  const [adminUsers, setAdminUsers] = useState(users || []);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   const sections = [
     { key: 'reservations', label: 'Reservations' },
@@ -53,18 +60,14 @@ export default function AdminPanel({
     { key: 'users', label: 'Users' },
   ];
 
-  // -----------------------------------
-  // Reservations loading + admin cancel
-  // -----------------------------------
+  // 1. Load Reservations
   const loadAdminReservations = async () => {
     setLoadingAdminReservations(true);
-
     try {
       const res = await fetch('/api/rooms/reservations/all/', {
         credentials: 'include',
       });
       const data = await res.json();
-
       if (data.ok) {
         setAdminReservations(data.reservations || []);
       } else {
@@ -81,11 +84,11 @@ export default function AdminPanel({
     }
   };
 
+  // 2. Load Rooms (For filters)
   const loadAdminRooms = async () => {
     try {
       const res = await fetch('/api/rooms/', { credentials: 'include' });
       const data = await res.json();
-
       if (data.ok) {
         setFilterRoomsList(data.rooms || []);
       } else {
@@ -94,6 +97,113 @@ export default function AdminPanel({
     } catch (err) {
       console.error('Failed to load rooms for admin filter:', err);
       setFilterRoomsList([]);
+    }
+  };
+
+  // 3. Load Items
+  const loadAdminItems = async () => {
+    setLoadingItems(true);
+    try {
+      const res = await fetch('/api/items/all/', { credentials: 'include' });
+      const data = await res.json();
+
+      if (!data.ok) {
+        setAdminItemsByCategory({});
+        showToast?.(data.error || 'Failed to load items', 'error');
+        return;
+      }
+
+      const grouped = {};
+      for (const item of data.items) {
+        const category = item.category_name || 'Uncategorized';
+        if (!grouped[category]) grouped[category] = [];
+        grouped[category].push(item);
+      }
+
+      setAdminItemsByCategory(grouped);
+    } catch (err) {
+      console.error('Failed to load admin items:', err);
+      setAdminItemsByCategory({});
+      showToast?.('Failed to load items', 'error');
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  // 4. Load Users (New)
+  const loadAdminUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      // Assumes /api/users/ exists. If using a different endpoint, update here.
+      const res = await fetch('/api/users/', { credentials: 'include' });
+      const data = await res.json();
+
+      if (data.ok) {
+        setAdminUsers(data.users || []);
+      } else {
+        // Fallback to prop if fetch fails logically but returns valid JSON
+        setAdminUsers(users || []);
+      }
+    } catch (err) {
+      console.error('Failed to load users:', err);
+      // Fallback to prop on network error
+      setAdminUsers(users || []);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const toggleUserAdmin = async (userId) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/toggle-admin/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      if (!data.ok) {
+        showToast?.(data.error || 'Failed to update role', 'error');
+        return;
+      }
+
+      // Update UI
+      setAdminUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isAdmin: data.isAdmin } : u))
+      );
+
+      showToast?.(
+        data.isAdmin ? 'User promoted to Admin' : 'User demoted to User',
+        'success'
+      );
+    } catch (err) {
+      console.error(err);
+      showToast?.('Server error updating user role', 'error');
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/delete/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      if (!data.ok) {
+        showToast?.(data.error || 'Failed to delete user', 'error');
+        return;
+      }
+
+      // Remove from list
+      setAdminUsers((prev) => prev.filter((u) => u.id !== userId));
+
+      showToast?.(
+        `${data.fullName || 'User'} has been successfully removed.`,
+        'success'
+      );
+    } catch (err) {
+      console.error(err);
+      showToast?.('Server error deleting user', 'error');
     }
   };
 
@@ -112,7 +222,6 @@ export default function AdminPanel({
           }),
         }
       );
-
       const data = await res.json();
 
       if (!data.ok) {
@@ -126,7 +235,6 @@ export default function AdminPanel({
 
       showToast && showToast('Reservation cancelled successfully', 'success');
 
-      // Refresh both dashboard list and admin list
       if (typeof loadReservations === 'function') {
         loadReservations();
       }
@@ -135,34 +243,6 @@ export default function AdminPanel({
       console.error(err);
       showToast &&
         showToast('Server error while cancelling reservation', 'error');
-    }
-  };
-
-  // -----------------------------------
-  // Supply Items loading
-  // -----------------------------------
-  const loadAdminItems = async () => {
-    setLoadingItems(true);
-    try {
-      const res = await fetch('/api/items/', { credentials: 'include' });
-      const data = await res.json();
-
-      if (data.ok) {
-        setAdminItemsByCategory(data.categories || {});
-      } else {
-        setAdminItemsByCategory({});
-        if (showToast) {
-          showToast(data.error || 'Failed to load items', 'error');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load admin items:', err);
-      setAdminItemsByCategory({});
-      if (showToast) {
-        showToast('Failed to load items', 'error');
-      }
-    } finally {
-      setLoadingItems(false);
     }
   };
 
@@ -183,32 +263,44 @@ export default function AdminPanel({
     }
   };
 
-  const [deleteItemTarget, setDeleteItemTarget] = useState(null);
-
   const handleDeleteItem = (item) => {
-    setDeleteItemTarget(item); // opens premium modal
+    setDeleteItemTarget(item);
   };
 
-  // -----------------------------------
-  // Effects
-  // -----------------------------------
+  // Initial load
   useEffect(() => {
     if (isOpen) {
+      // By default load the data for the default tab (reservations) + filter data
       loadAdminReservations();
       loadAdminRooms();
     }
   }, [isOpen]);
 
+  // Tab Switching Logic - Refreshes data when clicking a tab
   useEffect(() => {
     if (!isOpen) return;
-    if (activeSection === 'items') {
-      loadAdminItems();
+
+    switch (activeSection) {
+      case 'reservations':
+        loadAdminReservations();
+        break;
+      case 'items':
+        loadAdminItems();
+        break;
+      case 'users':
+        loadAdminUsers();
+        break;
+      case 'rooms':
+        // RoomsSection handles its own fetching on mount.
+        // Since we conditionally render it, it remounts (refreshes) automatically.
+        break;
+      default:
+        break;
     }
   }, [isOpen, activeSection]);
 
   if (!isOpen) return null;
 
-  // --- FILTERED RESERVATIONS LOGIC ---
   const filteredReservations = adminReservations.filter((r) => {
     const matchesRoom = !filterRoom || r.roomId === Number(filterRoom);
     const matchesDate = !filterDate || r.date === filterDate;
@@ -230,7 +322,6 @@ export default function AdminPanel({
         aria-modal='true'
         aria-label='Admin Control Center'
       >
-        {/* Close button reused from dashboard styles */}
         <button
           className='close-btn admin-close'
           type='button'
@@ -240,7 +331,6 @@ export default function AdminPanel({
           ✕
         </button>
 
-        {/* Header */}
         <header className='admin-header'>
           <div>
             <div className='admin-title'>Admin Control Center</div>
@@ -256,9 +346,7 @@ export default function AdminPanel({
           </div>
         </header>
 
-        {/* Main layout: sidebar + content */}
         <div className='admin-main'>
-          {/* Sidebar */}
           <nav className='admin-sidebar' aria-label='Admin sections'>
             {sections.map((s) => (
               <button
@@ -276,7 +364,6 @@ export default function AdminPanel({
             ))}
           </nav>
 
-          {/* Content */}
           <section className='admin-content'>
             {activeSection === 'reservations' && (
               <ReservationsSection
@@ -310,11 +397,18 @@ export default function AdminPanel({
 
             {activeSection === 'banners' && <BannersSection />}
 
-            {activeSection === 'users' && <UsersSection users={users} />}
+            {activeSection === 'users' && (
+              <UsersSection
+                users={adminUsers}
+                loading={loadingUsers}
+                toggleUserAdmin={toggleUserAdmin}
+                deleteUser={deleteUser}
+                setConfirmDeleteUser={setConfirmDeleteUser} // ✅ ADD THIS
+              />
+            )}
           </section>
         </div>
 
-        {/* DELETE SUPPLY ITEM MODAL */}
         {deleteItemTarget && (
           <div
             className='modal-overlay'
@@ -327,14 +421,12 @@ export default function AdminPanel({
               aria-modal='true'
             >
               <h2 className='premium-modal-title'>Delete Item?</h2>
-
               <p className='premium-modal-message'>
                 You are about to permanently delete{' '}
                 <strong>{deleteItemTarget.name}</strong>.
                 <br />
                 This action cannot be undone.
               </p>
-
               <div className='premium-modal-actions'>
                 <button
                   className='modal-btn cancel'
@@ -343,7 +435,6 @@ export default function AdminPanel({
                 >
                   Cancel
                 </button>
-
                 <button
                   className='modal-btn delete'
                   type='button'
@@ -357,10 +448,8 @@ export default function AdminPanel({
                           headers: { 'Content-Type': 'application/json' },
                         }
                       );
-
                       const data = await res.json();
                       if (!data.ok) throw new Error();
-
                       showToast?.(
                         `Deleted "${deleteItemTarget.name}"`,
                         'success'
@@ -380,7 +469,52 @@ export default function AdminPanel({
           </div>
         )}
 
-        {/* Footer */}
+        {confirmDeleteUser && (
+          <div
+            className='modal-overlay'
+            onClick={() => setConfirmDeleteUser(null)}
+          >
+            <div
+              className='premium-modal'
+              onClick={(e) => e.stopPropagation()}
+              role='dialog'
+              aria-modal='true'
+            >
+              <h2 className='premium-modal-title'>Delete User?</h2>
+
+              <p className='premium-modal-message'>
+                You are about to permanently delete
+                <strong>
+                  {' '}
+                  {confirmDeleteUser.fullName || confirmDeleteUser.email}{' '}
+                </strong>
+                .
+                <br />
+                This action cannot be undone.
+              </p>
+
+              <div className='premium-modal-actions'>
+                <button
+                  className='modal-btn cancel'
+                  onClick={() => setConfirmDeleteUser(null)}
+                >
+                  Keep User
+                </button>
+
+                <button
+                  className='modal-btn delete'
+                  onClick={async () => {
+                    await deleteUser(confirmDeleteUser.id);
+                    setConfirmDeleteUser(null);
+                  }}
+                >
+                  Delete User
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <footer className='admin-footer'>
           <button
             className='btn btn-primary w-full admin-close-btn'
@@ -391,7 +525,6 @@ export default function AdminPanel({
           </button>
         </footer>
 
-        {/* Reservation cancel confirmation */}
         {confirmCancelId && (
           <div
             className='modal-overlay'
@@ -404,14 +537,12 @@ export default function AdminPanel({
               aria-modal='true'
             >
               <h2 className='premium-modal-title'>Cancel Reservation?</h2>
-
               <p className='premium-modal-message'>
                 This reservation will be permanently removed and the user will
                 be notified.
                 <br />
                 Are you sure you want to continue?
               </p>
-
               <div className='premium-modal-actions'>
                 <button
                   className='modal-btn cancel'
@@ -419,7 +550,6 @@ export default function AdminPanel({
                 >
                   Keep Reservation
                 </button>
-
                 <button
                   className='modal-btn delete'
                   onClick={() => {
@@ -434,7 +564,6 @@ export default function AdminPanel({
           </div>
         )}
 
-        {/* Item add/edit modal */}
         {showItemModal && (
           <ItemEditModal
             isOpen={showItemModal}
@@ -448,10 +577,6 @@ export default function AdminPanel({
     </div>
   );
 }
-
-// ======================================================================
-// Subsections
-// ======================================================================
 
 function ReservationsSection({
   reservations,
@@ -474,8 +599,6 @@ function ReservationsSection({
           View and manage all reservations across the kiosk.
         </p>
       </div>
-
-      {/* Filter bar directly under title/subtitle */}
       <div className='admin-filter-bar'>
         <select
           value={filterRoom}
@@ -489,14 +612,12 @@ function ReservationsSection({
             </option>
           ))}
         </select>
-
         <input
           type='date'
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
           className='admin-filter-input'
         />
-
         <input
           type='text'
           value={filterUser}
@@ -505,7 +626,6 @@ function ReservationsSection({
           placeholder='Search user…'
         />
       </div>
-
       {loading ? (
         <div className='admin-loading'>
           <div className='admin-spinner'></div>
@@ -522,7 +642,6 @@ function ReservationsSection({
                 <div className='admin-item-time'>
                   {r.date} — {to12Hour(r.startTime)} to {to12Hour(r.endTime)}
                 </div>
-
                 <div className='admin-item-user'>
                   <strong>User:</strong> {r.fullName}
                 </div>
@@ -530,7 +649,6 @@ function ReservationsSection({
                   <strong>Email:</strong> {r.email}
                 </div>
               </div>
-
               <div className='admin-list-actions'>
                 <button
                   className='admin-pill-button admin-pill-danger'
@@ -550,7 +668,6 @@ function ReservationsSection({
 function RoomsSection({ rooms, showToast }) {
   const [roomList, setRoomList] = useState(rooms || []);
   const [loading, setLoading] = useState(false);
-
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [roomForm, setRoomForm] = useState({
@@ -615,21 +732,16 @@ function RoomsSection({ rooms, showToast }) {
   };
 
   const handleSave = async () => {
-    // Name required
     if (!roomForm.name.trim()) {
       showToast?.('Room name is required', 'error');
       return;
     }
-
-    // Capacity required and must be >= 1
     const rawCapacity = String(roomForm.capacity ?? '').trim();
     const capacityNumber = Number(rawCapacity);
-
     if (!rawCapacity || Number.isNaN(capacityNumber) || capacityNumber < 1) {
       showToast?.('Room capacity must be at least 1', 'error');
       return;
     }
-
     setSaving(true);
     try {
       const payload = {
@@ -638,28 +750,22 @@ function RoomsSection({ rooms, showToast }) {
         hasScreen: roomForm.hasScreen,
         hasHdmi: roomForm.hasHdmi,
       };
-
       const isEdit = !!roomForm.id;
       const url = isEdit
         ? `/api/rooms/${roomForm.id}/update/`
         : '/api/rooms/create/';
-
       const res = await fetch(url, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
       const data = await res.json();
-
       if (!res.ok || !data.ok) {
         showToast?.(data.error || 'Unable to save room', 'error');
         return;
       }
-
       const newRoom = data.room;
-
       if (isEdit) {
         setRoomList((prev) =>
           prev.map((r) => (r.id === newRoom.id ? newRoom : r))
@@ -669,7 +775,6 @@ function RoomsSection({ rooms, showToast }) {
         setRoomList((prev) => [...prev, newRoom]);
         showToast?.('Room added', 'success');
       }
-
       setShowAddModal(false);
       setShowEditModal(false);
     } catch (err) {
@@ -710,14 +815,20 @@ function RoomsSection({ rooms, showToast }) {
 
   return (
     <div className='admin-section'>
-      <div className='admin-section-header'>
-        <h2 className='admin-section-title'>Rooms</h2>
-        <p className='admin-section-subtitle'>
-          Add, rename, and configure conference rooms.
-        </p>
-      </div>
-
-      <div className='admin-section-toolbar'>
+      <div
+        className='admin-section-header'
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <h2 className='admin-section-title'>Rooms</h2>
+          <p className='admin-section-subtitle'>
+            Add, rename, and configure conference rooms.
+          </p>
+        </div>
         <button
           type='button'
           className='admin-pill-button admin-pill-primary'
@@ -727,13 +838,14 @@ function RoomsSection({ rooms, showToast }) {
         </button>
       </div>
 
-      {loading && <p className='admin-empty'>Loading rooms…</p>}
-
-      {!loading && (!roomList || roomList.length === 0) && (
+      {loading ? (
+        <div className='admin-loading'>
+          <div className='admin-spinner'></div>
+          <p className='admin-loading-text'>Loading rooms...</p>
+        </div>
+      ) : !roomList || roomList.length === 0 ? (
         <p className='admin-empty'>No rooms configured yet.</p>
-      )}
-
-      {!loading && roomList && roomList.length > 0 && (
+      ) : (
         <div className='admin-grid'>
           {roomList.map((room) => (
             <div key={room.id} className='admin-card'>
@@ -774,7 +886,6 @@ function RoomsSection({ rooms, showToast }) {
         </div>
       )}
 
-      {/* Add / Edit Room Modal */}
       {(showAddModal || showEditModal) && (
         <div className='modal-overlay'>
           <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
@@ -788,9 +899,7 @@ function RoomsSection({ rooms, showToast }) {
             >
               ✕
             </button>
-
             <h2>{roomForm.id ? 'Edit Room' : 'Add Room'}</h2>
-
             <div className='form-row' style={{ marginTop: '1rem' }}>
               <div style={{ flex: 2 }}>
                 <label>Room Name</label>
@@ -813,7 +922,6 @@ function RoomsSection({ rooms, showToast }) {
                 />
               </div>
             </div>
-
             <div className='form-row'>
               <div>
                 <label>Screen</label>
@@ -840,7 +948,6 @@ function RoomsSection({ rooms, showToast }) {
                 </select>
               </div>
             </div>
-
             <button
               type='button'
               className='btn btn-primary w-full'
@@ -860,7 +967,6 @@ function RoomsSection({ rooms, showToast }) {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className='modal-overlay' onClick={() => setDeleteTarget(null)}>
           <div
@@ -869,13 +975,11 @@ function RoomsSection({ rooms, showToast }) {
             role='dialog'
           >
             <h2 className='premium-modal-title'>Delete Room?</h2>
-
             <p className='premium-modal-message'>
               You are about to delete <strong>{deleteTarget.name}</strong>.
               <br />
               If this room has future reservations, deletion may be blocked.
             </p>
-
             <div className='premium-modal-actions'>
               <button
                 className='modal-btn cancel'
@@ -884,7 +988,6 @@ function RoomsSection({ rooms, showToast }) {
               >
                 Keep Room
               </button>
-
               <button
                 className='modal-btn delete'
                 disabled={deleting}
@@ -907,18 +1010,69 @@ function ItemsSection({
   onEditItem,
   onDeleteItem,
 }) {
-  const entries = Object.entries(itemsByCategory || {});
+  // ✅ Search state MUST come before it is used!
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const highlightMatch = (text) => {
+    if (!searchQuery.trim()) return text;
+
+    const query = searchQuery.trim().toLowerCase();
+    const lower = text.toLowerCase();
+
+    const parts = [];
+    let i = 0;
+
+    while (i < text.length) {
+      const matchIndex = lower.indexOf(query, i);
+      if (matchIndex === -1) {
+        parts.push(text.slice(i));
+        break;
+      }
+
+      // push text before match
+      if (matchIndex > i) {
+        parts.push(text.slice(i, matchIndex));
+      }
+
+      // push the highlighted match
+      parts.push(
+        <span key={matchIndex} className='highlight-text'>
+          {text.slice(matchIndex, matchIndex + query.length)}
+        </span>
+      );
+
+      i = matchIndex + query.length;
+    }
+
+    return parts;
+  };
+
+  // ✅ Filter items AFTER searchQuery is defined
+  const entries = Object.entries(itemsByCategory || {})
+    .map(([category, items]) => {
+      const filteredItems = items.filter((item) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      return [category, filteredItems];
+    })
+    .filter(([_, items]) => items.length > 0);
 
   return (
     <div className='admin-section'>
-      <div className='admin-section-header'>
-        <h2 className='admin-section-title'>Supply Items</h2>
-        <p className='admin-section-subtitle'>
-          Manage the catalog of items shown in the Request Supplies modal.
-        </p>
-      </div>
-
-      <div className='admin-section-toolbar'>
+      <div
+        className='admin-section-header'
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <h2 className='admin-section-title'>Supply Items</h2>
+          <p className='admin-section-subtitle'>
+            Manage the catalog of items shown in the Request Supplies modal.
+          </p>
+        </div>
         <button
           type='button'
           className='admin-pill-button admin-pill-primary'
@@ -928,14 +1082,29 @@ function ItemsSection({
         </button>
       </div>
 
-      {loading && <p className='admin-empty'>Loading items…</p>}
+      {/* SEARCH BAR */}
+      <div className='admin-filter-bar' style={{ marginTop: '1rem' }}>
+        <input
+          type='text'
+          className='admin-filter-input'
+          placeholder='Search items…'
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
 
-      {!loading && entries.length === 0 && (
-        <p className='admin-empty'>No items loaded from backend.</p>
-      )}
-
-      {/* 🔥 Scroll container, just like Reservations */}
-      {!loading && entries.length > 0 && (
+      {loading ? (
+        <div className='admin-loading'>
+          <div className='admin-spinner'></div>
+          <p className='admin-loading-text'>Loading items...</p>
+        </div>
+      ) : entries.length === 0 ? (
+        searchQuery.trim().length > 0 ? (
+          <p className='admin-empty'>No matching items found.</p>
+        ) : (
+          <p className='admin-empty'>No items loaded from backend.</p>
+        )
+      ) : (
         <div className='admin-list'>
           {entries.map(([category, items]) => (
             <div key={category} className='admin-category-block'>
@@ -946,7 +1115,6 @@ function ItemsSection({
                 </div>
               </div>
 
-              {/* Grid of cards INSIDE the scrollable list */}
               <div className='admin-grid'>
                 {items.map((item) => (
                   <div key={item.id} className='admin-card admin-item-card'>
@@ -963,14 +1131,15 @@ function ItemsSection({
                     </div>
 
                     <div className='admin-card-body admin-item-card-body'>
-                      <div className='admin-card-title'>{item.name}</div>
+                      <div className='admin-card-title'>
+                        {highlightMatch(item.name)}
+                      </div>
                       <div className='admin-list-meta admin-list-meta-secondary'>
-                        <span>{item.category_name || category}</span>
-                        {!item.image && (
-                          <span className='admin-inline-note'>
-                            No image — using fallback
-                          </span>
-                        )}
+                        <span>
+                          {item.category_name ||
+                            item.category ||
+                            'Uncategorized'}
+                        </span>
                       </div>
                     </div>
 
@@ -982,6 +1151,7 @@ function ItemsSection({
                       >
                         Edit
                       </button>
+
                       <button
                         type='button'
                         className='admin-pill-button admin-pill-danger'
@@ -1001,6 +1171,494 @@ function ItemsSection({
   );
 }
 
+function BannersSection() {
+  const [banners, setBanners] = useState([]);
+  const [bannerTitle, setBannerTitle] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [confirmDeactivateBanner, setConfirmDeactivateBanner] = useState(null);
+  const [confirmDeleteBanner, setConfirmDeleteBanner] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [previewBanner, setPreviewBanner] = useState(null);
+
+  const openPreview = (banner) => {
+    setPreviewBanner(banner);
+  };
+
+  const deactivateBanner = async () => {
+    setConfirmDeactivateBanner(true);
+    try {
+      const res = await fetch('/api/banners/deactivate/', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+
+      if (data.ok) {
+        loadBanners();
+      } else {
+        alert(data.error || 'Failed to deactivate banner.');
+      }
+    } catch (err) {
+      console.error('Deactivate error:', err);
+    }
+  };
+
+  // Load banners
+  const loadBanners = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/banners/', {
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setBanners(data.banners || []);
+      } else {
+        setBanners([]);
+      }
+    } catch (err) {
+      console.error('Failed to load banners:', err);
+      setBanners([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Trigger load when component mounts (tab opens)
+  useEffect(() => {
+    loadBanners();
+  }, []);
+
+  // Upload banner
+  const handleUpload = async () => {
+    if (!uploadFile) return;
+
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+    formData.append('label', bannerTitle); // ⭐ add title
+
+    try {
+      const res = await fetch('/api/banners/upload/', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.ok) {
+        setShowUploadModal(false);
+        setUploadFile(null);
+        setBannerTitle(''); // reset
+        loadBanners();
+      } else {
+        alert(data.error || 'Upload failed.');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Upload failed');
+    }
+  };
+
+  // Set active banner
+  const activateBanner = async (id) => {
+    try {
+      const res = await fetch(`/api/banners/${id}/activate/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (data.ok) {
+        loadBanners();
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Delete banner
+  const deleteBanner = async (id) => {
+    if (!window.confirm('Delete this banner?')) return;
+    try {
+      const res = await fetch(`/api/banners/${id}/delete/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (data.ok) {
+        loadBanners();
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className='admin-section'>
+      <div
+        className='admin-section-header'
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <h2 className='admin-section-title'>Banner Images</h2>
+          <p className='admin-section-subtitle'>
+            Upload seasonal images to display on the Kiosk welcome screen.
+          </p>
+        </div>
+        <button
+          type='button'
+          className='admin-pill-button admin-pill-primary'
+          onClick={() => setShowUploadModal(true)}
+        >
+          + Upload Banner
+        </button>
+      </div>
+
+      {loading ? (
+        <div className='admin-loading'>
+          <div className='admin-spinner'></div>
+          <p className='admin-loading-text'>Loading banners...</p>
+        </div>
+      ) : banners.length === 0 ? (
+        <p className='admin-empty'>No banners uploaded yet.</p>
+      ) : (
+        <div className='admin-grid'>
+          {banners.map((b) => (
+            <div
+              key={b.id}
+              className={`admin-card banner-card ${
+                b.is_active ? 'active' : ''
+              }`}
+            >
+              {/* IMAGE */}
+              <div className='admin-card-header'>
+                <img
+                  src={b.image_url}
+                  alt='Banner'
+                  style={{
+                    width: '100%',
+                    height: '120px',
+                    objectFit: 'cover',
+                    borderRadius: '10px',
+                  }}
+                  onClick={() => openPreview(b)}
+                />
+              </div>
+
+              {/* TITLE UNDER IMAGE */}
+              <div className='admin-card-body' style={{ textAlign: 'center' }}>
+                <div className='banner-title'>
+                  {b.label && b.label.trim() !== '' ? b.label : '(No title)'}
+                </div>
+              </div>
+
+              {/* BUTTONS */}
+              <div className='admin-card-footer' style={{ gap: '0.5rem' }}>
+                {!b.is_active && (
+                  <button
+                    className='admin-pill-button admin-pill-primary'
+                    onClick={() => activateBanner(b.id)}
+                  >
+                    Set Active
+                  </button>
+                )}
+
+                {b.is_active && (
+                  <button
+                    className='admin-pill-button admin-pill-subtle'
+                    onClick={() => setConfirmDeactivateBanner(b)}
+                  >
+                    Remove Active
+                  </button>
+                )}
+
+                <button
+                  className='admin-pill-button admin-pill-danger'
+                  onClick={() => setConfirmDeleteBanner(b)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Upload modal */}
+      {showUploadModal && (
+        <div className='modal-overlay'>
+          <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
+            <button
+              className='close-btn'
+              onClick={() => {
+                setUploadFile(null);
+                setBannerTitle('');
+                setShowUploadModal(false);
+              }}
+            >
+              ✕
+            </button>
+
+            <h2>Upload Banner</h2>
+
+            {/* Banner Title */}
+            <div style={{ maxWidth: '400px', margin: '0 auto', width: '100%' }}>
+              <div className='form-row'>
+                <label>Banner Title</label>
+                <input
+                  type='text'
+                  value={bannerTitle}
+                  onChange={(e) => setBannerTitle(e.target.value)}
+                  placeholder='e.g. Winter Break 2024'
+                />
+              </div>
+
+              <div className='form-row' style={{ marginTop: '1.25rem' }}>
+                <label>Banner Image</label>
+                <input
+                  type='file'
+                  accept='image/*'
+                  onChange={(e) => setUploadFile(e.target.files[0])}
+                />
+              </div>
+              <div
+                className='form-row'
+                style={{
+                  marginTop: '2rem',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  width: '100%',
+                }}
+              >
+                <button
+                  type='button'
+                  className='btn btn-primary'
+                  style={{
+                    width: '50%',
+                    maxWidth: '260px',
+                    textAlign: 'center',
+                  }}
+                  onClick={handleUpload}
+                >
+                  Upload Banner
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeactivateBanner && (
+        <div
+          className='modal-overlay'
+          onClick={() => setConfirmDeactivateBanner(null)}
+        >
+          <div
+            className='premium-modal'
+            onClick={(e) => e.stopPropagation()}
+            role='dialog'
+          >
+            <h2 className='premium-modal-title'>Remove Active Banner?</h2>
+
+            <p className='premium-modal-message'>
+              This will deactivate the current banner and return the kiosk to
+              its default background.
+            </p>
+
+            <div className='premium-modal-actions'>
+              <button
+                className='modal-btn cancel'
+                onClick={() => setConfirmDeactivateBanner(null)}
+              >
+                Keep Active
+              </button>
+
+              <button
+                className='modal-btn delete'
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/banners/deactivate/', {
+                      method: 'POST',
+                      credentials: 'include',
+                    });
+                    const data = await res.json();
+                    if (!data.ok) throw new Error();
+
+                    // reload list
+                    if (typeof loadBanners === 'function') loadBanners();
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setConfirmDeactivateBanner(null);
+                  }
+                }}
+              >
+                Remove Banner
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteBanner && (
+        <div
+          className='modal-overlay'
+          onClick={() => setConfirmDeleteBanner(null)}
+        >
+          <div
+            className='premium-modal'
+            onClick={(e) => e.stopPropagation()}
+            role='dialog'
+          >
+            <h2 className='premium-modal-title'>Delete Banner?</h2>
+
+            <p className='premium-modal-message'>
+              Are you sure you want to permanently delete this banner? This
+              action cannot be undone.
+            </p>
+
+            <div className='premium-modal-actions'>
+              <button
+                className='modal-btn cancel'
+                onClick={() => setConfirmDeleteBanner(null)}
+              >
+                Cancel
+              </button>
+
+              <button
+                className='modal-btn delete'
+                onClick={async () => {
+                  try {
+                    const res = await fetch(
+                      `/api/banners/${confirmDeleteBanner.id}/delete/`,
+                      {
+                        method: 'POST',
+                        credentials: 'include',
+                      }
+                    );
+                    const data = await res.json();
+
+                    if (!data.ok) throw new Error();
+
+                    // reload banners
+                    if (typeof loadBanners === 'function') loadBanners();
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setConfirmDeleteBanner(null);
+                  }
+                }}
+              >
+                Delete Banner
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewBanner && (
+        <div className='modal-overlay' onClick={() => setPreviewBanner(null)}>
+          <div className='preview-modal' onClick={(e) => e.stopPropagation()}>
+            <img
+              src={previewBanner.image_url}
+              alt='Banner Preview'
+              className='preview-banner-img'
+            />
+
+            <button
+              className='modal-close-x'
+              onClick={() => setPreviewBanner(null)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UsersSection({
+  users,
+  loading,
+  toggleUserAdmin,
+  deleteUser,
+  setConfirmDeleteUser, // ✅ ADD THIS
+}) {
+  return (
+    <div className='admin-section'>
+      <div className='admin-section-header'>
+        <h2 className='admin-section-title'>Users</h2>
+        <p className='admin-section-subtitle'>
+          See who uses the kiosk and manage their access.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className='admin-loading'>
+          <div className='admin-spinner'></div>
+          <p className='admin-loading-text'>Loading users...</p>
+        </div>
+      ) : !users || users.length === 0 ? (
+        <p className='admin-empty'>No users found.</p>
+      ) : (
+        <div className='admin-list'>
+          {users.map((u) => (
+            <div key={u.id} className='admin-list-row'>
+              <div className='admin-list-main'>
+                <div className='admin-item-title'>{u.fullName || u.email}</div>
+                <div className='admin-list-meta admin-list-meta-secondary'>
+                  {u.email}
+                </div>
+              </div>
+
+              <div className='admin-list-actions'>
+                <span
+                  className={`admin-role-chip ${
+                    u.isAdmin ? 'admin-role-admin' : 'admin-role-user'
+                  }`}
+                >
+                  {u.isAdmin ? 'Admin' : 'User'}
+                </span>
+
+                <button
+                  type='button'
+                  className='admin-pill-button admin-pill-subtle'
+                  onClick={() => toggleUserAdmin(u.id)}
+                >
+                  {u.isAdmin ? 'Remove Admin' : 'Make Admin'}
+                </button>
+
+                <button
+                  type='button'
+                  className='admin-pill-button admin-pill-danger'
+                  onClick={() => setConfirmDeleteUser(u)}
+                >
+                  Delete User
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ======================================================================
+// FIXED ItemEditModal (With Portal)
+// ======================================================================
+
 function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
   const isEdit = !!item;
 
@@ -1011,11 +1669,12 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
   const [previewUrl, setPreviewUrl] = useState(item?.image || null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedImageURL, setGeneratedImageURL] = useState(null);
 
   const categoryOptions = React.useMemo(() => {
     const opts = [];
     const seen = new Set();
-
     Object.entries(itemsByCategory || {}).forEach(([label, items]) => {
       if (!items || !items.length) return;
       const any = items[0];
@@ -1024,7 +1683,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
         opts.push({ key: any.category_key, label });
       }
     });
-
     return opts;
   }, [itemsByCategory]);
 
@@ -1050,7 +1708,12 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
     e.preventDefault();
     setError('');
 
-    const trimmedName = name.trim();
+    const trimmedName = name
+      .trim()
+      .split(' ')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+
     if (!trimmedName) {
       setError('Name is required.');
       return;
@@ -1069,8 +1732,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
 
     try {
       setSaving(true);
-
-      // 1) Save name + category
       const res = await fetch('/api/items/save/', {
         method: 'POST',
         credentials: 'include',
@@ -1086,7 +1747,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
 
       let savedItem = data.item;
 
-      // 2) If there is a new image, upload it
       if (imageFile) {
         const formData = new FormData();
         formData.append('file', imageFile);
@@ -1102,6 +1762,8 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
         } else if (imgData.image) {
           savedItem = { ...savedItem, image: imgData.image };
         }
+      } else if (generatedImageURL) {
+        savedItem = { ...savedItem, image: generatedImageURL };
       }
 
       onSaved && onSaved(savedItem);
@@ -1116,14 +1778,32 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className='modal-overlay' onClick={onClose}>
+  return createPortal(
+    <div
+      className='modal-overlay'
+      onClick={onClose}
+      style={{
+        display: 'flex',
+        padding: '2rem 0',
+        overflowY: 'auto',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(8px)',
+      }}
+    >
       <div
         className='premium-modal'
-        style={{ maxWidth: '640px' }}
         onClick={(e) => e.stopPropagation()}
         role='dialog'
         aria-modal='true'
+        style={{
+          margin: 'auto',
+          maxHeight: 'none',
+          height: 'auto',
+          overflow: 'visible',
+        }}
       >
         <button
           type='button'
@@ -1205,6 +1885,50 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
             </div>
           </div>
 
+          {name.trim() !== '' && (
+            <div className='admin-ai-block'>
+              <label className='admin-ai-label'>
+                AI Image Prompt (optional)
+              </label>
+
+              <textarea
+                readOnly
+                className='admin-ai-prompt'
+                value={`A 50×50 Apple-style photorealistic product render of ${name} on a bright navy blue gradient background, polished metal look, subtle reflections, centered product shot.`}
+              />
+
+              <div className='admin-ai-hint'>
+                Use this prompt in ChatGPT to generate a matching 50×50 supply
+                item image.
+              </div>
+
+              <div className='admin-ai-actions'>
+                <button
+                  type='button'
+                  className='admin-pill-button admin-pill-primary'
+                  onClick={(e) => {
+                    const prompt = `A 50×50 Apple-style photorealistic product render of ${name} on a bright navy blue gradient background, polished metal look, subtle reflections, centered product shot.`;
+
+                    navigator.clipboard.writeText(prompt);
+
+                    const btn = e.target;
+                    const original = btn.textContent;
+
+                    btn.textContent = 'Copied!';
+                    btn.classList.add('copied');
+
+                    setTimeout(() => {
+                      btn.textContent = original;
+                      btn.classList.remove('copied');
+                    }, 2000);
+                  }}
+                >
+                  Copy Prompt
+                </button>
+              </div>
+            </div>
+          )}
+
           <button
             type='submit'
             className='btn btn-primary w-full mt-2'
@@ -1220,100 +1944,7 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
           </button>
         </form>
       </div>
-    </div>
-  );
-}
-
-function BannersSection() {
-  return (
-    <div className='admin-section'>
-      <div className='admin-section-header'>
-        <h2 className='admin-section-title'>Banner Images</h2>
-        <p className='admin-section-subtitle'>
-          Configure the hero banner & potential screensaver slideshow. This
-          hooks into your Django <code>/api/ui-assets/</code> layer.
-        </p>
-      </div>
-
-      <div className='admin-section-toolbar'>
-        <button
-          type='button'
-          className='admin-pill-button admin-pill-primary'
-          onClick={() => {
-            alert('Open Upload Banner modal (to implement)');
-          }}
-        >
-          + Upload Banner
-        </button>
-        <button
-          type='button'
-          className='admin-pill-button admin-pill-subtle'
-          onClick={() => {
-            alert('Open banner reorder UI (to implement)');
-          }}
-        >
-          Reorder / Screensaver Settings
-        </button>
-      </div>
-
-      <p className='admin-empty'>
-        Banner management UI coming next — this section is reserved and styled
-        so we can plug in image previews & drag-and-drop ordering later.
-      </p>
-    </div>
-  );
-}
-
-function UsersSection({ users }) {
-  return (
-    <div className='admin-section'>
-      <div className='admin-section-header'>
-        <h2 className='admin-section-title'>Users</h2>
-        <p className='admin-section-subtitle'>
-          See who has logged into the kiosk and toggle admin privileges.
-        </p>
-      </div>
-
-      {(!users || users.length === 0) && (
-        <p className='admin-empty'>No users loaded.</p>
-      )}
-
-      {users && users.length > 0 && (
-        <div className='admin-list'>
-          {users.map((u) => (
-            <div key={u.id ?? u.email} className='admin-list-row'>
-              <div className='admin-list-main'>
-                <div className='admin-list-title'>
-                  {u.fullName || u.email || 'User'}
-                </div>
-                <div className='admin-list-meta admin-list-meta-secondary'>
-                  <span>{u.email}</span>
-                </div>
-              </div>
-              <div className='admin-list-actions'>
-                <span
-                  className={`admin-role-chip ${
-                    u.isAdmin ? 'admin-role-admin' : 'admin-role-user'
-                  }`}
-                >
-                  {u.isAdmin ? 'Admin' : 'User'}
-                </span>
-                <button
-                  type='button'
-                  className='admin-pill-button admin-pill-subtle'
-                  onClick={() =>
-                    alert(
-                      `Toggle admin for ${u.email} (hook backend toggle next)`
-                    )
-                  }
-                >
-                  Toggle Admin
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    </div>,
+    document.body
   );
 }

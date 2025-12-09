@@ -34,7 +34,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
   background: radial-gradient(
       circle at 12% -10%,
       rgba(59, 130, 246, 0.25),
@@ -50,10 +49,8 @@
       rgba(15, 23, 42, 0.7),
       rgba(15, 23, 42, 0.95)
     );
-
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
-
   animation: adminFadeIn 0.55s ease-out forwards;
   opacity: 0;
 }
@@ -78,7 +75,7 @@
 
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden !important;
 
   background: radial-gradient(
       circle at 0% 0%,
@@ -350,7 +347,6 @@
   border: 1px solid rgba(148, 163, 184, 0.6);
   box-shadow: inset 0 0 24px rgba(6, 10, 20, 0.96),
     0 0 24px rgba(6, 10, 20, 0.96);
-
   overflow: visible;
 }
 
@@ -383,7 +379,7 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible !important;
 }
 
 .admin-list {
@@ -403,6 +399,7 @@
   width: 64px;
   height: 64px;
   border-radius: 14px;
+  margin-bottom: 0.35rem;
   overflow: hidden;
   flex-shrink: 0;
   display: flex;
@@ -444,65 +441,67 @@
    PREMIUM ITEM THUMBNAILS — VisionOS / Apple-Grade Styling
    ============================================================ */
 
+/* Compact premium supply item card */
 .admin-item-card {
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.045);
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 
-  background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.06),
-      rgba(255, 255, 255, 0.02)
-    ),
-    var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
 
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.3);
-
-  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28),
-    box-shadow 0.3s ease, border-color 0.3s ease;
-}
-
-/* Subtle hover variant matching reservation behavior */
-.admin-item-card:hover {
-  transform: translateY(-2px); /* same lift as reservation row */
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
-  transition: background 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
-}
-
-/* ============================================================
-   ITEM THUMBNAIL CONTAINER
-   ============================================================ */
-
-.admin-item-thumb {
-  width: 90px;
-  height: 90px;
-  border-radius: 20px;
-  overflow: hidden;
-
-  background: radial-gradient(
-      circle at 30% 20%,
-      rgba(255, 255, 255, 0.12),
-      rgba(15, 23, 42, 0.85)
-    ),
-    rgba(255, 255, 255, 0.04);
-
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
 
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.65rem;
 
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  min-height: 155px; /* MUCH smaller, clean Dashboard style */
+  transition: 0.22s ease;
+}
 
-  position: relative;
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
+/* Hover — same premium lift as Rooms/Reservations */
+.admin-item-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45);
+}
+
+/* Image container stays the same size */
+.admin-item-thumb {
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+}
+
+/* Name + category spacing compact */
+.admin-item-card h3 {
+  margin: 0;
+  margin-top: 0.25rem;
+  font-size: 1rem;
+}
+
+.admin-item-card .admin-item-category {
+  margin-top: -4px;
+  opacity: 0.8;
+  font-size: 0.85rem;
+}
+
+/* Buttons compact and horizontal */
+.admin-item-actions {
+  margin-top: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-item-actions button {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  border-radius: 10px;
+  min-width: 70px;
 }
 
 .admin-item-card:hover .admin-item-thumb {
@@ -534,24 +533,67 @@
   height: 100%;
   font-size: 2rem;
   font-weight: 800;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   color: rgba(255, 255, 255, 0.75);
-
   background: radial-gradient(
       circle at 30% 20%,
       rgba(255, 255, 255, 0.1),
       rgba(15, 23, 42, 0.85) 60%
     ),
     linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(168, 85, 247, 0.15));
-
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-
   border-radius: 20px;
+}
+
+.admin-ai-block {
+  margin-top: 2rem;
+  padding: 1.25rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-ai-prompt {
+  width: 90%;
+  min-height: 120px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 16px;
+  resize: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  outline: none !important;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.35);
+}
+
+/* Remove glow outline on click */
+.admin-ai-prompt:focus {
+  border-color: rgba(99, 160, 255, 0.4);
+}
+
+.admin-ai-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e0e7ff;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.admin-ai-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.admin-pill-button.copied {
+  transition: all 0.3s ease;
 }
 
 /* ============================================================
@@ -563,18 +605,13 @@
   height: 110px;
   border-radius: 22px;
   overflow: hidden;
-
   background: rgba(255, 255, 255, 0.06);
-
   border: 1px solid rgba(255, 255, 255, 0.2);
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55),
     inset 0 0 0 1px rgba(255, 255, 255, 0.15);
-
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -586,7 +623,7 @@
 
 /* Hover glow in modal */
 .admin-item-thumb-preview:hover {
-  transform: scale(1.05);
+  transform: scale(1.5);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.65), 0 0 12px rgba(56, 189, 248, 0.35);
 }
 
@@ -615,6 +652,7 @@
   padding-bottom: 0.55rem;
   margin-bottom: 0.4rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-right: 1rem; /* <-- FIX CLIPPING */
 }
 
 .admin-section-title {
@@ -688,7 +726,7 @@
 
 /* Category block */
 .admin-category-block {
-  margin-bottom: 1.25rem;
+  margin-bottom: 3.25rem;
 }
 
 .admin-category-header {
@@ -739,14 +777,18 @@
 
 .admin-card:hover {
   background: rgba(255, 255, 255, 0.07);
-  transform: translateY(-2px); /* same as reservation row */
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28); /* reduced intensity */
+  transform: translateY(-4px); /* same as reservation row */
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4); /* reduced intensity */
   border-color: rgba(255, 255, 255, 0.18);
   transition: background 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
 }
 
 .admin-card-header {
   margin-bottom: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* CENTER */
+  text-align: center; /* CENTER TEXT */
 }
 
 .admin-card-title {
@@ -762,11 +804,16 @@
 
 .admin-card-body {
   margin-bottom: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* CENTER */
+  text-align: center; /* CENTER TEXT */
 }
 
 .admin-badge-row {
   display: flex;
   gap: 0.75rem;
+  justify-content: center; /* CENTER BADGES */
 }
 
 .admin-badge {
@@ -780,8 +827,28 @@
 
 .admin-card-footer {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
+  align-items: center;
   gap: 0.75rem;
+}
+
+.admin-banner-active-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.banner-card {
+  border-radius: 18px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  transition: 0.25s ease;
+}
+
+.banner-card.active {
+  box-shadow: 0 0 22px rgba(37, 99, 235, 0.55);
+  border: 1px solid rgba(37, 99, 235, 0.6);
+  transition: 0.25s ease;
 }
 
 /* =====================================================================
@@ -797,6 +864,7 @@
 
 .admin-pill-button {
   border: none;
+  min-width: 100px;
   border-radius: 99px;
   padding: 0.65rem 1rem;
   font-size: 0.76rem;
@@ -805,6 +873,7 @@
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.22s ease;
+  text-align: center;
 }
 
 .admin-pill-primary {
@@ -930,25 +999,54 @@
 .admin-grid {
   margin-top: 1rem; /* 1rem is perfect for your layout */
 }
+/* FIX: allow modals to scroll properly */
 
-/* PREMIUM GLASS MODAL */
+.admin-shell {
+  overflow: visible !important; /* keep your premium window behavior */
+}
+
+/* ===== PREMIUM MODAL OVERLAY (fixed, no scrolling) ===== */
+
+/* ===== PREMIUM MODAL (scrolling content ONLY inside) ===== */
 .premium-modal {
-  background: rgba(8, 14, 35, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 720px;
+  max-width: 92vw;
+
+  max-height: 70vh; /* modal scrolls, not the page */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+
+  padding: 2.5rem;
   border-radius: 26px;
-  padding: 3rem 2.5rem;
 
-  width: 520px;
-  max-width: 88vw;
+  background: radial-gradient(
+      circle at 12% -10%,
+      rgba(59, 130, 246, 0.25),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 88% 110%,
+      rgba(249, 116, 22, 0.149),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 60% 50%,
+      rgba(15, 23, 42, 0.7),
+      rgba(15, 23, 42, 0.95)
+    );
+  backdrop-filter: blur(26px);
+  -webkit-backdrop-filter: blur(26px);
 
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55);
 
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 32px rgba(56, 149, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
 
-  animation: modalFadeIn 0.25s ease;
+  position: relative;
   text-align: center;
-  color: white;
+  z-index: 9999999;
 }
 
 /* TITLE */
@@ -1066,6 +1164,46 @@
   margin-bottom: 0.75rem;
   width: 100%;
   text-align: center;
+}
+
+.banner-title {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+.highlight-text {
+  background: rgba(246, 94, 0, 0.612); /* UTA blue tint */
+  color: #fff;
+  padding: 0 2px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Center ALL content inside admin item cards */
+.admin-item-card,
+.admin-item-card-header,
+.admin-item-card-body,
+.admin-item-card-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Center the image nicely */
+.admin-item-thumb {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Center footer buttons with spacing */
+.admin-item-card-footer {
+  flex-direction: row;
+  gap: 1rem;
 }
 
 /* =====================================================================

@@ -320,6 +320,12 @@ export default function AuthForm({ onLoginSuccess }) {
       showToast('success', 'Account created! Please sign in.');
       setView('login');
       setResetMode(false);
+      setTimeout(() => {
+        // focuses the password field specifically, not the email
+        document
+          .querySelector('#login-password-input, input[type="password"]')
+          ?.focus();
+      }, 50);
 
       setPassword('');
       setConfirmPassword('');

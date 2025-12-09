@@ -22,8 +22,6 @@ from api.utils.email_templates import render_password_reset_email
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth import update_session_auth_hash
-
-
 from accounts.models import UserProfile
 
 from .models import (
@@ -34,10 +32,207 @@ from .models import (
     Room,
     RoomReservation,
     PasswordResetCode,
+    BannerImage,
 )
 from datetime import datetime, timedelta, time
 from django.utils import timezone
 import random
+
+
+# ---------------------------
+#  LIST ALL BANNERS (ADMIN)
+# ---------------------------
+@require_GET
+def list_banners(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    banners = []
+    for b in BannerImage.objects.all():
+        banners.append({
+            "id": b.id,
+            "image_url": request.build_absolute_uri(b.image.url),
+            "label": b.label,
+            "is_active": b.is_active,
+        })
+
+    return JsonResponse({"ok": True, "banners": banners}, status=200)
+
+
+# ---------------------------
+#  UPLOAD BANNER (ADMIN)
+# ---------------------------
+@csrf_exempt
+@require_POST
+def upload_banner(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    file = request.FILES.get("file")
+    if not file:
+        return JsonResponse({"ok": False, "error": "No file uploaded"}, status=400)
+
+    label = request.POST.get("label", "")
+
+    banner = BannerImage.objects.create(image=file, label=label)
+
+    return JsonResponse({
+        "ok": True,
+        "banner": {
+            "id": banner.id,
+            "image_url": request.build_absolute_uri(banner.image.url),
+            "label": banner.label,
+            "is_active": banner.is_active,
+        },
+    }, status=201)
+
+
+# ---------------------------
+#  ACTIVATE BANNER (ADMIN)
+# ---------------------------
+@csrf_exempt
+@require_POST
+def activate_banner(request, banner_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    try:
+        banner = BannerImage.objects.get(id=banner_id)
+    except BannerImage.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Not found"}, status=404)
+
+    # Only one active at a time
+    BannerImage.objects.update(is_active=False)
+    banner.is_active = True
+    banner.save()
+
+    return JsonResponse({"ok": True}, status=200)
+
+
+# ---------------------------
+#  DELETE BANNER (ADMIN)
+# ---------------------------
+@csrf_exempt
+@require_POST
+def delete_banner(request, banner_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    try:
+        banner = BannerImage.objects.get(id=banner_id)
+    except BannerImage.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Not found"}, status=404)
+
+    # Delete file
+    if banner.image and os.path.isfile(banner.image.path):
+        os.remove(banner.image.path)
+
+    banner.delete()
+    return JsonResponse({"ok": True}, status=200)
+
+
+# ---------------------------
+#  GET ACTIVE BANNER (KIOSK)
+# ---------------------------
+@require_GET
+def get_active_banner(request):
+    banner = BannerImage.objects.filter(is_active=True).first()
+
+    if not banner:
+        return JsonResponse({"ok": True, "banner": None})
+
+    return JsonResponse({
+        "ok": True,
+        "banner": {
+            "id": banner.id,
+            "image_url": request.build_absolute_uri(banner.image.url),
+            "label": banner.label,
+        },
+    })
+
+@csrf_exempt
+@require_POST
+def deactivate_active_banner(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    # Simply set all banners inactive
+    BannerImage.objects.update(is_active=False)
+
+    return JsonResponse({"ok": True})
+
+# ============================================================
+# GET /api/users/
+# List all users (TiDB-backed via UserProfile)
+# ============================================================
+@require_GET
+def get_all_users(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    users = []
+
+    for u in User.objects.all().order_by('id'):
+        try:
+            profile = UserProfile.objects.get(user=u)
+            full_name = profile.full_name
+        except UserProfile.DoesNotExist:
+            full_name = (u.first_name + " " + u.last_name).strip() or u.username
+
+        users.append({
+            "id": u.id,
+            "email": u.email,
+            "fullName": full_name,
+            "isAdmin": u.is_staff,
+        })
+
+    return JsonResponse({"ok": True, "users": users}, status=200)
+
+
+# ============================================================
+# POST /api/users/<id>/toggle-admin/
+# Promote/demote user to/from admin
+# ============================================================
+@csrf_exempt
+@require_POST
+def toggle_admin(request, user_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "User not found"}, status=404)
+
+    user.is_staff = not user.is_staff
+    user.save()
+
+    return JsonResponse({"ok": True, "isAdmin": user.is_staff}, status=200)
+
+
+# ============================================================
+# POST /api/users/<id>/delete/
+# Delete user + profile
+# ============================================================
+@csrf_exempt
+@require_POST
+def delete_user(request, user_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "User not found"}, status=404)
+
+    # Delete profile if exists
+    UserProfile.objects.filter(user=user).delete()
+
+    # Delete user
+    user.delete()
+
+    return JsonResponse({"ok": True}, status=200)
+
 # ---------------------------------------------------------
 # SEND EMAIL VIA SENDGRID (HTML + optional ICS attachment)
 # ---------------------------------------------------------
@@ -504,6 +699,31 @@ def get_popular_items(request):
 
     return JsonResponse({"ok": True, "popular": popular_by_display}, status=200)
 
+# ---------------------------------------------------------
+# GET /api/items/all/
+# Flat list for Admin Panel (future-proof)
+# ---------------------------------------------------------
+@require_GET
+def get_all_items(request):
+    items = Item.objects.select_related("category").all().order_by("name")
+
+    data = []
+    for item in items:
+        if item.image:
+            image_url = request.build_absolute_uri(item.image.url)
+        else:
+            image_url = None
+
+        data.append({
+            "id": item.id,
+            "name": item.name,
+            "image": image_url,
+            "category_key": item.category.key,
+            "category_name": item.category.name,
+        })
+
+    return JsonResponse({"ok": True, "items": data}, status=200)
+
 
 # ---------------------------------------------------------
 # GET /api/rooms/
@@ -968,7 +1188,6 @@ def create_room_reservation(request):
         },
         status=201,
     )
-
 
 # ---------------------------------------------------------
 # GET /api/rooms/reservations/my/

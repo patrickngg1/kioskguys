@@ -4,6 +4,22 @@ from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+
+def banner_upload_path(instance, filename):
+    return f"banners/{filename}"   # stored inside media/banners/
+
+class BannerImage(models.Model):
+    image = models.ImageField(upload_to=banner_upload_path)
+    label = models.CharField(max_length=128, blank=True)
+    is_active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.label or f"Banner {self.id}"
+
 # ---------------------------------------------------------
 # CATEGORY MODEL
 # ---------------------------------------------------------

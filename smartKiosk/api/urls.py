@@ -2,7 +2,7 @@
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from . import views
-from .views import login_user, get_session_user, cancel_room_reservations_bulk, password_reset_request
+from .views import login_user, get_session_user, cancel_room_reservations_bulk, password_reset_request, get_all_items
 
 urlpatterns = [
     # --------------------------
@@ -20,6 +20,8 @@ urlpatterns = [
     # --------------------------
     path("supplies/request/", views.create_supply_request, name="create_supply_request"),
     path("items/", views.get_items, name="get_items"),
+    path("items/all/", get_all_items),
+
     path("supplies/popular/", views.get_popular_items, name="get_popular_items"),
 
     # Item image upload (admin)
@@ -32,6 +34,8 @@ urlpatterns = [
     # Admin: create/update/delete items
     path("items/save/", views.admin_save_item, name="admin_save_item"),
     path("items/<int:item_id>/delete/", views.admin_delete_item, name="admin_delete_item"),
+
+
 
 
     # --------------------------
@@ -73,11 +77,24 @@ urlpatterns = [
         name="admin_cancel_reservation",
     ),
     path("calendar/ics/<int:reservation_id>/", views.download_ics, name="download_ics"),
-    path("calendar/ics/<int:reservation_id>/", views.download_ics, name="download_ics"),
+
+    path("users/", views.get_all_users),
+    path("users/<int:user_id>/toggle-admin/", views.toggle_admin),
+    path("users/<int:user_id>/delete/", views.delete_user),
+
 
 
     # --------------------------
     # UI Assets
     # --------------------------
     path("ui-assets/", views.get_ui_assets, name="ui_assets"),
+
+    # Banner images
+    path("banners/", views.list_banners),
+    path("banners/upload/", views.upload_banner),
+    path("banners/<int:banner_id>/activate/", views.activate_banner),
+    path("banners/<int:banner_id>/delete/", views.delete_banner),
+    path("banners/active/", views.get_active_banner),
+    path("banners/deactivate/", views.deactivate_active_banner),
+
 ]

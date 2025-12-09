@@ -419,8 +419,11 @@ export default function Dashboard() {
         {imgSrc ? (
           <img src={imgSrc} alt={item.name} />
         ) : (
-          <div className='supply-placeholder'>{item.name}</div>
+          <div className='supply-placeholder supply-letter-bubble'>
+            {(item.name || '?').charAt(0).toUpperCase()}
+          </div>
         )}
+
         <span>{item.name}</span>
       </div>
     );

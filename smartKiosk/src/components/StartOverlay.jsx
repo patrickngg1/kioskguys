@@ -3,29 +3,44 @@ import '../styles/App.css';
 
 export default function StartOverlay({ onStart }) {
   const [fadeOut, setFadeOut] = useState(false);
-  const [fadeIn, setFadeIn] = useState(true); // 🆕 new state for fade-in animation
+  const [fadeIn, setFadeIn] = useState(true);
+  const [bannerUrl, setBannerUrl] = useState(null);
 
   useEffect(() => {
-    // Trigger the fade-in animation once the overlay mounts
+    fetch('/api/banners/active/')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.banner) {
+          setBannerUrl(data.banner.image_url);
+        }
+      })
+      .catch(() => {});
+
     const timer = setTimeout(() => setFadeIn(false), 700);
     return () => clearTimeout(timer);
   }, []);
-
-  const handleClick = () => {
-    setFadeOut(true);
-    setTimeout(() => {
-      onStart();
-    }, 600);
-  };
 
   return (
     <div
       className={`start-overlay ${fadeOut ? 'fade-out' : ''} ${
         fadeIn ? 'fade-in' : ''
       }`}
-      onClick={handleClick}
+      style={
+        bannerUrl
+          ? {
+              backgroundImage: `url(${bannerUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }
+          : undefined // fallback uses your CSS background
+      }
+      onClick={() => {
+        setFadeOut(true);
+        setTimeout(() => onStart(), 0);
+      }}
     >
-      <div className='start-text'>
+      <div className={`start-text ${bannerUrl ? 'start-text-bottom' : ''}`}>
         <span>Tap to Begin</span>
       </div>
     </div>
