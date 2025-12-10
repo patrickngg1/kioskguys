@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import CardSwipeModal from './CardSwipeModal';
+
 import {
   loginWithSession,
   registerWithSession,
@@ -84,6 +86,9 @@ export default function AuthForm({ onLoginSuccess }) {
 
   const [toast, setToast] = useState(null);
   const showToast = (type, message) => setToast({ type, message });
+
+  const [cardModalOpen, setCardModalOpen] = useState(false);
+  const [cardString, setCardString] = useState('');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -315,7 +320,7 @@ export default function AuthForm({ onLoginSuccess }) {
     }
 
     try {
-      await registerWithSession(fullName, lowerEmail, password);
+      await registerWithSession(fullName, lowerEmail, password, cardString);
 
       showToast('success', 'Account created! Please sign in.');
       setView('login');
@@ -644,11 +649,44 @@ export default function AuthForm({ onLoginSuccess }) {
                 )}
               </div>
 
+              <div className='form-group' style={{ marginTop: '1rem' }}>
+                <label>UTA ID Swipe (optional)</label>
+                <button
+                  type='button'
+                  className='auth-button'
+                  style={{ background: 'var(--uta-orange)' }}
+                  onClick={() => setCardModalOpen(true)}
+                >
+                  Capture Card Swipe
+                </button>
+
+                {cardString && (
+                  <div
+                    style={{
+                      marginTop: '0.5rem',
+                      fontSize: '0.9rem',
+                      opacity: 0.7,
+                    }}
+                  >
+                    Card linked ✓
+                  </div>
+                )}
+              </div>
+
               <button className='auth-button' disabled={!isRegisterValid}>
                 Register
               </button>
             </form>
           )}
+          <CardSwipeModal
+            isOpen={cardModalOpen}
+            onClose={() => setCardModalOpen(false)}
+            onCapture={(s) => {
+              setCardString(s);
+              setCardModalOpen(false);
+              showToast('success', 'Card captured!');
+            }}
+          />
         </div>
       </div>
     </div>

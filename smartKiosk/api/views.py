@@ -3,6 +3,7 @@ import smtplib
 import os
 import requests
 from base64 import b64encode
+from accounts.models import UserCard
 
 from email.mime.text import MIMEText
 from base64 import b64encode
@@ -429,6 +430,15 @@ def register_user(request):
         profile.must_set_password = False  # New users do NOT need forced reset
         profile.save()
 
+        # ---------------------------------------------------------
+        # OPTIONAL: Save card swipe if provided
+        # ---------------------------------------------------------
+        card_string = data.get("cardString")
+        if card_string and len(card_string) > 15:
+            card_obj, _ = UserCard.objects.get_or_create(user=user)
+            card_obj.set_card_hash(card_string)
+            card_obj.save()
+
     except Exception as e:
         print("Registration error:", e)
         return JsonResponse(
@@ -440,6 +450,7 @@ def register_user(request):
         {"ok": True, "message": "Account created successfully"},
         status=201
     )
+
 
 
 # ---------------------------------------------------------
@@ -1918,3 +1929,68 @@ def set_password(request):
     profile.save()
 
     return JsonResponse({"ok": True, "message": "Password updated successfully"})
+
+@csrf_exempt
+@require_POST
+def register_card(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "Login required"}, status=401)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        card_string = (data.get("cardString") or "").strip()
+    except:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    if len(card_string) < 15:
+        return JsonResponse({"ok": False, "error": "Invalid card swipe"}, status=400)
+
+    # create or update UserCard record
+    card_obj, _ = UserCard.objects.get_or_create(user=request.user)
+    card_obj.set_card_hash(card_string)
+    card_obj.save()
+
+    return JsonResponse({"ok": True, "message": "Card linked successfully"})
+
+
+@csrf_exempt
+@require_POST
+def login_with_card(request):
+    """Authenticate user using card swipe only."""
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        card_string = (data.get("cardString") or "").strip()
+    except:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    if len(card_string) < 15:
+        return JsonResponse({"ok": False, "error": "Invalid card swipe"}, status=400)
+
+    import hashlib
+    digest = hashlib.sha256(card_string.encode("utf-8")).hexdigest()
+
+    try:
+        card_obj = UserCard.objects.get(card_hash=digest)
+    except UserCard.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Unknown card"}, status=401)
+
+    user = card_obj.user
+    user.backend = "django.contrib.auth.backends.ModelBackend"
+    login(request, user)
+
+    # load user profile info for dashboard
+    try:
+        profile = UserProfile.objects.get(user=user)
+        full_name = profile.full_name
+        must_set_password = profile.must_set_password
+    except UserProfile.DoesNotExist:
+        full_name = user.username
+        must_set_password = False
+
+    return JsonResponse({
+        "id": user.id,
+        "email": user.email,
+        "fullName": full_name,
+        "isAdmin": user.is_staff,       
+        "mustSetPassword": must_set_password,
+    })

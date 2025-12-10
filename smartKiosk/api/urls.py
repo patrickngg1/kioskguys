@@ -98,4 +98,9 @@ urlpatterns = [
     path("banners/deactivate/", views.deactivate_active_banner),
     path("banners/<int:banner_id>/schedule/", views.schedule_banner),
 
+        # --------------------------
+    # Card Swipe Auth
+    # --------------------------
+    path("card/register/", views.register_card, name="register_card"),
+    path("card/login/", views.login_with_card, name="login_with_card"),
 ]

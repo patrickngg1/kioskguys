@@ -4,16 +4,42 @@ import { UIAssetsContext } from '../App';
 import KioskMap from './KioskMap';
 import '../styles/Dashboard.css';
 import '../styles/App.css';
+import '../styles/CardSwipeModal.css';
 import DashboardToast from './DashboardToast';
 import AdminPanel from './AdminPanel';
 import RequestSupply from './RequestSupply';
 import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
 import SetPasswordOverlay from './SetPasswordOverlay'; // adjust path if needed
+import CardSwipeModal from './CardSwipeModal';
 
-// Deprecated local storage helpers removed. Only keeping necessary functions:
 const timesOverlap = (aStart, aEnd, bStart, bEnd) =>
   aStart < bEnd && bStart < aEnd;
+
+const handleCardRegister = async (cardString) => {
+  try {
+    const res = await fetch('/api/card/register/', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardString }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      setToast('Card linked to your account!');
+      setToastShake(false);
+      setShowSwipeModal(false);
+    } else {
+      setToast('Could not link card. Try again.');
+      setToastShake(true);
+    }
+  } catch (err) {
+    setToast('Error capturing card swipe.');
+    setToastShake(true);
+  }
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -218,6 +244,7 @@ export default function Dashboard() {
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [showSuppliesModal, setShowSuppliesModal] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showSwipeModal, setShowSwipeModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastShake, setToastShake] = useState(false);
   const showToast = (message, type = 'success') => {
@@ -497,6 +524,13 @@ export default function Dashboard() {
             </div>
             <div className='user-meta'>Role: {display.role}</div>
             <div className='user-email'>{display.email}</div>
+            <button
+              onClick={() => setShowSwipeModal(true)}
+              className='btn btn-primary wl-ful'
+              style={{ marginTop: '0.75rem', background: 'var(--uta-orange)' }}
+            >
+              Add Swipe Access
+            </button>
 
             <button
               onClick={handleLogout}
@@ -830,6 +864,12 @@ export default function Dashboard() {
                 setIsSetPasswordOpen(false);
               }
         }
+      />
+
+      <CardSwipeModal
+        isOpen={showSwipeModal}
+        onClose={() => setShowSwipeModal(false)}
+        onCapture={handleCardRegister}
       />
     </>
   );

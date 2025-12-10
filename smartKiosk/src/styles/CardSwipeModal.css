@@ -1,0 +1,88 @@
+/* Card swipe modal visuals */
+.swipe-modal {
+  position: relative;
+  background: rgba(15, 23, 42, 0.96);
+  border-radius: 18px;
+  padding: 28px 28px 26px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+}
+
+.swipe-animation-container {
+  position: relative;
+  width: 180px;
+  height: 110px;
+  margin: 8px auto 18px auto;
+}
+
+/* Slot */
+.card-slot {
+  position: absolute;
+  left: 10px;
+  bottom: 30px;
+  width: 160px;
+  height: 14px;
+  background: #020617;
+  border-radius: 999px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.7),
+    0 0 12px rgba(59, 130, 246, 0.5);
+}
+
+/* Card that slides */
+.card-graphic {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  width: 130px;
+  height: 80px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1d4ed8, #4f250f);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.7),
+    0 0 12px rgba(59, 130, 246, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cardSlide 1.8s ease-in-out infinite;
+}
+
+/* Magnetic stripe */
+.mag-stripe {
+  width: 90%;
+  height: 14px;
+  background: #020617;
+  border-radius: 4px;
+  margin-top: -22px;
+  opacity: 0.9;
+}
+
+.swipe-title {
+  margin-top: 4px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+.swipe-subtitle {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  color: #cbd5f5;
+}
+
+.swipe-hint {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  letter-spacing: 0.03em;
+}
+
+/* Keyframes */
+@keyframes cardSlide {
+  0% {
+    transform: translateX(0px);
+  }
+  50% {
+    transform: translateX(36px);
+  }
+  100% {
+    transform: translateX(0px);
+  }
+}

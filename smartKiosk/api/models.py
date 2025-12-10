@@ -4,7 +4,6 @@ from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-
 def banner_upload_path(instance, filename):
     return f"banners/{filename}"   # stored inside media/banners/
 

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+import hashlib
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
@@ -23,3 +24,20 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return self.full_name
+
+class UserCard(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="card")
+    card_hash = models.CharField(max_length=128, blank=True, null=True)
+
+    def set_card_hash(self, raw_string: str):
+        """Hashes and stores the card swipe."""
+        self.card_hash = hashlib.sha256(raw_string.encode("utf-8")).hexdigest()
+
+    def check_card(self, raw_string: str):
+        """Checks if a raw swipe matches the stored card hash."""
+        raw_hash = hashlib.sha256(raw_string.encode("utf-8")).hexdigest()
+        return raw_hash == self.card_hash
+
+    def __str__(self):
+        return f"{self.user.username} — Card Registered: {bool(self.card_hash)}"
+    

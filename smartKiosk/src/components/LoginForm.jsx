@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { loginWithSession } from '../api/authApi';
+import '../styles/CardSwipeModal.css';
 
 const LoginForm = ({ displayMessage }) => {
   const [email, setEmail] = useState('');
