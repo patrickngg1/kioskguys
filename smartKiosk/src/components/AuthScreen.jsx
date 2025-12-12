@@ -1,19 +1,12 @@
-// src/components/AuthScreen.jsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import AuthForm from './AuthForm';
 import { useNavigate } from 'react-router-dom';
 
 export default function AuthScreen() {
-  // -----------------------------
-  // HOOKS MUST COME FIRST
-  // -----------------------------
-  const [swipeBuffer, setSwipeBuffer] = useState('');
-  const swipeTimeout = useRef(null);
   const navigate = useNavigate();
+  const bufferRef = useRef('');
+  const timerRef = useRef(null);
 
-  // -----------------------------
-  // HANDLE LOGIN SUCCESS
-  // -----------------------------
   const handleLoginSuccess = (user) => {
     const safeUser = {
       id: user.id,
@@ -23,64 +16,64 @@ export default function AuthScreen() {
       mustSetPassword: user.mustSetPassword ?? false,
     };
 
-    // Store globally
     sessionStorage.setItem('logged-in-user', JSON.stringify(safeUser));
     sessionStorage.setItem(
       'reset-required',
       safeUser.mustSetPassword ? '1' : '0'
     );
 
-    navigate('/dashboard', {
-      state: { user: safeUser },
-    });
+    navigate('/dashboard', { state: { user: safeUser } });
   };
 
-  // -----------------------------
-  // CARD SWIPE LISTENER (RUNS ONCE)
-  // -----------------------------
   useEffect(() => {
-    const handleKeyPress = (e) => {
-      const char = e.key;
+    const handleKeydown = (e) => {
+      // Ignore modifier keys
+      if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
 
-      setSwipeBuffer((prev) => {
-        const updated = prev + char;
+      // Allow swipe detection even if focused on input, but filter out slow typing
+      bufferRef.current += e.key;
 
-        clearTimeout(swipeTimeout.current);
-        swipeTimeout.current = setTimeout(async () => {
-          const swipe = updated;
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(async () => {
+        const rawSwipe = bufferRef.current;
+        bufferRef.current = '';
 
-          if (swipe.length > 20) {
-            try {
-              const res = await fetch('/api/card/login/', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cardString: swipe.trim() }),
-              });
+        // Professional Logic: If it's a long string (>5 chars), it's a swipe.
+        if (rawSwipe.length > 5) {
+          console.log('CAPTURED SWIPE (Login):', rawSwipe);
 
-              const data = await res.json();
-              if (res.ok && data?.id) {
-                handleLoginSuccess(data);
-              }
-            } catch {
-              // Ignore swipe errors silently
+          try {
+            // Send RAW data to backend.
+            // We pass null for uta_id so the backend does the matching.
+            const res = await fetch('/api/card/login/', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                raw_swipe: rawSwipe,
+                uta_id: null,
+              }),
+            });
+
+            const data = await res.json();
+
+            if (data.ok && data.id) {
+              handleLoginSuccess(data);
+            } else {
+              console.error('Login failed:', data.error);
+              // Optional: Show a toast here if you have a toast context
             }
+          } catch (err) {
+            console.error('Login network error:', err);
           }
-
-          setSwipeBuffer('');
-        }, 250);
-
-        return updated;
-      });
+        }
+      }, 100); // 100ms buffer
     };
 
-    window.addEventListener('keypress', handleKeyPress);
-    return () => window.removeEventListener('keypress', handleKeyPress);
-  }, []); // IMPORTANT: run once only
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [navigate]);
 
-  // -----------------------------
-  // RENDER
-  // -----------------------------
   return (
     <div id='auth-section'>
       <AuthForm onLoginSuccess={handleLoginSuccess} />

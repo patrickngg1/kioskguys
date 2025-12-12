@@ -433,10 +433,10 @@ def register_user(request):
         # ---------------------------------------------------------
         # OPTIONAL: Save card swipe if provided
         # ---------------------------------------------------------
-        card_string = data.get("cardString")
-        if card_string and len(card_string) > 15:
+        uta_id = data.get("utaId")
+        if uta_id:
             card_obj, _ = UserCard.objects.get_or_create(user=user)
-            card_obj.set_card_hash(card_string)
+            card_obj.uta_id = uta_id
             card_obj.save()
 
     except Exception as e:
@@ -1741,17 +1741,26 @@ def get_session_user(request):
     try:
         user_profile = UserProfile.objects.get(user=user)
         full_name = user_profile.full_name or f"{user.first_name} {user.last_name}".strip()
-        must_set_password = user_profile.must_set_password   # FIXED
+        must_set_password = user_profile.must_set_password
     except UserProfile.DoesNotExist:
         full_name = f"{user.first_name} {user.last_name}".strip()
         must_set_password = False
+
+    # ✅ CHECK IF CARD EXISTS
+    # valid strategy: check if the reverse relationship 'card' exists
+    has_card = False
+    try:
+        has_card = hasattr(user, 'card') and user.card is not None
+    except Exception:
+        has_card = False
 
     data = {
         "id": user.id,
         "email": user.email,
         "fullName": full_name,
-        "isAdmin": user.is_staff,       # correct
-        "mustSetPassword": must_set_password,  # FIXED
+        "isAdmin": user.is_staff,
+        "mustSetPassword": must_set_password,
+        "hasCard": has_card,  # <--- NEW FIELD
     }
 
     return JsonResponse({"ok": True, "user": data}, status=200)
@@ -1930,67 +1939,138 @@ def set_password(request):
 
     return JsonResponse({"ok": True, "message": "Password updated successfully"})
 
+
+import json
+import re
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.contrib.auth import login
+from accounts.models import UserCard, UserProfile
+
+
 @csrf_exempt
 @require_POST
 def register_card(request):
     if not request.user.is_authenticated:
-        return JsonResponse({"ok": False, "error": "Login required"}, status=401)
+        return JsonResponse({"ok": False, "error": "Not authenticated"}, status=401)
 
     try:
         data = json.loads(request.body.decode("utf-8"))
-        card_string = (data.get("cardString") or "").strip()
+        raw_swipe = str(data.get("raw_swipe", "")).strip()
     except:
         return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
 
-    if len(card_string) < 15:
-        return JsonResponse({"ok": False, "error": "Invalid card swipe"}, status=400)
+    if not raw_swipe:
+        return JsonResponse({"ok": False, "error": "No card data received"}, status=400)
 
-    # create or update UserCard record
-    card_obj, _ = UserCard.objects.get_or_create(user=request.user)
-    card_obj.set_card_hash(card_string)
-    card_obj.save()
+    # --- PROFESSIONAL PARSING ---
+    # Try to find the ID in Track 2, then Track 3, then Track 1
+    extracted_id = None
+    
+    # 1. Track 2 (Banking standard, common on IDs) -> ;1001409986=
+    match = re.search(r";(\d{5,16})=", raw_swipe)
+    if match:
+        extracted_id = match.group(1)
+        
+    # 2. Track 3 (Student ID specific) -> +1001409986?
+    if not extracted_id:
+        match = re.search(r"\+(\d{5,16})\?", raw_swipe)
+        if match:
+            extracted_id = match.group(1)
 
-    return JsonResponse({"ok": True, "message": "Card linked successfully"})
+    # 3. Track 1 (Alpha-numeric) -> %B1001409986^
+    if not extracted_id:
+        match = re.search(r"%[A-Z]?(\d{5,16})[\^?]", raw_swipe)
+        if match:
+            extracted_id = match.group(1)
+
+    # Save to Database (Now that models.py has the field, this won't crash)
+    UserCard.objects.update_or_create(
+        user=request.user,
+        defaults={
+            "uta_id": extracted_id, 
+            "raw_swipe": raw_swipe
+        }
+    )
+
+    return JsonResponse({
+        "ok": True, 
+        "message": f"Card linked successfully",
+        "debug_id": extracted_id
+    })
 
 
 @csrf_exempt
 @require_POST
 def login_with_card(request):
-    """Authenticate user using card swipe only."""
+    """
+    Authenticate user by matching the unique extracted ID (PAN) from the card.
+    """
     try:
         data = json.loads(request.body.decode("utf-8"))
-        card_string = (data.get("cardString") or "").strip()
+        raw_swipe = str(data.get("raw_swipe", "")).strip()
     except:
         return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
 
-    if len(card_string) < 15:
-        return JsonResponse({"ok": False, "error": "Invalid card swipe"}, status=400)
+    if not raw_swipe:
+        return JsonResponse({"ok": False, "error": "Card data required"}, status=400)
 
-    import hashlib
-    digest = hashlib.sha256(card_string.encode("utf-8")).hexdigest()
+    # --- PROFESSIONAL EXTRACTION (Same as Register) ---
+    extracted_id = None
+    
+    # 1. Track 2 (The number you see in your DB: 6391...)
+    match = re.search(r";(\d{5,16})=", raw_swipe)
+    if match:
+        extracted_id = match.group(1)
+        
+    # 2. Track 3 (Standard Student ID if present)
+    if not extracted_id:
+        match = re.search(r"\+(\d{5,16})\?", raw_swipe)
+        if match:
+            extracted_id = match.group(1)
 
-    try:
-        card_obj = UserCard.objects.get(card_hash=digest)
-    except UserCard.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Unknown card"}, status=401)
+    # 3. Track 1
+    if not extracted_id:
+        match = re.search(r"%[A-Z]?(\d{5,16})[\^?]", raw_swipe)
+        if match:
+            extracted_id = match.group(1)
 
+    print(f"DEBUG LOGIN: Raw={raw_swipe} | Extracted={extracted_id}")
+
+    # --- LOOKUP ---
+    card_obj = None
+
+    # Try finding by Extracted ID (Primary)
+    if extracted_id:
+        card_obj = UserCard.objects.filter(uta_id=extracted_id).first()
+
+    # Fallback: Try Raw Swipe match
+    if not card_obj:
+        card_obj = UserCard.objects.filter(raw_swipe=raw_swipe).first()
+
+    if not card_obj:
+        return JsonResponse({"ok": False, "error": "Card not registered."}, status=401)
+
+    # Login Success
     user = card_obj.user
     user.backend = "django.contrib.auth.backends.ModelBackend"
     login(request, user)
 
-    # load user profile info for dashboard
+    # Fetch profile for UI
     try:
         profile = UserProfile.objects.get(user=user)
         full_name = profile.full_name
-        must_set_password = profile.must_set_password
+        must_set_pw = profile.must_set_password
     except UserProfile.DoesNotExist:
-        full_name = user.username
-        must_set_password = False
+        full_name = user.get_full_name() or user.username
+        must_set_pw = False
 
     return JsonResponse({
+        "ok": True,
         "id": user.id,
         "email": user.email,
         "fullName": full_name,
-        "isAdmin": user.is_staff,       
-        "mustSetPassword": must_set_password,
+        "isAdmin": user.is_staff,
+        "mustSetPassword": must_set_pw,
     })

@@ -1,33 +1,45 @@
-// src/components/CardSwipeModal.jsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
-  const [buffer, setBuffer] = useState('');
-  const timeoutRef = useRef(null);
+  const bufferRef = useRef('');
+  const timerRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleKeyPress = (e) => {
-      const char = e.key;
+    bufferRef.current = '';
 
-      // Card readers "type" characters extremely fast; we accumulate them.
-      setBuffer((prev) => prev + char);
+    const handleKey = (e) => {
+      // Ignore modifier keys to prevent capturing 'Shift', 'Control', etc.
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key))
+        return;
 
-      // Reset after 300ms of no input
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        if (buffer.length > 20) {
-          // long strings are legitimate card tracks
-          onCapture(buffer.trim());
-          setBuffer('');
+      bufferRef.current += e.key;
+
+      // Restart timer — swipe finishes within ~100ms
+      if (timerRef.current) clearTimeout(timerRef.current);
+
+      timerRef.current = setTimeout(() => {
+        const rawSwipe = bufferRef.current;
+        bufferRef.current = '';
+
+        // Professional Logic: If we got a long string, send it.
+        // We do NOT validate here. We let the backend handle the complex parsing.
+        if (rawSwipe.length > 5) {
+          console.log('CAPTURED RAW SWIPE:', rawSwipe);
+          // Send raw data with uta_id as null (Backend will extract it)
+          onCapture({ raw: rawSwipe, uta_id: null });
         }
-      }, 250);
+      }, 100); // 100ms buffer window
     };
 
-    window.addEventListener('keypress', handleKeyPress);
-    return () => window.removeEventListener('keypress', handleKeyPress);
-  }, [isOpen, buffer, onCapture]);
+    window.addEventListener('keydown', handleKey);
+
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [isOpen, onCapture]);
 
   if (!isOpen) return null;
 
@@ -42,10 +54,9 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
           ✕
         </button>
 
-        {/* Swipe animation */}
+        {/* Premium animation preserved */}
         <div className='swipe-animation-container'>
           <div className='card-reader-slot'></div>
-
           <div className='card-graphic'>
             <div className='mag-stripe' />
           </div>

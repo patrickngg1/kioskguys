@@ -4,11 +4,17 @@ import CardSwipeModal from './CardSwipeModal';
 import {
   loginWithSession,
   registerWithSession,
-  requestPasswordReset, // 🔹 NEW helper
+  requestPasswordReset,
 } from '../api/authApi';
 import AuthToast from './AuthToast';
 
-/* ===== Helpers ===== */
+function extractUTAID(raw) {
+  const t3 = raw.match(/\+(\d+)\?/);
+  if (t3) return t3[1];
+  const t2 = raw.match(/;(\d+)=/);
+  if (t2) return t2[1];
+  return null;
+}
 function validateEmailDomain(email) {
   const v = email.toLowerCase();
   const domain = v.substring(v.lastIndexOf('@'));
@@ -440,7 +446,11 @@ export default function AuthForm({ onLoginSuccess }) {
               </form>
             ) : (
               /* ------ NORMAL LOGIN MODE ------ */
+              // ... inside AuthForm.jsx
+
+              /* ------ NORMAL LOGIN MODE ------ */
               <form onSubmit={handleLogin}>
+                {/* ... (Your existing Email Input) ... */}
                 <div className='form-group'>
                   <label>Email</label>
                   <input
@@ -453,17 +463,16 @@ export default function AuthForm({ onLoginSuccess }) {
                     autoComplete='username'
                   />
                 </div>
-
+                {/* ... (Your existing Password Input) ... */}
                 <div className='form-group'>
                   <label>Password</label>
                   <PasswordInput
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder='Enter your password or the reset code'
+                    placeholder='Enter your password'
                     inputClass='input-field'
                     autoComplete='current-password'
                   />
-                  {/* 🔹 "Reset password" link, right-aligned under the password input (Option A) */}
                   <div
                     style={{
                       display: 'flex',
@@ -489,8 +498,35 @@ export default function AuthForm({ onLoginSuccess }) {
                     </div>
                   </div>
                 </div>
-
                 <button className='auth-button'>Sign In</button>
+                {/* ✅ PREMIUM SWIPE INDICATOR v2.0 */}
+                <div className='swipe-section-premium'>
+                  <div className='premium-divider'>
+                    <span className='divider-line'></span>
+                    <span className='divider-text'>ALTERNATIVE LOGIN</span>
+                    <span className='divider-line'></span>
+                  </div>
+
+                  <div className='glass-scanner-card'>
+                    {/* The animated light beam */}
+                    <div className='scanner-beam'></div>
+
+                    <div className='scanner-content'>
+                      <div className='scanner-icon'>
+                        <div className='card-shape'>
+                          <div className='mag-strip'></div>
+                        </div>
+                        <div className='scan-line'></div>
+                      </div>
+
+                      <div className='scanner-text-group'>
+                        <span className='scanner-label'>Swipe Access</span>
+                        <span className='scanner-status'>Reader Ready...</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* ℹ️ END NEW SECTION */}
               </form>
             )
           ) : (

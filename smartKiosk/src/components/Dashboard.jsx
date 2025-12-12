@@ -13,32 +13,20 @@ import { getSessionUser, logoutSession } from '../api/authApi';
 import SetPasswordOverlay from './SetPasswordOverlay'; // adjust path if needed
 import CardSwipeModal from './CardSwipeModal';
 
+function extractUTAID(raw) {
+  if (!raw) return null;
+
+  // Track 3: +XXXXXXXXX?  ← THIS IS THE REAL STUDENT ID
+  const t3 = raw.match(/\+(\d{8,10})\?/);
+  if (t3) return t3[1];
+
+  return null; // Do NOT fallback to track2/track1 — they aren't IDs
+}
+
 const timesOverlap = (aStart, aEnd, bStart, bEnd) =>
   aStart < bEnd && bStart < aEnd;
 
-const handleCardRegister = async (cardString) => {
-  try {
-    const res = await fetch('/api/card/register/', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cardString }),
-    });
-
-    const data = await res.json();
-    if (res.ok && data.ok) {
-      setToast('Card linked to your account!');
-      setToastShake(false);
-      setShowSwipeModal(false);
-    } else {
-      setToast('Could not link card. Try again.');
-      setToastShake(true);
-    }
-  } catch (err) {
-    setToast('Error capturing card swipe.');
-    setToastShake(true);
-  }
-};
+// ------------------------ Card Registration Handler ------------------------
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -500,6 +488,39 @@ export default function Dashboard() {
     toastType = 'error';
   }
 
+  const handleCardRegister = async ({ raw, uta_id }) => {
+    try {
+      if (!raw && !uta_id) {
+        showToast('Could not read card data. Try again.', 'error');
+        return;
+      }
+
+      const res = await fetch('/api/card/register/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          raw_swipe: raw,
+          uta_id: uta_id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        showToast('Card successfully linked!');
+        setShowSwipeModal(false);
+
+        // ✅ INSTANTLY UPDATE BUTTON STATE
+        setUser((prev) => ({ ...prev, hasCard: true }));
+      } else {
+        showToast(data.error || 'Could not link card.', 'error');
+      }
+    } catch (err) {
+      console.error('Card register error:', err);
+      showToast('Network error while linking card.', 'error');
+    }
+  };
   // ------------------------ RENDER ------------------------
   return (
     <>
@@ -519,7 +540,6 @@ export default function Dashboard() {
               <img className='user-avatar' src={display.avatar} alt='' />
               <div>
                 <div className='user-name'>{display.name}</div>
-                <div className='user-id'>User ID: {display.id}</div>
               </div>
             </div>
             <div className='user-meta'>Role: {display.role}</div>
@@ -527,9 +547,13 @@ export default function Dashboard() {
             <button
               onClick={() => setShowSwipeModal(true)}
               className='btn btn-primary wl-ful'
-              style={{ marginTop: '0.75rem', background: 'var(--uta-orange)' }}
+              style={{
+                marginTop: '0.75rem',
+                // Orange if new, Blue/Gray if updating
+                background: user?.hasCard ? '#2563eb' : 'var(--uta-orange)',
+              }}
             >
-              Add Swipe Access
+              {user?.hasCard ? 'Update Swipe Access' : 'Add Swipe Access'}
             </button>
 
             <button

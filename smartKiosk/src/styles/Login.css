@@ -98,7 +98,6 @@
   backdrop-filter: blur(12px) saturate(130%);
   -webkit-backdrop-filter: blur(12px) saturate(130%);
   border-radius: 1.5rem;
-  border: 1.5px solid rgba(255, 255, 255, 0.28);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25),
     inset 0 0 18px rgba(255, 255, 255, 0.15);
   padding: clamp(1.5rem, 2.8vw, 2.5rem);
@@ -793,6 +792,214 @@ input.input-field:-webkit-autofill {
   opacity: 0.9;
 }
 
+/* =======================================================================
+   PREMIUM SWIPE INDICATOR v2.0 (Glass + Light Beam)
+   ======================================================================= */
+
+.swipe-section-premium {
+  margin-top: 1.8rem;
+  width: 100%;
+  animation: fadeUp 0.8s ease-out 0.2s backwards;
+}
+
+/* --- Elegant Divider --- */
+.premium-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 1rem;
+  opacity: 0.8;
+}
+
+.divider-line {
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(37, 99, 235, 0.2) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.divider-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #8694a7; /* Slate-400 */
+  text-transform: uppercase;
+}
+
+/* --- The Glass Scanner Box --- */
+.glass-scanner-card {
+  position: relative;
+  overflow: hidden; /* Contains the beam */
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.4) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  padding: 14px 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Hover Lift */
+.glass-scanner-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(37, 99, 235, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+/* --- The "Scanner Beam" (Light passing through) --- */
+.scanner-beam {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-20deg);
+  pointer-events: none;
+  animation: beamSweep 4s infinite ease-in-out;
+  mix-blend-mode: overlay;
+}
+
+@keyframes beamSweep {
+  0% {
+    left: -100%;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  50% {
+    left: 200%;
+    opacity: 0;
+  }
+  100% {
+    left: 200%;
+    opacity: 0;
+  }
+}
+
+/* --- Content Layout --- */
+.scanner-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 2; /* Sit above the beam */
+}
+
+/* --- Icon Styling --- */
+.scanner-icon {
+  position: relative;
+  width: 32px;
+  height: 22px;
+}
+
+.card-shape {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.mag-strip {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* The laser line scanning the card icon itself */
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  background: #f97316; /* UTA Orange */
+  box-shadow: 0 0 8px #f97316;
+  opacity: 0.8;
+  animation: iconScan 2s ease-in-out infinite alternate;
+}
+
+@keyframes iconScan {
+  0% {
+    left: 0;
+    opacity: 0.4;
+  }
+  100% {
+    left: 100%;
+    opacity: 1;
+  }
+}
+
+/* --- Text Styling --- */
+.scanner-text-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.scanner-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b; /* Slate-800 */
+}
+
+.scanner-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #2563eb; /* UTA Blue */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Blinking dot for "Active" status */
+.scanner-status::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  background-color: #22c55e; /* Green */
+  border-radius: 50%;
+  box-shadow: 0 0 6px #22c55e;
+  animation: blinkStatus 1.5s infinite;
+}
+
+@keyframes blinkStatus {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
 /* Large Mobile/Vertical Layout Breakpoint (900px) - App Layout & Header */
 @media (max-width: 900px) {
   #map-container {
