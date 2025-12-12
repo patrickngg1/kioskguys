@@ -1,3 +1,15 @@
+/* Card swipe modal overlay */
+.swipe-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 7000 !important; /* BELOW inactivity modal */
+}
+
 /* Card swipe modal visuals */
 .swipe-modal {
   position: relative;
@@ -5,53 +17,27 @@
   border-radius: 18px;
   padding: 28px 28px 26px;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
-}
-
-.swipe-animation-container {
-  position: relative;
-  width: 180px;
-  height: 110px;
-  margin: 8px auto 18px auto;
-}
-
-/* Slot */
-.card-slot {
-  position: absolute;
-  left: 10px;
-  bottom: 30px;
-  width: 160px;
-  height: 14px;
-  background: #020617;
-  border-radius: 999px;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.7),
-    0 0 12px rgba(59, 130, 246, 0.5);
+  z-index: 99 !important;
 }
 
 /* Card that slides */
 .card-graphic {
   position: absolute;
   top: 16px;
-  left: 0;
-  width: 130px;
-  height: 80px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #1d4ed8, #4f250f);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.7),
-    0 0 12px rgba(59, 130, 246, 0.5);
+  left: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: cardSlide 1.8s ease-in-out infinite;
-}
-
-/* Magnetic stripe */
-.mag-stripe {
-  width: 90%;
-  height: 14px;
-  background: #020617;
-  border-radius: 4px;
-  margin-top: -22px;
-  opacity: 0.9;
+  width: 150px;
+  height: 94px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb, #1e40af, #9333ea, #ea580c);
+  background-size: 250% 250%;
+  animation: gradientShift 6s ease infinite,
+    cardSlideIntoSlot 2s ease-in-out infinite;
+  bottom: 60px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 12px rgba(37, 99, 235, 0.4);
 }
 
 .swipe-title {
@@ -70,19 +56,64 @@
 .swipe-hint {
   margin-top: 12px;
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: #b2bac8;
   letter-spacing: 0.03em;
 }
 
-/* Keyframes */
-@keyframes cardSlide {
+/* Container for animation */
+.swipe-animation-container {
+  position: relative;
+  width: 240px;
+  height: 140px;
+  margin: 0 auto 18px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Realistic card reader slot */
+.card-reader-slot {
+  width: 200px;
+  height: 18px;
+  background: linear-gradient(to bottom, #00000057, #11182796);
+  border-radius: 8px;
+  box-shadow: 0 10px 55px rgba(27, 27, 255, 0.655), 0 0 8px rgb(54, 118, 255);
+  position: absolute;
+  bottom: 40px;
+}
+
+/* Magnetic stripe aligned to slot */
+.mag-stripe {
+  width: 100%;
+  height: 22px;
+  background: #000;
+  border-radius: 4px 4px 0 0;
+  margin-top: 25px;
+  opacity: 0.95;
+}
+
+/* Card sliding horizontally into the slot */
+@keyframes cardSlideIntoSlot {
   0% {
-    transform: translateX(0px);
+    transform: translateX(-45px);
   }
   50% {
-    transform: translateX(36px);
+    transform: translateX(70px);
   }
   100% {
-    transform: translateX(0px);
+    transform: translateX(-45px);
+  }
+}
+
+/* Subtle gradient motion */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }

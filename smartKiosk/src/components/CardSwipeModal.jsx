@@ -32,7 +32,7 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
   if (!isOpen) return null;
 
   return (
-    <div className='modal-overlay' style={{ zIndex: 9999 }} onClick={onClose}>
+    <div className='swipe-modal-overlay' onClick={onClose}>
       <div
         className='modal-box swipe-modal'
         style={{ maxWidth: 420, textAlign: 'center' }}
@@ -44,7 +44,8 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
 
         {/* Swipe animation */}
         <div className='swipe-animation-container'>
-          <div className='card-slot' />
+          <div className='card-reader-slot'></div>
+
           <div className='card-graphic'>
             <div className='mag-stripe' />
           </div>

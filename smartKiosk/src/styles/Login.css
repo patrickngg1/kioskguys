@@ -854,3 +854,8 @@ input.input-field:-webkit-autofill {
     margin: 0;
   }
 }
+
+/* Login page standard modals */
+.modal-overlay {
+  z-index: 2000 !important;
+}

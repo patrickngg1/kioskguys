@@ -64,7 +64,7 @@ export default function Dashboard() {
   const [countdown, setCountdown] = useState(30);
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 10 * 60 * 1000;
+  const INACTIVITY_LIMIT = 2 * 60 * 1000;
   const WARNING_TIME = 30;
   const inactivityTimer = useRef(null);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
