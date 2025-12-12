@@ -820,21 +820,28 @@ def get_all_items(request):
 # GET /api/rooms/
 # Returns all rooms with capacity + features
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------
+# GET /api/rooms/
+# Returns all rooms with dynamic features list
+# ---------------------------------------------------------
 @require_GET
 def get_rooms(request):
     rooms = Room.objects.all().order_by("name")
-
-    data = [
-        {
+    data = []
+    for r in rooms:
+        # Auto-migrate legacy flags if features list is empty
+        current_features = r.features or []
+        if not current_features:
+            if r.has_screen: current_features.append("Screen")
+            if r.has_hdmi: current_features.append("HDMI")
+        
+        data.append({
             "id": r.id,
             "name": r.name,
             "capacity": r.capacity,
-            "hasScreen": r.has_screen,
-            "hasHdmi": r.has_hdmi,
-        }
-        for r in rooms
-    ]
-
+            "features": current_features, # ✅ Dynamic list
+        })
     return JsonResponse({"ok": True, "rooms": data}, status=200)
 
 @csrf_exempt
@@ -845,42 +852,21 @@ def create_room(request):
 
     try:
         data = json.loads(request.body.decode("utf-8"))
-    except:
-        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
-
-    name = data.get("name", "").strip()
-    capacity = data.get("capacity")
-    has_screen = data.get("hasScreen", False)
-    has_hdmi = data.get("hasHdmi", False)
-
-    if not name:
-        return JsonResponse({"ok": False, "error": "Room name required"}, status=400)
-
-    try:
-        capacity = int(capacity)
-    except:
-        return JsonResponse({"ok": False, "error": "Capacity must be an integer"}, status=400)
-
-    room = Room.objects.create(
-        name=name,
-        capacity=capacity,
-        has_screen=bool(has_screen),
-        has_hdmi=bool(has_hdmi),
-    )
-
-    return JsonResponse(
-        {
-            "ok": True,
-            "room": {
-                "id": room.id,
-                "name": room.name,
-                "capacity": room.capacity,
-                "hasScreen": room.has_screen,
-                "hasHdmi": room.has_hdmi,
-            },
-        },
-        status=201,
-    )
+        features_list = data.get("features", [])
+        
+        room = Room.objects.create(
+            name=data.get("name", "").strip(),
+            capacity=int(data.get("capacity", 8)),
+            features=features_list,
+            # Sync legacy just in case
+            has_screen="Screen" in features_list,
+            has_hdmi="HDMI" in features_list
+        )
+        return JsonResponse({"ok": True, "room": {
+            "id": room.id, "name": room.name, "capacity": room.capacity, "features": room.features
+        }}, status=201)
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=400)
 
 @csrf_exempt
 @require_POST
@@ -890,49 +876,23 @@ def update_room(request, room_id):
 
     try:
         room = Room.objects.get(id=room_id)
+        data = json.loads(request.body.decode("utf-8"))
+
+        if "name" in data: room.name = data["name"].strip()
+        if "capacity" in data: room.capacity = int(data["capacity"])
+        if "features" in data:
+            room.features = data["features"]
+            room.has_screen = "Screen" in room.features
+            room.has_hdmi = "HDMI" in room.features
+
+        room.save()
+        return JsonResponse({"ok": True, "room": {
+            "id": room.id, "name": room.name, "capacity": room.capacity, "features": room.features
+        }}, status=200)
     except Room.DoesNotExist:
         return JsonResponse({"ok": False, "error": "Room not found"}, status=404)
-
-    try:
-        data = json.loads(request.body.decode("utf-8"))
-    except:
-        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
-
-    name = data.get("name")
-    capacity = data.get("capacity")
-    has_screen = data.get("hasScreen")
-    has_hdmi = data.get("hasHdmi")
-
-    if isinstance(name, str) and name.strip():
-        room.name = name.strip()
-
-    try:
-        if capacity is not None:
-            room.capacity = int(capacity)
-    except:
-        return JsonResponse({"ok": False, "error": "Capacity must be an integer"}, status=400)
-
-    if has_screen is not None:
-        room.has_screen = bool(has_screen)
-
-    if has_hdmi is not None:
-        room.has_hdmi = bool(has_hdmi)
-
-    room.save()
-
-    return JsonResponse(
-        {
-            "ok": True,
-            "room": {
-                "id": room.id,
-                "name": room.name,
-                "capacity": room.capacity,
-                "hasScreen": room.has_screen,
-                "hasHdmi": room.has_hdmi,
-            },
-        },
-        status=200,
-    )
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=400)
 
 @csrf_exempt
 @require_POST

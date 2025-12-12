@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import '../styles/AdminPanel.css';
+import '../styles/PremiumModal.css';
 
 const to12Hour = (time) => {
   if (!time) return '';
@@ -659,18 +660,23 @@ function ReservationsSection({
   );
 }
 
+// In AdminPanel.jsx
+
 function RoomsSection({ rooms, showToast }) {
   const [roomList, setRoomList] = useState(rooms || []);
   const [loading, setLoading] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState('create');
+
   const [roomForm, setRoomForm] = useState({
     id: null,
     name: '',
     capacity: '',
-    hasScreen: true,
-    hasHdmi: true,
+    features: [],
   });
+
+  const [featureInput, setFeatureInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -680,16 +686,9 @@ function RoomsSection({ rooms, showToast }) {
     try {
       const res = await fetch('/api/rooms/', { credentials: 'include' });
       const data = await res.json();
-      if (!res.ok || !data.ok) {
-        showToast?.(data.error || 'Failed to load rooms', 'error');
-        setRoomList([]);
-        return;
-      }
-      setRoomList(data.rooms || []);
+      if (data.ok) setRoomList(data.rooms || []);
     } catch (err) {
-      console.error('Load rooms error', err);
-      showToast?.('Failed to load rooms', 'error');
-      setRoomList([]);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -700,87 +699,100 @@ function RoomsSection({ rooms, showToast }) {
   }, []);
 
   const openAdd = () => {
-    setRoomForm({
-      id: null,
-      name: '',
-      capacity: '',
-      hasScreen: true,
-      hasHdmi: true,
-    });
-    setShowAddModal(true);
+    setModalMode('create');
+    setRoomForm({ id: null, name: '', capacity: '', features: [] });
+    setShowModal(true);
   };
 
   const openEdit = (room) => {
+    setModalMode('edit');
+    let feats = room.features || [];
+    if (feats.length === 0) {
+      if (room.hasScreen) feats.push('Screen');
+      if (room.hasHdmi) feats.push('HDMI');
+    }
     setRoomForm({
       id: room.id,
-      name: room.name || '',
-      capacity: room.capacity ?? '',
-      hasScreen: !!room.hasScreen,
-      hasHdmi: !!room.hasHdmi,
+      name: room.name,
+      capacity: room.capacity,
+      features: [...new Set(feats)],
     });
-    setShowEditModal(true);
+    setShowModal(true);
   };
 
-  const handleFormChange = (field, value) => {
-    setRoomForm((prev) => ({ ...prev, [field]: value }));
+  const addFeature = (e) => {
+    if (e.type === 'keydown' && e.key !== 'Enter') return;
+    if (e.type === 'keydown') e.preventDefault();
+
+    let val = featureInput.trim();
+    if (val) {
+      val = val.charAt(0).toUpperCase() + val.slice(1);
+      if (!roomForm.features.includes(val)) {
+        setRoomForm((prev) => ({ ...prev, features: [...prev.features, val] }));
+      }
+      setFeatureInput('');
+    }
   };
 
+  const removeFeature = (feat) => {
+    setRoomForm((prev) => ({
+      ...prev,
+      features: prev.features.filter((f) => f !== feat),
+    }));
+  };
+
+  // ✅ UPDATED: Clean Error Messages
   const handleSave = async () => {
-    if (!roomForm.name.trim()) {
-      showToast?.('Room name is required', 'error');
-      return;
-    }
-    const rawCapacity = String(roomForm.capacity ?? '').trim();
-    const capacityNumber = Number(rawCapacity);
-    if (!rawCapacity || Number.isNaN(capacityNumber) || capacityNumber < 1) {
-      showToast?.('Room capacity must be at least 1', 'error');
-      return;
-    }
+    if (!roomForm.name) return showToast('Name is required', 'error');
     setSaving(true);
+
     try {
-      const payload = {
-        name: roomForm.name.trim(),
-        capacity: capacityNumber,
-        hasScreen: roomForm.hasScreen,
-        hasHdmi: roomForm.hasHdmi,
-      };
-      const isEdit = !!roomForm.id;
-      const url = isEdit
-        ? `/api/rooms/${roomForm.id}/update/`
-        : '/api/rooms/create/';
+      const url =
+        modalMode === 'edit'
+          ? `/api/rooms/${roomForm.id}/update/`
+          : '/api/rooms/create/';
+
       const res = await fetch(url, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          name: roomForm.name,
+          capacity: parseInt(roomForm.capacity),
+          features: roomForm.features,
+        }),
       });
+
       const data = await res.json();
-      if (!res.ok || !data.ok) {
-        showToast?.(data.error || 'Unable to save room', 'error');
-        return;
-      }
-      const newRoom = data.room;
-      if (isEdit) {
-        setRoomList((prev) =>
-          prev.map((r) => (r.id === newRoom.id ? newRoom : r))
+
+      if (data.ok) {
+        showToast(
+          `Room ${modalMode === 'edit' ? 'updated' : 'created'} successfully`,
+          'success'
         );
-        showToast?.('Room updated', 'success');
+        setShowModal(false);
+        loadRooms();
       } else {
-        setRoomList((prev) => [...prev, newRoom]);
-        showToast?.('Room added', 'success');
+        // CLEAN UP UGLY ERRORS
+        let msg = data.error || 'Failed to save changes.';
+
+        // If error looks like python dict/list "{'name': ...}", show generic message
+        if (
+          msg.includes('{') ||
+          msg.includes('[') ||
+          msg.includes('IntegrityError')
+        ) {
+          msg = 'Could not save room. Name might already exist.';
+        }
+
+        showToast(msg, 'error');
       }
-      setShowAddModal(false);
-      setShowEditModal(false);
     } catch (err) {
-      console.error('Save room error', err);
-      showToast?.('Unable to save room', 'error');
+      console.error(err);
+      showToast('Network connection error. Try again.', 'error');
     } finally {
       setSaving(false);
     }
-  };
-
-  const confirmDelete = (room) => {
-    setDeleteTarget(room);
   };
 
   const handleDelete = async () => {
@@ -791,17 +803,22 @@ function RoomsSection({ rooms, showToast }) {
         method: 'POST',
         credentials: 'include',
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        showToast?.(data.error || 'Unable to delete room', 'error');
-        return;
+      const data = await res.json(); // Wait for JSON to check success
+
+      if (res.ok && data.ok) {
+        loadRooms();
+        setDeleteTarget(null);
+        showToast('Room deleted successfully', 'success');
+      } else {
+        // Clean up delete errors too
+        let msg = data.error || 'Cannot delete room.';
+        if (msg.includes('reservations'))
+          msg = 'Cannot delete: Room has future reservations.';
+        showToast(msg, 'error');
       }
-      setRoomList((prev) => prev.filter((r) => r.id !== deleteTarget.id));
-      showToast?.('Room deleted', 'success');
-      setDeleteTarget(null);
-    } catch (err) {
-      console.error('Delete room error', err);
-      showToast?.('Unable to delete room', 'error');
+    } catch (e) {
+      console.error(e);
+      showToast('Network error while deleting.', 'error');
     } finally {
       setDeleting(false);
     }
@@ -824,7 +841,6 @@ function RoomsSection({ rooms, showToast }) {
           </p>
         </div>
         <button
-          type='button'
           className='admin-pill-button admin-pill-primary'
           onClick={openAdd}
         >
@@ -832,162 +848,174 @@ function RoomsSection({ rooms, showToast }) {
         </button>
       </div>
 
-      {loading ? (
-        <div className='admin-loading'>
-          <div className='admin-spinner'></div>
-          <p className='admin-loading-text'>Loading rooms...</p>
-        </div>
-      ) : !roomList || roomList.length === 0 ? (
-        <p className='admin-empty'>No rooms configured yet.</p>
-      ) : (
-        <div className='admin-grid'>
-          {roomList.map((room) => (
-            <div key={room.id} className='admin-card'>
-              <div className='admin-card-header'>
-                <div className='admin-card-title'>{room.name}</div>
-                <div className='admin-card-tag'>
-                  Capacity: {room.capacity ?? '—'}
-                </div>
-              </div>
-              <div className='admin-card-body'>
-                <div className='admin-badge-row'>
-                  <span className='admin-badge'>
-                    Screen: {room.hasScreen ? 'Yes' : 'No'}
+      <div className='admin-grid'>
+        {roomList.map((room) => (
+          <div key={room.id} className='admin-card'>
+            <div className='admin-card-header'>
+              <div className='admin-card-title'>{room.name}</div>
+              <div className='admin-card-tag'>Capacity: {room.capacity}</div>
+            </div>
+
+            <div className='admin-card-body'>
+              <div className='admin-badge-row' style={{ flexWrap: 'wrap' }}>
+                {room.features && room.features.length > 0 ? (
+                  room.features.map((f, i) => (
+                    <span key={i} className='admin-badge'>
+                      {f}
+                    </span>
+                  ))
+                ) : (
+                  <span className='admin-badge' style={{ opacity: 0.6 }}>
+                    Standard
                   </span>
-                  <span className='admin-badge'>
-                    HDMI: {room.hasHdmi ? 'Yes' : 'No'}
-                  </span>
-                </div>
-              </div>
-              <div className='admin-card-footer'>
-                <button
-                  type='button'
-                  className='admin-pill-button admin-pill-subtle'
-                  onClick={() => openEdit(room)}
-                >
-                  Edit
-                </button>
-                <button
-                  type='button'
-                  className='admin-pill-button admin-pill-danger'
-                  onClick={() => confirmDelete(room)}
-                >
-                  Delete
-                </button>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {(showAddModal || showEditModal) && (
+            <div className='admin-card-footer'>
+              <button
+                className='admin-pill-button admin-pill-subtle'
+                onClick={() => openEdit(room)}
+              >
+                Edit
+              </button>
+              <button
+                className='admin-pill-button admin-pill-danger'
+                onClick={() => setDeleteTarget(room)}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* MODAL */}
+      {showModal && (
         <div className='modal-overlay'>
           <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
-            <button
-              className='close-btn'
-              type='button'
-              onClick={() => {
-                setShowAddModal(false);
-                setShowEditModal(false);
-              }}
-            >
+            <button className='close-btn' onClick={() => setShowModal(false)}>
               ✕
             </button>
-            <h2>{roomForm.id ? 'Edit Room' : 'Add Room'}</h2>
-            <div className='form-row' style={{ marginTop: '1rem' }}>
+            <h2 className='premium-modal-title'>
+              {modalMode === 'edit' ? 'Edit Room' : 'Add Room'}
+            </h2>
+
+            <div className='form-row' style={{ marginBottom: '1rem' }}>
               <div style={{ flex: 2 }}>
                 <label>Room Name</label>
                 <input
                   type='text'
                   value={roomForm.name}
-                  onChange={(e) => handleFormChange('name', e.target.value)}
-                  placeholder='e.g. Room A'
+                  onChange={(e) =>
+                    setRoomForm({ ...roomForm, name: e.target.value })
+                  }
+                  placeholder='e.g. Conference Room A'
                 />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Capacity</label>
                 <input
                   type='number'
-                  min='1'
-                  required
                   value={roomForm.capacity}
-                  onChange={(e) => handleFormChange('capacity', e.target.value)}
+                  onChange={(e) =>
+                    setRoomForm({ ...roomForm, capacity: e.target.value })
+                  }
                   placeholder='8'
                 />
               </div>
             </div>
-            <div className='form-row'>
-              <div>
-                <label>Screen</label>
-                <select
-                  value={roomForm.hasScreen ? 'yes' : 'no'}
-                  onChange={(e) =>
-                    handleFormChange('hasScreen', e.target.value === 'yes')
+
+            {/* Amenities Section */}
+            <div
+              className='form-row'
+              style={{
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                textAlign: 'left',
+              }}
+            >
+              <label style={{ width: '100%', textAlign: 'left' }}>
+                Amenities & Features
+              </label>
+
+              <div className='admin-tag-input-container'>
+                {roomForm.features.map((feat) => (
+                  <span key={feat} className='admin-tag-chip'>
+                    {feat}
+                    <button type='button' onClick={() => removeFeature(feat)}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+
+                <input
+                  type='text'
+                  className='admin-tag-input-field'
+                  value={featureInput}
+                  onChange={(e) => setFeatureInput(e.target.value)}
+                  onKeyDown={addFeature}
+                  placeholder={
+                    roomForm.features.length === 0
+                      ? 'Type (e.g. Wifi) & Add'
+                      : 'Add another...'
                   }
+                />
+
+                <button
+                  type='button'
+                  className='admin-tag-add-btn'
+                  onClick={addFeature}
                 >
-                  <option value='yes'>Yes</option>
-                  <option value='no'>No</option>
-                </select>
-              </div>
-              <div>
-                <label>HDMI</label>
-                <select
-                  value={roomForm.hasHdmi ? 'yes' : 'no'}
-                  onChange={(e) =>
-                    handleFormChange('hasHdmi', e.target.value === 'yes')
-                  }
-                >
-                  <option value='yes'>Yes</option>
-                  <option value='no'>No</option>
-                </select>
+                  +
+                </button>
               </div>
             </div>
-            <button
-              type='button'
-              className='btn btn-primary w-full'
-              style={{ marginTop: '1.5rem' }}
-              onClick={handleSave}
-              disabled={saving}
+
+            <div
+              className='premium-modal-actions'
+              style={{ marginTop: '2rem' }}
             >
-              {saving
-                ? roomForm.id
-                  ? 'Saving...'
-                  : 'Creating...'
-                : roomForm.id
-                ? 'Save Changes'
-                : 'Create Room'}
-            </button>
+              <button
+                className='premium-btn cancel'
+                onClick={() => setShowModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className='premium-btn primary'
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save Room'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
+      {/* DELETE CONFIRM */}
       {deleteTarget && (
-        <div className='modal-overlay' onClick={() => setDeleteTarget(null)}>
-          <div
-            className='premium-modal'
-            onClick={(e) => e.stopPropagation()}
-            role='dialog'
-          >
+        <div className='modal-overlay'>
+          <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
             <h2 className='premium-modal-title'>Delete Room?</h2>
             <p className='premium-modal-message'>
-              You are about to delete <strong>{deleteTarget.name}</strong>.
-              <br />
-              If this room has future reservations, deletion may be blocked.
+              Are you sure you want to delete{' '}
+              <strong>{deleteTarget.name}</strong>?
             </p>
             <div className='premium-modal-actions'>
               <button
-                className='modal-btn cancel'
+                className='premium-btn cancel'
                 onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
               >
-                Keep Room
+                Cancel
               </button>
               <button
-                className='modal-btn delete'
-                disabled={deleting}
+                className='premium-btn delete'
                 onClick={handleDelete}
+                disabled={deleting}
               >
-                {deleting ? 'Deleting…' : 'Delete Room'}
+                {deleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
@@ -1072,7 +1100,7 @@ function ItemsSection({
         </button>
       </div>
 
-      <div className='admin-filter-bar' style={{ marginTop: '1rem' }}>
+      <div className='admin-filter-bar' style={{ marginTop: '0.5rem' }}>
         <input
           type='text'
           className='admin-filter-input'

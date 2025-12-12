@@ -103,16 +103,22 @@ class ItemPopularity(models.Model):
 # ---------------------------------------------------------
 # ROOM MODEL
 # ---------------------------------------------------------
+# api/models.py
+
 class Room(models.Model):
     name = models.CharField(max_length=100, unique=True)
     capacity = models.IntegerField(default=8)
+
+    # ✅ THIS MATCHES YOUR DATABASE COLUMN 'features' (json)
+    features = models.JSONField(default=list, blank=True)
+
+    # Legacy fields (Keep them, as they exist in your DB as 'has_screen' and 'has_hdmi')
     has_screen = models.BooleanField(default=True)
     has_hdmi = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.name} (Capacity: {self.capacity})"
-
-
+    
 # ---------------------------------------------------------
 # ROOM RESERVATION MODEL
 # ---------------------------------------------------------

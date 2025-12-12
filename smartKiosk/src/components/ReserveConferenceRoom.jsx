@@ -960,7 +960,6 @@ function ReserveConferenceRoom({
         </button>
 
         <h2>Reserve Conference Room</h2>
-
         {/* ROOM CARDS (only when 1–2 rooms, animated) */}
         {cardsRender && (
           <div
@@ -981,10 +980,15 @@ function ReserveConferenceRoom({
                 }
               >
                 <div className='room-name'>{room.name}</div>
+
+                {/* ✅ Dynamic Room Meta (Capacity + Tags) */}
                 <div className='room-meta'>
-                  Capacity: {room.capacity} ·{' '}
-                  {room.hasScreen ? 'Screen' : 'No Screen'} ·{' '}
-                  {room.hasHdmi ? 'HDMI' : 'No HDMI'}
+                  Capacity: {room.capacity}
+                  {room.features && room.features.length > 0 ? (
+                    <> · {room.features.join(' · ')}</>
+                  ) : (
+                    <> · Standard Room</>
+                  )}
                 </div>
               </div>
             ))}
@@ -1208,9 +1212,14 @@ function ReserveConferenceRoom({
               >
                 <option value=''>Select</option>
                 {rooms.map((r) => {
-                  const label = `${r.name} —  👥 ${r.capacity} seats · ${
-                    r.hasHdmi ? '🔌 HDMI' : '🔌 No HDMI'
-                  } · ${r.hasScreen ? '🖥️ Screen' : '🖥️ No Screen'}`;
+                  // ✅ Dynamic Features for Dropdown
+                  const featureString =
+                    r.features && r.features.length > 0
+                      ? r.features.join(' · ')
+                      : 'Standard Room';
+
+                  const label = `${r.name} — 👥 ${r.capacity} seats · ${featureString}`;
+
                   return (
                     <option key={r.id} value={r.id}>
                       {label}
