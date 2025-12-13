@@ -1,4 +1,5 @@
 import json
+import re
 import smtplib
 import os
 import requests
@@ -169,6 +170,9 @@ def schedule_banner(request, banner_id):
 # ---------------------------
 #  ACTIVATE BANNER (ADMIN)
 # ---------------------------
+# ---------------------------
+#  ACTIVATE BANNER (ADMIN)
+# ---------------------------
 @csrf_exempt
 @require_POST
 def activate_banner(request, banner_id):
@@ -180,12 +184,46 @@ def activate_banner(request, banner_id):
     except BannerImage.DoesNotExist:
         return JsonResponse({"ok": False, "error": "Not found"}, status=404)
 
-    # Only one active at a time
+    # 1. Turn off everything else
     BannerImage.objects.update(is_active=False)
+
+    # 2. Activate this banner
     banner.is_active = True
+
+    # 3. CRITICAL FIX: Clear the schedule dates.
+    # This prevents the auto-scheduler from immediately turning it off 
+    # if the dates are in the past/future.
+    # It effectively converts this to a "Manual / Always On" banner.
+    banner.start_date = None
+    banner.end_date = None
     banner.save()
 
     return JsonResponse({"ok": True}, status=200)
+
+
+# ---------------------------
+#  DEACTIVATE ALL (ADMIN)
+# ---------------------------
+@csrf_exempt
+@require_POST
+def deactivate_active_banner(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    # 1. Find currently active banners
+    active_banners = BannerImage.objects.filter(is_active=True)
+
+    # 2. Clear their schedules too, so they don't auto-reactivate immediately
+    for b in active_banners:
+        b.start_date = None
+        b.end_date = None
+        b.is_active = False
+        b.save()
+
+    # Fallback to ensure everything is off
+    BannerImage.objects.update(is_active=False)
+
+    return JsonResponse({"ok": True})
 
 
 # ---------------------------
@@ -231,16 +269,6 @@ def get_active_banner(request):
         },
     })
 
-@csrf_exempt
-@require_POST
-def deactivate_active_banner(request):
-    if not request.user.is_authenticated or not request.user.is_staff:
-        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
-
-    # Simply set all banners inactive
-    BannerImage.objects.update(is_active=False)
-
-    return JsonResponse({"ok": True})
 
 # ============================================================
 # GET /api/users/
@@ -1899,15 +1927,33 @@ def set_password(request):
 
     return JsonResponse({"ok": True, "message": "Password updated successfully"})
 
+# Helper to extract the best ID from a swipe string
+def parse_uta_card(raw_swipe):
+    if not raw_swipe:
+        return None
 
-import json
-import re
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-from django.contrib.auth import login
-from accounts.models import UserCard, UserProfile
+    extracted_id = None
 
+    # PRIORITY 1: Track 3 (The "Student ID" format: +100...)
+    # This is specific to University cards and gives the human-readable ID.
+    match = re.search(r"\+(\d{5,16})\?", raw_swipe)
+    if match:
+        extracted_id = match.group(1)
+
+    # PRIORITY 2: Track 2 (The "ISO Number": ;639...)
+    # Fallback if Track 3 is damaged or missing.
+    if not extracted_id:
+        match = re.search(r";(\d{5,19})=", raw_swipe)
+        if match:
+            extracted_id = match.group(1)
+
+    # PRIORITY 3: Track 1 (Alpha-numeric: %B639...)
+    if not extracted_id:
+        match = re.search(r"%[A-Z]?(\d{5,19})[\^]", raw_swipe)
+        if match:
+            extracted_id = match.group(1)
+
+    return extracted_id
 
 @csrf_exempt
 @require_POST
@@ -1924,28 +1970,31 @@ def register_card(request):
     if not raw_swipe:
         return JsonResponse({"ok": False, "error": "No card data received"}, status=400)
 
-    # --- PROFESSIONAL PARSING ---
-    # Try to find the ID in Track 2, then Track 3, then Track 1
-    extracted_id = None
+    # 1. Extract ID using new logic (Track 3 priority)
+    extracted_id = parse_uta_card(raw_swipe)
+
+    if not extracted_id:
+        return JsonResponse({"ok": False, "error": "Could not read card format."}, status=400)
+
+    # 2. SECURITY CHECK: Block Credit Cards
+    # UTA cards start with 100 (Student ID) or 600/639 (ISO Number).
+    # Credit cards start with 4 (Visa), 5 (Mastercard), 3 (Amex), 6011 (Discover).
     
-    # 1. Track 2 (Banking standard, common on IDs) -> ;1001409986=
-    match = re.search(r";(\d{5,16})=", raw_swipe)
-    if match:
-        extracted_id = match.group(1)
-        
-    # 2. Track 3 (Student ID specific) -> +1001409986?
-    if not extracted_id:
-        match = re.search(r"\+(\d{5,16})\?", raw_swipe)
-        if match:
-            extracted_id = match.group(1)
+    valid_prefixes = ["100", "600", "639"]
+    is_valid_uta = any(extracted_id.startswith(p) for p in valid_prefixes)
 
-    # 3. Track 1 (Alpha-numeric) -> %B1001409986^
-    if not extracted_id:
-        match = re.search(r"%[A-Z]?(\d{5,16})[\^?]", raw_swipe)
-        if match:
-            extracted_id = match.group(1)
+    # Double check: explicitly block financial prefixes if they slipped through
+    if extracted_id.startswith(("4", "5", "34", "37", "51", "52", "53", "54", "55")):
+        is_valid_uta = False
 
-    # Save to Database (Now that models.py has the field, this won't crash)
+    if not is_valid_uta:
+        print(f"BLOCKED: User {request.user.email} tried to link invalid ID {extracted_id}")
+        return JsonResponse({
+            "ok": False, 
+            "error": "Invalid Card. Please use your official UTA MavID."
+        }, status=400)
+
+    # 3. Save to Database
     UserCard.objects.update_or_create(
         user=request.user,
         defaults={
@@ -1956,17 +2005,13 @@ def register_card(request):
 
     return JsonResponse({
         "ok": True, 
-        "message": f"Card linked successfully",
-        "debug_id": extracted_id
+        "message": f"UTA Card linked successfully (ID: {extracted_id})"
     })
 
 
 @csrf_exempt
 @require_POST
 def login_with_card(request):
-    """
-    Authenticate user by matching the unique extracted ID (PAN) from the card.
-    """
     try:
         data = json.loads(request.body.decode("utf-8"))
         raw_swipe = str(data.get("raw_swipe", "")).strip()
@@ -1976,36 +2021,18 @@ def login_with_card(request):
     if not raw_swipe:
         return JsonResponse({"ok": False, "error": "Card data required"}, status=400)
 
-    # --- PROFESSIONAL EXTRACTION (Same as Register) ---
-    extracted_id = None
+    # 1. Extract ID using same logic
+    extracted_id = parse_uta_card(raw_swipe)
     
-    # 1. Track 2 (The number you see in your DB: 6391...)
-    match = re.search(r";(\d{5,16})=", raw_swipe)
-    if match:
-        extracted_id = match.group(1)
-        
-    # 2. Track 3 (Standard Student ID if present)
-    if not extracted_id:
-        match = re.search(r"\+(\d{5,16})\?", raw_swipe)
-        if match:
-            extracted_id = match.group(1)
+    print(f"LOGIN ATTEMPT: Raw={raw_swipe} | Extracted={extracted_id}")
 
-    # 3. Track 1
-    if not extracted_id:
-        match = re.search(r"%[A-Z]?(\d{5,16})[\^?]", raw_swipe)
-        if match:
-            extracted_id = match.group(1)
-
-    print(f"DEBUG LOGIN: Raw={raw_swipe} | Extracted={extracted_id}")
-
-    # --- LOOKUP ---
     card_obj = None
 
-    # Try finding by Extracted ID (Primary)
+    # 2. Try finding user by Extracted ID (Primary)
     if extracted_id:
         card_obj = UserCard.objects.filter(uta_id=extracted_id).first()
 
-    # Fallback: Try Raw Swipe match
+    # 3. Fallback: Try Raw Swipe match (For older registrations or weird reads)
     if not card_obj:
         card_obj = UserCard.objects.filter(raw_swipe=raw_swipe).first()
 
@@ -2017,7 +2044,6 @@ def login_with_card(request):
     user.backend = "django.contrib.auth.backends.ModelBackend"
     login(request, user)
 
-    # Fetch profile for UI
     try:
         profile = UserProfile.objects.get(user=user)
         full_name = profile.full_name
