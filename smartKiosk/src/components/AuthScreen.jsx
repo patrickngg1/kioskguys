@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import AuthForm from './AuthForm';
 import { useNavigate } from 'react-router-dom';
 
@@ -6,6 +6,12 @@ export default function AuthScreen() {
   const navigate = useNavigate();
   const bufferRef = useRef('');
   const timerRef = useRef(null);
+
+  // 🔹 STATE: Manage the visual feedback for the swipe
+  const [swipeState, setSwipeState] = useState({
+    status: 'idle', // 'idle' | 'processing' | 'success' | 'error'
+    message: 'Reader Ready...',
+  });
 
   const handleLoginSuccess = (user) => {
     const safeUser = {
@@ -27,10 +33,11 @@ export default function AuthScreen() {
 
   useEffect(() => {
     const handleKeydown = (e) => {
-      // Ignore modifier keys
-      if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+      // 1. IGNORE SPECIAL KEYS (Shift, Ctrl, etc.)
+      if (['Shift', 'Control', 'Alt', 'Meta', 'Enter', 'Tab'].includes(e.key))
+        return;
 
-      // Allow swipe detection even if focused on input, but filter out slow typing
+      // 2. BUFFER KEYSTROKES
       bufferRef.current += e.key;
 
       clearTimeout(timerRef.current);
@@ -38,36 +45,72 @@ export default function AuthScreen() {
         const rawSwipe = bufferRef.current;
         bufferRef.current = '';
 
-        // Professional Logic: If it's a long string (>5 chars), it's a swipe.
-        if (rawSwipe.length > 5) {
-          console.log('CAPTURED SWIPE (Login):', rawSwipe);
+        // 3. CHECK BUFFER LENGTH
+        // Short bursts are likely manual typing or small autofills.
+        if (rawSwipe.length < 5) return;
 
-          try {
-            // Send RAW data to backend.
-            // We pass null for uta_id so the backend does the matching.
-            const res = await fetch('/api/card/login/', {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                raw_swipe: rawSwipe,
-                uta_id: null,
-              }),
+        // 4. CRITICAL FIX: DETECT IF IT IS ACTUALLY A CARD
+        // Magnetic cards ALWAYS start with '%' (Track 1) or ';' (Track 2).
+        // If the data doesn't have these, it's just an Autofill/Paste event.
+        // We simply RETURN and do nothing.
+        const isLikelyCard = /[%?;]/.test(rawSwipe);
+
+        if (!isLikelyCard) {
+          console.log('Ignored fast input (likely autofill/paste):', rawSwipe);
+          return;
+        }
+
+        console.log('CAPTURED VALID SWIPE:', rawSwipe);
+
+        // 5. IF WE GET HERE, IT IS A CARD -> PROCESS IT
+        setSwipeState({ status: 'processing', message: 'Verifying ID...' });
+
+        try {
+          const res = await fetch('/api/card/login/', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              raw_swipe: rawSwipe,
+              uta_id: null,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (data.ok && data.id) {
+            setSwipeState({
+              status: 'success',
+              message: `Welcome, ${
+                data.fullName ? data.fullName.split(' ')[0] : 'User'
+              }!`,
             });
 
-            const data = await res.json();
-
-            if (data.ok && data.id) {
+            setTimeout(() => {
               handleLoginSuccess(data);
-            } else {
-              console.error('Login failed:', data.error);
-              // Optional: Show a toast here if you have a toast context
-            }
-          } catch (err) {
-            console.error('Login network error:', err);
+            }, 1200);
+          } else {
+            console.error('Login failed:', data.error);
+
+            let errorMsg = 'Invalid Card';
+            if (data.error?.includes('not found')) errorMsg = 'Card Not Linked';
+            if (data.error?.includes('format')) errorMsg = 'Unknown Format';
+
+            setSwipeState({ status: 'error', message: errorMsg });
+
+            setTimeout(() => {
+              setSwipeState({ status: 'idle', message: 'Reader Ready...' });
+            }, 3000);
           }
+        } catch (err) {
+          console.error('Login network error:', err);
+          setSwipeState({ status: 'error', message: 'System Offline' });
+          setTimeout(
+            () => setSwipeState({ status: 'idle', message: 'Reader Ready...' }),
+            3000
+          );
         }
-      }, 100); // 100ms buffer
+      }, 100); // 100ms buffer window
     };
 
     window.addEventListener('keydown', handleKeydown);
@@ -76,7 +119,7 @@ export default function AuthScreen() {
 
   return (
     <div id='auth-section'>
-      <AuthForm onLoginSuccess={handleLoginSuccess} />
+      <AuthForm onLoginSuccess={handleLoginSuccess} swipeState={swipeState} />
     </div>
   );
 }

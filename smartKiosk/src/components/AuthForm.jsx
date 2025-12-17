@@ -86,9 +86,10 @@ function PasswordInput({
   );
 }
 
-export default function AuthForm({ onLoginSuccess }) {
+// 🔹 Updated: Accepts swipeState prop
+export default function AuthForm({ onLoginSuccess, swipeState }) {
   const [view, setView] = useState('login'); // 'login' | 'register'
-  const [resetMode, setResetMode] = useState(false); // 🔹 NEW: login vs reset-email mode
+  const [resetMode, setResetMode] = useState(false); // login vs reset-email mode
 
   const [toast, setToast] = useState(null);
   const showToast = (type, message) => setToast({ type, message });
@@ -101,6 +102,12 @@ export default function AuthForm({ onLoginSuccess }) {
 
   const [fullName, setFullName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Separate error state for Login to show live validation
+  const [loginEmailError, setLoginEmailError] = useState('');
+
+  // Button state management ('idle' | 'loading' | 'success')
+  const [loginStatus, setLoginStatus] = useState('idle');
 
   const [errors, setErrors] = useState({
     fullName: '',
@@ -115,7 +122,7 @@ export default function AuthForm({ onLoginSuccess }) {
     level: 0,
   });
 
-  const [resetLoading, setResetLoading] = useState(false); // 🔹 NEW
+  const [resetLoading, setResetLoading] = useState(false);
 
   /* ===== Live validation helpers ===== */
   const validateFullNameLive = (value) => {
@@ -156,7 +163,7 @@ export default function AuthForm({ onLoginSuccess }) {
     setTimeout(() => setShake(false), 400);
   };
 
-  /* Derived flag for Register button */
+  /* Derived flags */
   const isRegisterValid =
     fullName.trim() &&
     email.trim() &&
@@ -167,28 +174,23 @@ export default function AuthForm({ onLoginSuccess }) {
     !errors.password &&
     !errors.confirmPassword;
 
+  // Check if Login is ready (Valid email + non-empty password)
+  const isLoginValid =
+    email.trim() && !loginEmailError && password.trim().length > 0;
+
+  // Check if Reset is ready (Valid email only)
+  const isResetValid = email.trim() && !loginEmailError;
+
   /* ===== LOGIN handler (normal or with 6-digit code) ===== */
   async function handleLogin(e) {
     e.preventDefault();
 
-    // 🔥 Always lowercase before use
+    if (loginStatus !== 'idle') return; // Prevent double clicks
+
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPassword = password.trim();
 
-    if (!trimmedEmail && !trimmedPassword) {
-      showToast('error', 'Email and password are required.');
-      triggerShake();
-      return;
-    }
-
-    if (!trimmedEmail) {
-      showToast('error', 'Email is required.');
-      triggerShake();
-      return;
-    }
-
-    if (!trimmedPassword) {
-      showToast('error', 'Password is required.');
+    if (!trimmedEmail || !trimmedPassword) {
       triggerShake();
       return;
     }
@@ -199,13 +201,14 @@ export default function AuthForm({ onLoginSuccess }) {
       return;
     }
 
-    showToast('success', 'Signing In…');
+    // 1. Change button to "Signing In..."
+    setLoginStatus('loading');
 
     try {
-      // loginWithSession returns the full response object: { id, email, fullName, ... }
       const response = await loginWithSession(trimmedEmail, trimmedPassword);
 
-      showToast('success', 'Login successful!');
+      // 2. Change button to "Success! ✔"
+      setLoginStatus('success');
 
       const userPayload = {
         id: response.id,
@@ -215,10 +218,14 @@ export default function AuthForm({ onLoginSuccess }) {
         mustSetPassword: !!response.mustSetPassword,
       };
 
+      // 3. Wait a moment for the user to see the success state
       setTimeout(() => {
         onLoginSuccess?.(userPayload);
-      }, 500);
+      }, 1000);
     } catch (err) {
+      // Revert button state on error
+      setLoginStatus('idle');
+
       setToast({
         type: 'error',
         message: err.message.includes('Failed to fetch')
@@ -236,7 +243,6 @@ export default function AuthForm({ onLoginSuccess }) {
     const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedEmail) {
-      showToast('error', 'Email is required.');
       triggerShake();
       return;
     }
@@ -260,10 +266,9 @@ export default function AuthForm({ onLoginSuccess }) {
       setResetMode(false);
       setPassword('');
 
-      // ✅ Back to login view with email prefilled; user now types the 6-digit code as password
       setResetMode(false);
       setView('login');
-      setPassword(''); // clear password
+      setPassword('');
 
       setTimeout(() => {
         document.querySelector('input[type="password"]')?.focus();
@@ -284,7 +289,6 @@ export default function AuthForm({ onLoginSuccess }) {
     e.preventDefault();
 
     const lowerEmail = email.trim().toLowerCase();
-
     const fullNameErr = validateFullNameLive(fullName);
     const emailErr = validateEmailLive(lowerEmail);
     const passwordErr = validatePasswordLive(password);
@@ -297,23 +301,7 @@ export default function AuthForm({ onLoginSuccess }) {
       confirmPassword: confirmErr,
     });
 
-    if (fullNameErr) {
-      showToast('error', fullNameErr);
-      triggerShake();
-      return;
-    }
-    if (emailErr) {
-      showToast('error', emailErr);
-      triggerShake();
-      return;
-    }
-    if (passwordErr) {
-      showToast('error', passwordErr);
-      triggerShake();
-      return;
-    }
-    if (confirmErr) {
-      showToast('error', confirmErr);
+    if (fullNameErr || emailErr || passwordErr || confirmErr) {
       triggerShake();
       return;
     }
@@ -332,7 +320,6 @@ export default function AuthForm({ onLoginSuccess }) {
       setView('login');
       setResetMode(false);
       setTimeout(() => {
-        // focuses the password field specifically, not the email
         document
           .querySelector('#login-password-input, input[type="password"]')
           ?.focus();
@@ -357,6 +344,38 @@ export default function AuthForm({ onLoginSuccess }) {
       triggerShake();
     }
   }
+
+  // Helper to get button content based on state
+  const getLoginButtonContent = () => {
+    if (loginStatus === 'loading') return 'Signing In...';
+    if (loginStatus === 'success') return 'Success! ✔';
+    return 'Sign In';
+  };
+
+  // 🔹 UPDATED: Luxury Button Style (Gold)
+  const getLoginButtonStyle = () => {
+    if (loginStatus === 'success') {
+      return {
+        backgroundColor: '#D4AF37', // Gold
+        borderColor: '#D4AF37',
+        color: '#fff',
+        transition: 'all 0.3s ease',
+      };
+    }
+    if (loginStatus === 'loading') {
+      return { opacity: 0.8, cursor: 'wait' };
+    }
+    return {};
+  };
+
+  // 🔹 HELPER: Determine visual class for scanner
+  const getScannerClass = () => {
+    if (!swipeState) return '';
+    if (swipeState.status === 'processing') return 'scanner-processing';
+    if (swipeState.status === 'success') return 'scanner-success';
+    if (swipeState.status === 'error') return 'scanner-error';
+    return '';
+  };
 
   return (
     <div id='auth-container' className='form-container'>
@@ -383,11 +402,10 @@ export default function AuthForm({ onLoginSuccess }) {
             type='button'
             className={`tab-button ${view === 'login' ? 'active' : ''}`}
             onClick={() => {
+              if (loginStatus !== 'idle') return; // Lock tabs during login
               setView('login');
-              setResetMode(false); // 🔹 reset mode off when switching tabs
-              setTimeout(() => {
-                document.getElementById('login-email-input')?.focus();
-              }, 10);
+              setResetMode(false);
+              setLoginEmailError('');
             }}
           >
             Sign In
@@ -397,8 +415,9 @@ export default function AuthForm({ onLoginSuccess }) {
             type='button'
             className={`tab-button ${view === 'register' ? 'active' : ''}`}
             onClick={() => {
+              if (loginStatus !== 'idle') return; // Lock tabs during login
               setView('register');
-              setResetMode(false); // 🔹 reset mode off when switching tabs
+              setResetMode(false);
               setTimeout(() => {
                 document.getElementById('register-fullname-input')?.focus();
               }, 10);
@@ -416,15 +435,31 @@ export default function AuthForm({ onLoginSuccess }) {
               <form onSubmit={handleResetRequest}>
                 <div className='form-group'>
                   <label>UTA Email</label>
-                  <input
-                    id='reset-email-input'
-                    className='input-field'
-                    type='email'
-                    placeholder='email@mavs.uta.edu'
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete='email'
-                  />
+                  <div
+                    className={`input-check-wrap ${
+                      !loginEmailError && email.trim() ? 'valid-field' : ''
+                    }`}
+                  >
+                    <input
+                      id='reset-email-input'
+                      className='input-field'
+                      type='email'
+                      placeholder='email@mavs.uta.edu'
+                      value={email}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEmail(v);
+                        setLoginEmailError(validateEmailLive(v));
+                      }}
+                      autoComplete='email'
+                    />
+                    {!loginEmailError && email.trim() && (
+                      <span className='checkmark'>✔</span>
+                    )}
+                  </div>
+                  {loginEmailError && (
+                    <div className='inline-error'>{loginEmailError}</div>
+                  )}
                 </div>
 
                 <p
@@ -440,30 +475,62 @@ export default function AuthForm({ onLoginSuccess }) {
                   Please check your inbox and your spam folder.
                 </p>
 
-                <button className='auth-button' disabled={resetLoading}>
+                <button
+                  className='auth-button'
+                  disabled={!isResetValid || resetLoading}
+                >
                   {resetLoading ? 'Sending reset code…' : 'Send Reset Code'}
+                </button>
+
+                <button
+                  type='button'
+                  className='forgot-password-link'
+                  style={{
+                    marginTop: '1rem',
+                    width: '100%',
+                    textAlign: 'center',
+                  }}
+                  onClick={() => {
+                    setResetMode(false);
+                    setLoginEmailError('');
+                  }}
+                >
+                  Back to Sign In
                 </button>
               </form>
             ) : (
               /* ------ NORMAL LOGIN MODE ------ */
-              // ... inside AuthForm.jsx
-
-              /* ------ NORMAL LOGIN MODE ------ */
               <form onSubmit={handleLogin}>
-                {/* ... (Your existing Email Input) ... */}
                 <div className='form-group'>
                   <label>Email</label>
-                  <input
-                    id='login-email-input'
-                    className='input-field'
-                    type='email'
-                    placeholder='email@uta.edu'
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete='username'
-                  />
+                  <div
+                    className={`input-check-wrap ${
+                      !loginEmailError && email.trim() ? 'valid-field' : ''
+                    }`}
+                  >
+                    <input
+                      id='login-email-input'
+                      className='input-field'
+                      type='email'
+                      placeholder='email@uta.edu'
+                      value={email}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEmail(v);
+                        setLoginEmailError(validateEmailLive(v));
+                      }}
+                      autoComplete='username'
+                      disabled={loginStatus !== 'idle'} // Disable during login
+                    />
+                    {!loginEmailError && email.trim() && (
+                      <span className='checkmark'>✔</span>
+                    )}
+                  </div>
+                  {loginEmailError && (
+                    <div className='inline-error'>{loginEmailError}</div>
+                  )}
                 </div>
-                {/* ... (Your existing Password Input) ... */}
+
                 <div className='form-group'>
                   <label>Password</label>
                   <PasswordInput
@@ -472,6 +539,7 @@ export default function AuthForm({ onLoginSuccess }) {
                     placeholder='Enter your password'
                     inputClass='input-field'
                     autoComplete='current-password'
+                    // Add logic to disable input if needed
                   />
                   <div
                     style={{
@@ -484,8 +552,10 @@ export default function AuthForm({ onLoginSuccess }) {
                       <button
                         type='button'
                         className='forgot-password-link'
+                        disabled={loginStatus !== 'idle'}
                         onClick={() => {
                           setResetMode(true);
+                          setLoginEmailError(validateEmailLive(email));
                           setTimeout(() => {
                             document
                               .getElementById('reset-email-input')
@@ -498,8 +568,17 @@ export default function AuthForm({ onLoginSuccess }) {
                     </div>
                   </div>
                 </div>
-                <button className='auth-button'>Sign In</button>
-                {/* ✅ PREMIUM SWIPE INDICATOR v2.0 */}
+
+                {/* 🔹 Elegant Dynamic Button */}
+                <button
+                  className='auth-button'
+                  disabled={!isLoginValid || loginStatus !== 'idle'}
+                  style={getLoginButtonStyle()}
+                >
+                  {getLoginButtonContent()}
+                </button>
+
+                {/* ✅ LUXURY SWIPE INDICATOR (Final) */}
                 <div className='swipe-section-premium'>
                   <div className='premium-divider'>
                     <span className='divider-line'></span>
@@ -507,26 +586,30 @@ export default function AuthForm({ onLoginSuccess }) {
                     <span className='divider-line'></span>
                   </div>
 
-                  <div className='glass-scanner-card'>
-                    {/* The animated light beam */}
+                  {/* 🔹 Dynamic Class applied here */}
+                  <div className={`glass-scanner-card ${getScannerClass()}`}>
                     <div className='scanner-beam'></div>
-
+                    <div className='scanner-glow-overlay'></div>
                     <div className='scanner-content'>
                       <div className='scanner-icon'>
                         <div className='card-shape'>
                           <div className='mag-strip'></div>
                         </div>
-                        <div className='scan-line'></div>
+                        {/* 🔹 Hide scan-line on error/success for cleaner look */}
+                        {(!swipeState || swipeState.status === 'idle') && (
+                          <div className='scan-line'></div>
+                        )}
                       </div>
-
                       <div className='scanner-text-group'>
                         <span className='scanner-label'>Swipe Access</span>
-                        <span className='scanner-status'>Reader Ready...</span>
+                        {/* 🔹 Dynamic Message */}
+                        <span className='scanner-status'>
+                          {swipeState ? swipeState.message : 'Reader Ready...'}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
-                {/* ℹ️ END NEW SECTION */}
               </form>
             )
           ) : (

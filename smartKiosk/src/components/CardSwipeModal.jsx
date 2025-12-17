@@ -1,4 +1,6 @@
+// src/components/CardSwipeModal.jsx
 import React, { useEffect, useRef } from 'react';
+import '../styles/CardSwipeModal.css';
 
 export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
   const bufferRef = useRef('');
@@ -6,35 +8,27 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
 
   useEffect(() => {
     if (!isOpen) return;
-
     bufferRef.current = '';
 
     const handleKey = (e) => {
-      // Ignore modifier keys to prevent capturing 'Shift', 'Control', etc.
+      // Ignore modifier keys
       if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key))
         return;
 
       bufferRef.current += e.key;
 
-      // Restart timer — swipe finishes within ~100ms
       if (timerRef.current) clearTimeout(timerRef.current);
 
       timerRef.current = setTimeout(() => {
         const rawSwipe = bufferRef.current;
         bufferRef.current = '';
-
-        // Professional Logic: If we got a long string, send it.
-        // We do NOT validate here. We let the backend handle the complex parsing.
         if (rawSwipe.length > 5) {
-          console.log('CAPTURED RAW SWIPE:', rawSwipe);
-          // Send raw data with uta_id as null (Backend will extract it)
           onCapture({ raw: rawSwipe, uta_id: null });
         }
-      }, 100); // 100ms buffer window
+      }, 100);
     };
 
     window.addEventListener('keydown', handleKey);
-
     return () => {
       window.removeEventListener('keydown', handleKey);
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -44,22 +38,50 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
   if (!isOpen) return null;
 
   return (
-    <div className='swipe-modal-overlay' onClick={onClose}>
-      <div
-        className='modal-box swipe-modal'
-        style={{ maxWidth: 420, textAlign: 'center' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className='swipe-modal-overlay'>
+      <div className='swipe-modal' onClick={(e) => e.stopPropagation()}>
         <button className='close-btn' onClick={onClose}>
           ✕
         </button>
 
-        {/* Premium animation preserved */}
+        {/* 3D Animation Stage */}
         <div className='swipe-animation-container'>
-          <div className='card-reader-slot'></div>
-          <div className='card-graphic'>
-            <div className='mag-stripe' />
+          {/* The Laser Beam */}
+          <div className='laser-beam'></div>
+
+          {/* The Digital UTA Card */}
+          <div className='card-graphic uta-card'>
+            {/* Holographic Shine Overlay */}
+            <div className='holo-sheen'></div>
+
+            {/* Orange Header */}
+            <div className='uta-header'>
+              <div className='uta-a-logo'>A</div>
+              {/* ✅ UPDATED TEXT */}
+              <span className='uta-label'>Student/Faculty</span>
+              <div className='uta-horse-logo'></div>
+            </div>
+
+            {/* Blue Body */}
+            <div className='uta-body'>
+              <div className='uta-photo-box'>
+                <div className='photo-shimmer'></div>
+              </div>
+              <div className='uta-info'>
+                <div className='uta-name'>MAVERICK, SAM</div>
+                <div className='uta-id-bar'></div>
+                <div className='uta-issue'>Issue Date: 08/25/25</div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className='uta-footer'>
+              THE UNIVERSITY OF TEXAS AT ARLINGTON
+            </div>
           </div>
+
+          {/* The Reader Slot */}
+          <div className='card-reader-slot'></div>
         </div>
 
         <h2 className='swipe-title'>Swipe Your UTA Card</h2>
@@ -68,7 +90,7 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
           automatically.
         </p>
 
-        <div className='swipe-hint'>Waiting for card swipe…</div>
+        <div className='swipe-hint'>Waiting for swipe...</div>
       </div>
     </div>
   );

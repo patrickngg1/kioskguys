@@ -10,6 +10,8 @@ def banner_upload_path(instance, filename):
 class BannerImage(models.Model):
     image = models.ImageField(upload_to=banner_upload_path)
     label = models.CharField(max_length=128, blank=True)
+    # ✅ NEW: Link field for QR codes
+    link = models.URLField(max_length=500, blank=True, null=True) 
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     start_date = models.DateField(null=True, blank=True)

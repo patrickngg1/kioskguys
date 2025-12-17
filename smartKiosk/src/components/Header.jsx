@@ -1,6 +1,6 @@
 // src/components/Header.jsx
 import React, { useEffect, useState, useContext } from 'react';
-import { UIAssetsContext } from '../App'; // 🔥 use global assets
+import { UIAssetsContext } from '../App';
 
 export default function Header() {
   const assets = useContext(UIAssetsContext); // 🔥 access Django images

@@ -55,12 +55,15 @@
   font-weight: 600;
   color: rgba(30, 30, 30, 0.95);
   line-height: 1.35;
+  padding-right: 30px;
+  word-break: break-word;
 }
 
 /* CLOSE BUTTON (premium pill-style) */
 .auth-toast-close {
   background: rgba(255, 255, 255, 0.55);
   border: none;
+  z-index: 10;
 
   /* --- SHAPE FIXES --- */
   width: 28px;

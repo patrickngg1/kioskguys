@@ -1,0 +1,159 @@
+/* ================================
+   PREMIUM INPUT — UNIFIED STYLE
+================================ */
+
+.premium-input-wrapper {
+  width: 100%;
+  display: flex;
+}
+
+/* ===== BASE (input, select, textarea, button) ===== */
+.premium-input-field,
+.premium-input-field select,
+.premium-input-field textarea,
+button.premium-input-field {
+  width: 100%;
+  height: 44px !important; /* Force standard height */
+  padding: 0 14px;
+
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  color: #ffffff !important;
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: inherit;
+
+  outline: none;
+  box-sizing: border-box !important;
+
+  transition: all 0.2s ease;
+}
+
+/* ===== DATE PICKER ICON (BRIGHT WHITE FIX) ===== */
+.premium-input-field[type='date'] {
+  padding-right: 10px;
+  color: #ffffff;
+}
+
+.premium-input-field[type='date']::-webkit-calendar-picker-indicator {
+  /* Force pure white icon */
+  filter: invert(1);
+  opacity: 1 !important;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+}
+
+/* ===== BUTTON SPECIFIC (AM/PM) ===== */
+button.premium-input-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+/* 🔵 AM MODE - BLUE */
+button.premium-input-field.am-mode {
+  background: rgba(59, 130, 246, 0.45) !important;
+  border: 1px solid #3b82f6 !important;
+  color: #eff6ff !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.35) !important;
+}
+
+/* 🟠 PM MODE - ORANGE */
+button.premium-input-field.pm-mode {
+  background: rgba(249, 115, 22, 0.45) !important;
+  border: 1px solid #f97316 !important;
+  color: #fff7ed !important;
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.35) !important;
+}
+
+/* Hover States */
+button.premium-input-field:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+button.premium-input-field.am-mode:hover {
+  background: rgba(59, 130, 246, 0.6) !important;
+}
+button.premium-input-field.pm-mode:hover {
+  background: rgba(249, 115, 22, 0.6) !important;
+}
+
+/* ===== FOCUS STATES ===== */
+.premium-input-field:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
+}
+
+/* ===== SELECT ARROW ===== */
+select.premium-input-field {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 20' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px;
+  padding-right: 40px;
+}
+
+.premium-input-field::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ===== FILE INPUT ===== */
+input[type='file'].premium-input-field {
+  padding: 6px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+}
+input[type='file'].premium-input-field::file-selector-button {
+  margin-right: 14px;
+  padding: 6px 14px;
+  height: 100%;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== DATE PICKER ICON (SUPER BRIGHT FIX) ===== */
+.premium-input-field[type='date'] {
+  padding-right: 10px;
+  /* Force the browser to render the 'default' black icon first */
+  color-scheme: light;
+}
+
+.premium-input-field[type='date']::-webkit-calendar-picker-indicator {
+  /* 1. Force icon to BLACK (brightness 0) */
+  /* 2. Invert it to pure WHITE (invert 1) */
+  filter: brightness(0) invert(1) !important;
+
+  /* Force full visibility */
+  opacity: 1 !important;
+
+  /* Make it larger and easier to tap */
+  width: 24px;
+  height: 24px;
+
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.premium-input-field[type='date']::-webkit-calendar-picker-indicator:hover {
+  /* Add a slight glow on hover */
+  opacity: 0.8 !important;
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}

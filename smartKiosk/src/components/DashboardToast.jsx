@@ -69,10 +69,8 @@ export default function DashboardToast({ type, message, visible, onClose }) {
           {message}
         </span>
 
-        {/* PREMIUM CLOSE BUTTON (NEW) */}
-        {/* Orange-glow premium close X */}
         <span
-          className='close-btn'
+          className='close-btn-toast'
           onClick={() => {
             setFadeOut(true);
             setTimeout(() => onClose(), 200);

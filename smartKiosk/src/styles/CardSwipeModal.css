@@ -1,119 +1,380 @@
-/* Card swipe modal overlay */
+/* ============================================================
+   "BILLION DOLLAR" OBSIDIAN MODAL + UTA CARD REPLICA
+   ============================================================ */
+
+/* 1. The Overlay */
 .swipe-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
+  background: rgba(2, 6, 23, 0.416); /* Deep Void */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 7000 !important; /* BELOW inactivity modal */
+  z-index: 7000 !important;
+  animation: fadeInOverlay 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Card swipe modal visuals */
+/* 2. The Obsidian Modal */
 .swipe-modal {
   position: relative;
-  background: rgba(15, 23, 42, 0.96);
-  border-radius: 18px;
-  padding: 28px 28px 26px;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+  width: 460px;
+  padding: 40px 32px 48px;
+  border-radius: 32px;
+  text-align: center;
+  overflow: hidden;
+
+  /* Obsidian Gradient */
+  background: linear-gradient(
+    180deg,
+    rgba(30, 41, 59, 0.7) 0%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+
+  /* Inner Lighting */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    0 25px 60px -12px rgba(0, 0, 0, 0.8),
+    0 0 80px -20px rgba(59, 130, 246, 0.15);
+
   z-index: 99 !important;
+  animation: modalScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Card that slides */
-.card-graphic {
+.swipe-modal .close-btn {
   position: absolute;
-  top: 16px;
-  left: 10px;
+  top: 24px;
+  right: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: cardSlide 1.8s ease-in-out infinite;
-  width: 150px;
-  height: 94px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #2563eb, #1e40af, #9333ea, #ea580c);
-  background-size: 250% 250%;
-  animation: gradientShift 6s ease infinite,
-    cardSlideIntoSlot 2s ease-in-out infinite;
-  bottom: 60px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 12px rgba(37, 99, 235, 0.4);
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.swipe-modal .close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: scale(1.05);
 }
 
+/* 3. Animation Stage */
+.swipe-animation-container {
+  position: relative;
+  width: 100%;
+  height: 220px; /* Taller for the card swipe */
+  margin: 10px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
+}
+
+/* 4. The UTA Card Graphic */
+.card-graphic.uta-card {
+  position: absolute;
+  width: 260px; /* Real card ratio approx */
+  height: 164px;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+
+  /* Premium Physicality */
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+
+  /* The "Swipe" Animation */
+  animation: utaCardSwipe 3.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Holographic Sheen */
+.holo-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.4) 45%,
+    rgba(255, 255, 255, 0) 50%
+  );
+  background-size: 200% 200%;
+  mix-blend-mode: overlay;
+  z-index: 10;
+  pointer-events: none;
+  animation: holoSheen 3.5s linear infinite;
+}
+
+/* --- Internal UTA Card Design --- */
+
+.uta-header {
+  height: 38%;
+  background: linear-gradient(90deg, #f97316 0%, #ea580c 100%); /* UTA Orange */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px; /* Adjusted padding */
+  position: relative;
+}
+
+.uta-a-logo {
+  font-family: serif;
+  font-weight: 900;
+  font-size: 2rem;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.uta-label {
+  font-family: sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem; /* Sized for "Student/Faculty" */
+  color: #fff;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ✅ UPDATED: Horse Logo from Media Folder */
+.uta-horse-logo {
+  width: 55px;
+  height: 55px;
+  /* Assumed filename - Verify if it is uta_horse.png or similar */
+  background-image: url('/media/ui_assets/uta_horse.jpg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.uta-body {
+  flex: 1;
+  background: #0064b1; /* UTA Blue */
+  padding: 10px 14px;
+  display: flex;
+  gap: 12px;
+  position: relative;
+}
+
+.uta-photo-box {
+  width: 65px;
+  height: 80px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  position: relative;
+}
+
+.photo-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.8),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: photoFlash 3.5s ease-in-out infinite;
+}
+
+.uta-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.uta-name {
+  font-size: 0.9rem;
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  text-align: left;
+}
+
+.uta-id-bar {
+  width: 80%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.uta-issue {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  text-align: left;
+}
+
+.uta-footer {
+  background: #d97706; /* Bottom gold/orange strip */
+  height: 14px;
+  font-size: 0.4rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* 5. The "Scanner" Slot */
+.card-reader-slot {
+  width: 320px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 100px;
+  position: absolute;
+  bottom: 30px;
+  z-index: 1;
+
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 25px rgba(59, 130, 246, 0.3), inset 0 2px 6px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+/* The Laser Beam */
+.laser-beam {
+  position: absolute;
+  bottom: 34px; /* Aligned with slot */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 2px;
+  background: #60a5fa;
+  box-shadow: 0 0 15px #60a5fa, 0 0 30px #3b82f6;
+  opacity: 0;
+  z-index: 5;
+  animation: laserPulse 3.5s ease-in-out infinite;
+}
+
+/* 6. Typography */
 .swipe-title {
-  margin-top: 4px;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #f9fafb;
+  margin: 0;
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to bottom, #ffffff, #cbd5e1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
 }
 
 .swipe-subtitle {
-  margin-top: 6px;
-  font-size: 0.95rem;
-  color: #cbd5f5;
+  margin-top: 12px;
+  font-size: 1rem;
+  color: #94a3b8;
+  line-height: 1.6;
 }
 
 .swipe-hint {
-  margin-top: 12px;
-  font-size: 0.85rem;
-  color: #b2bac8;
-  letter-spacing: 0.03em;
+  margin-top: 28px;
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #3b82f6;
+
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+
+  animation: pulseBadge 2s ease-in-out infinite;
 }
 
-/* Container for animation */
-.swipe-animation-container {
-  position: relative;
-  width: 240px;
-  height: 140px;
-  margin: 0 auto 18px auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* --- Animations --- */
 
-/* Realistic card reader slot */
-.card-reader-slot {
-  width: 200px;
-  height: 18px;
-  background: linear-gradient(to bottom, #00000057, #11182796);
-  border-radius: 8px;
-  box-shadow: 0 10px 55px rgba(27, 27, 255, 0.655), 0 0 8px rgb(54, 118, 255);
-  position: absolute;
-  bottom: 40px;
-}
-
-/* Magnetic stripe aligned to slot */
-.mag-stripe {
-  width: 100%;
-  height: 22px;
-  background: #000;
-  border-radius: 4px 4px 0 0;
-  margin-top: 35px;
-  opacity: 0.95;
-}
-
-/* Card sliding horizontally into the slot */
-@keyframes cardSlideIntoSlot {
-  0% {
-    transform: translateX(-45px);
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
   }
-  50% {
-    transform: translateX(70px);
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Complex Swipe: Lift -> Tilt -> Slide -> Return */
+@keyframes utaCardSwipe {
+  0% {
+    transform: translateX(-100px) rotateY(-10deg) scale(0.9);
+  }
+  40% {
+    transform: translateX(100px) rotateY(10deg) scale(0.9);
+  } /* Slide through */
+  100% {
+    transform: translateX(-100px) rotateY(-10deg) scale(0.9);
+  }
+}
+
+@keyframes holoSheen {
+  0% {
+    background-position: 200% 50%;
   }
   100% {
-    transform: translateX(-45px);
+    background-position: -200% 50%;
   }
 }
 
-/* Subtle gradient motion */
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
+@keyframes laserPulse {
+  0%,
+  100% {
+    opacity: 0;
+    width: 50px;
+  }
+  40%,
+  60% {
+    opacity: 1;
+    width: 300px;
+  } /* Brightest during swipe pass */
+}
+
+@keyframes pulseBadge {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0);
   }
   50% {
-    background-position: 100% 50%;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
   }
+}
+
+@keyframes photoFlash {
+  0%,
+  35% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  } /* Flash across */
   100% {
-    background-position: 0% 50%;
+    transform: translateX(100%);
   }
 }

@@ -12,6 +12,7 @@ import Dashboard from './components/Dashboard';
 import Header from './components/Header';
 import StartOverlay from './components/StartOverlay';
 import './styles/App.css';
+import './styles/Glass.css';
 
 // 🟦 NEW: Context to store all Django UI asset URLs
 export const UIAssetsContext = createContext(null);

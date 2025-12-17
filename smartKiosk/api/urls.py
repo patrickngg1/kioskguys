@@ -12,6 +12,10 @@ urlpatterns = [
     path("logout/", views.logoutSession, name="logout_user"),          # ✅ Added safely
     path("register/", views.register_user, name="register_user"),      # ✅ Added safely
     path("me/", get_session_user, name="get_session_user"),
+    path("me/update-name/", views.update_user_name, name="update_user_name"),
+
+    path("password-reset/request/", password_reset_request, name="password_reset_request"),
+    # ... other paths ...
     path("password-reset/request/", password_reset_request, name="password_reset_request"),
     path("set-password/", views.set_password),
 
@@ -93,10 +97,11 @@ urlpatterns = [
     path("banners/", views.list_banners),
     path("banners/upload/", views.upload_banner),
     path("banners/<int:banner_id>/activate/", views.activate_banner),
+    path("banners/<int:banner_id>/deactivate/", views.deactivate_banner),
     path("banners/<int:banner_id>/delete/", views.delete_banner),
-    path("banners/active/", views.get_active_banner),
-    path("banners/deactivate/", views.deactivate_active_banner),
     path("banners/<int:banner_id>/schedule/", views.schedule_banner),
+    path("banners/<int:banner_id>/update/", views.update_banner),
+    path("banners/active/", views.get_active_banners),
 
         # --------------------------
     # Card Swipe Auth

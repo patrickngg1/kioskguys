@@ -40,42 +40,17 @@ from .models import (
 from datetime import datetime, timedelta, time
 from django.utils import timezone
 import random
-
 def auto_update_banner_state():
-    """
-    Ensure scheduled banners obey their date ranges.
-    - If a banner has start_date/end_date and 'today' is in that range,
-      it becomes the one active banner.
-    - If no schedule matches today, scheduled banners that are out of range
-      get deactivated, but manually activated non-scheduled banners are left alone.
-    """
     today = timezone.localdate()
 
-    # Banners that have a full schedule
-    scheduled_qs = BannerImage.objects.filter(
-        start_date__isnull=False,
-        end_date__isnull=False,
-    )
-
-    # Pick the newest scheduled banner that is valid today
-    active_candidate = (
-        scheduled_qs
-        .filter(start_date__lte=today, end_date__gte=today)
-        .order_by('-created_at')
-        .first()
-    )
-
-    if active_candidate:
-        # Make this one the only active banner
-        BannerImage.objects.update(is_active=False)
-        active_candidate.is_active = True
-        active_candidate.save()
-    else:
-        # No schedule is valid today → make sure scheduled ones are not active
-        for b in scheduled_qs.filter(is_active=True):
-            if not (b.start_date <= today <= b.end_date):
+    for b in BannerImage.objects.all():
+        if b.start_date and b.end_date:
+            if b.start_date <= today <= b.end_date:
+                b.is_active = True
+            else:
                 b.is_active = False
-                b.save()
+            b.save(update_fields=["is_active"])
+
 
 # ---------------------------
 #  LIST ALL BANNERS (ADMIN)
@@ -93,6 +68,7 @@ def list_banners(request):
             "id": b.id,
             "image_url": request.build_absolute_uri(b.image.url),
             "label": b.label,
+            "link": b.link,
             "is_active": b.is_active,
             "start_date": b.start_date.isoformat() if b.start_date else None,
             "end_date": b.end_date.isoformat() if b.end_date else None,
@@ -115,10 +91,12 @@ def upload_banner(request):
         return JsonResponse({"ok": False, "error": "No file uploaded"}, status=400)
 
     label = request.POST.get("label", "")
+    link = request.POST.get("link", "").strip()  # ✅ GET LINK
 
     banner = BannerImage.objects.create(
         image=file,
         label=label,
+        link=link if link else None,  # ✅ SAVE LINK
         start_date=None,
         end_date=None,
     )
@@ -129,6 +107,7 @@ def upload_banner(request):
             "id": banner.id,
             "image_url": request.build_absolute_uri(banner.image.url),
             "label": banner.label,
+            "link": banner.link, # ✅ RETURN LINK
             "is_active": banner.is_active,
             "start_date": None,
             "end_date": None,
@@ -179,26 +158,26 @@ def activate_banner(request, banner_id):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
 
-    try:
-        banner = BannerImage.objects.get(id=banner_id)
-    except BannerImage.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Not found"}, status=404)
+    banner = BannerImage.objects.get(id=banner_id)
 
-    # 1. Turn off everything else
-    BannerImage.objects.update(is_active=False)
-
-    # 2. Activate this banner
     banner.is_active = True
-
-    # 3. CRITICAL FIX: Clear the schedule dates.
-    # This prevents the auto-scheduler from immediately turning it off 
-    # if the dates are in the past/future.
-    # It effectively converts this to a "Manual / Always On" banner.
     banner.start_date = None
     banner.end_date = None
     banner.save()
 
-    return JsonResponse({"ok": True}, status=200)
+    return JsonResponse({"ok": True})
+
+@csrf_exempt
+@require_POST
+def deactivate_banner(request, banner_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    banner = BannerImage.objects.get(id=banner_id)
+    banner.is_active = False
+    banner.save()
+
+    return JsonResponse({"ok": True})
 
 
 # ---------------------------
@@ -252,13 +231,60 @@ def delete_banner(request, banner_id):
 #  GET ACTIVE BANNER (KIOSK)
 # ---------------------------
 @require_GET
-def get_active_banner(request):
+def get_active_banners(request):
     auto_update_banner_state()
 
-    banner = BannerImage.objects.filter(is_active=True).first()
+    banners = BannerImage.objects.filter(is_active=True)
 
-    if not banner:
-        return JsonResponse({"ok": True, "banner": None})
+    return JsonResponse({
+        "ok": True,
+        "banners": [
+            {
+                "id": b.id,
+                "image_url": request.build_absolute_uri(b.image.url),
+                "label": b.label,
+                "link": b.link,
+            }
+            for b in banners
+        ],
+    })
+
+# ---------------------------
+#  UPDATE BANNER (ADMIN)
+# ---------------------------
+@csrf_exempt
+@require_POST
+def update_banner(request, banner_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
+    try:
+        banner = BannerImage.objects.get(id=banner_id)
+    except BannerImage.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Banner not found"}, status=404)
+
+    # Update text fields
+    label = request.POST.get("label")
+    link = request.POST.get("link")
+    
+    if label is not None:
+        banner.label = label
+    
+    if link is not None:
+        banner.link = link.strip()
+
+    # Update image if a new file is provided
+    file = request.FILES.get("file")
+    if file:
+        # Optional: Delete old image file to save space
+        if banner.image and os.path.isfile(banner.image.path):
+            try:
+                os.remove(banner.image.path)
+            except OSError:
+                pass
+        banner.image = file
+
+    banner.save()
 
     return JsonResponse({
         "ok": True,
@@ -266,9 +292,12 @@ def get_active_banner(request):
             "id": banner.id,
             "image_url": request.build_absolute_uri(banner.image.url),
             "label": banner.label,
-        },
+            "link": banner.link,
+            "is_active": banner.is_active,
+            "start_date": banner.start_date.isoformat() if banner.start_date else None,
+            "end_date": banner.end_date.isoformat() if banner.end_date else None,
+        }
     })
-
 
 # ============================================================
 # GET /api/users/
@@ -297,6 +326,46 @@ def get_all_users(request):
 
     return JsonResponse({"ok": True, "users": users}, status=200)
 
+
+
+# ---------------------------------------------------------
+# POST /api/me/update-name/
+# Updates the logged-in user's name
+# ---------------------------------------------------------
+@csrf_exempt
+@require_POST
+def update_user_name(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "Login required"}, status=401)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        new_name = str(data.get("fullName", "")).strip()
+    except:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    if not new_name:
+        return JsonResponse({"ok": False, "error": "Name cannot be empty"}, status=400)
+
+    # 1. Update Django User model (first/last name split)
+    parts = new_name.split()
+    first = parts[0]
+    last = " ".join(parts[1:]) if len(parts) > 1 else ""
+    
+    request.user.first_name = first
+    request.user.last_name = last
+    request.user.save()
+
+    # 2. Update UserProfile (full name)
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    profile.full_name = new_name
+    profile.save()
+
+    return JsonResponse({
+        "ok": True, 
+        "fullName": new_name,
+        "message": "Name updated successfully"
+    })
 
 # ============================================================
 # POST /api/users/<id>/toggle-admin/

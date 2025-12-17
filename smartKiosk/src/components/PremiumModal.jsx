@@ -12,16 +12,12 @@ export default function PremiumModal({
 }) {
   if (!isOpen) return null;
 
-  const handleOverlayClick = () => {
-    if (onClose) onClose();
-  };
-
   const stopPropagation = (e) => {
     e.stopPropagation();
   };
 
   return (
-    <div className='premium-modal-overlay' onClick={handleOverlayClick}>
+    <div className='premium-modal-overlay'>
       <div
         className='premium-modal-container'
         style={{ width }}

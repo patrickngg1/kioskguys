@@ -28,31 +28,39 @@
 .admin-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9998;
-  padding-top: 10rem !important;
+  z-index: 999999;
+  padding-top: 5rem !important;
   padding-bottom: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
+
+  /* PERFORMANCE-SAFE BACKGROUND */
   background: radial-gradient(
       circle at 12% -10%,
-      rgba(59, 130, 246, 0.25),
+      rgba(59, 130, 246, 0.22),
       transparent 55%
     ),
     radial-gradient(
       circle at 88% 110%,
-      rgba(249, 115, 22, 0.28),
+      rgba(249, 115, 22, 0.24),
       transparent 60%
     ),
     radial-gradient(
       circle at 60% 50%,
-      rgba(15, 23, 42, 0.7),
-      rgba(15, 23, 42, 0.95)
+      rgba(15, 23, 42, 0.85),
+      rgba(15, 23, 42, 0.98)
     );
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  animation: adminFadeIn 0.55s ease-out forwards;
+
+  /* 🚫 REMOVE LIVE BLUR (THIS FIXES FLASHING) */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+
+  animation: adminFadeIn 0.45s ease-out forwards;
   opacity: 0;
+
+  /* GPU HINT */
+  will-change: opacity;
 }
 
 @keyframes adminFadeIn {
@@ -104,8 +112,7 @@
   transform: translateY(30px) scale(0.96);
   opacity: 0;
 
-  animation: adminShellEntrance 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards,
-    adminShellBreathing 8s ease-in-out infinite;
+  animation: adminShellEntrance 0.45s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
 @keyframes adminShellEntrance {
@@ -149,8 +156,7 @@
 /* hovering tilt effect */
 @media (hover: hover) {
   .admin-shell:hover {
-    transform: translateY(-3px) scale(1.006);
-    transition: 0.4s ease;
+    /* intentionally disabled for performance */
   }
 }
 
@@ -553,23 +559,29 @@
 }
 
 .admin-ai-prompt {
-  width: 90%;
-  min-height: 120px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 14px 16px;
+  width: 100%; /* ✅ full confidence */
+  min-height: 160px; /* ✅ hero-sized */
+  padding: 18px 20px;
+
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.55;
+
   resize: none;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.92rem;
-  line-height: 1.45;
-  outline: none !important;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.35);
+  outline: none;
+
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-/* Remove glow outline on click */
 .admin-ai-prompt:focus {
-  border-color: rgba(99, 160, 255, 0.4);
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .admin-ai-label {
@@ -746,25 +758,31 @@
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1.8rem !important;
+  gap: 1.8rem;
 
-  /* 🔥 Breathing room INSIDE the scroll area so top borders/glows aren't clipped */
-  padding-top: 0.75rem;
+  padding: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
 
-  overflow-y: auto !important; /* scrolls cards */
-  overflow-x: hidden !important; /* no horizontal scroll */
-  max-height: 100%;
+  /* performance */
+  contain: layout paint;
+  will-change: transform;
 }
 
 /* Premium Room Card */
 .admin-card {
-  background: rgba(255, 255, 255, 0.055);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 20px;
   padding: 1.2rem 2rem !important;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+
+  /* 🚫 REMOVE CARD BLUR */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+
+  /* KEEP PREMIUM DEPTH */
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   position: relative;
   z-index: 2;
@@ -833,21 +851,123 @@
   gap: 0.5rem;
 }
 
+/* ================================
+   BANNER CARD VISUAL STATES
+================================ */
 .banner-card {
-  border-radius: 18px;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  transition: 0.25s ease;
+  position: relative;
+  background: rgba(255, 255, 255, 0.055);
+  border-radius: 20px;
+  transition: box-shadow 0.35s ease, transform 0.25s ease;
+}
+/* 🚫 NO SCHEDULE — calm, flat */
+/* No schedule & not active = flat card */
+.banner-card:not(.scheduled):not(.active) {
+  box-shadow: none;
 }
 
+/* ✨ SCHEDULED — premium glow */
+.banner-card.scheduled {
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35),
+    0 0 18px rgba(96, 165, 250, 0.35), 0 22px 45px rgba(0, 0, 0, 0.45);
+}
+
+/* 🔵 ACTIVE — strongest glow */
 .banner-card.active {
-  box-shadow: 0 0 22px rgba(37, 99, 235, 0.55);
-  border: 1px solid rgba(37, 99, 235, 0.6);
-  transition: 0.25s ease;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.55),
+    0 0 22px rgba(59, 130, 246, 0.55);
+}
+
+/* ⛔ EXPIRED — subtle fade */
+.banner-card.expired {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+/* ===============================
+   PREMIUM CHECKBOX (NO NATIVE UI)
+================================ */
+
+.premium-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Hide native checkbox completely */
+.premium-checkbox input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Custom checkbox visual */
+.checkbox-ui {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.6);
+
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 0 rgba(59, 130, 246, 0);
+
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Checkmark */
+.checkbox-ui::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: all 0.18s ease;
+}
+
+/* Checked state */
+.premium-checkbox input:checked + .checkbox-ui {
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.premium-checkbox input:checked + .checkbox-ui::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Label text */
+.checkbox-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Helper text */
+.checkbox-help {
+  margin-left: 1.8rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+/* Layout container */
+.repeat-checkbox-row {
+  margin-top: 0.75rem;
 }
 
 /* =====================================================================
-   BANNER SCHEDULING / STATUS
+   BANNER SCHEDULING / STATUS  (POLISHED & CORRECT)
    ===================================================================== */
 
 .banner-meta-row {
@@ -859,33 +979,49 @@
   font-size: 0.78rem;
 }
 
-/* Pill that shows Active / Scheduled / Expired */
+/* --------------------------------------------------
+   BASE CHIP (NO GLOW — used by NO SCHEDULE)
+-------------------------------------------------- */
 .banner-status-chip {
   padding: 0.22rem 0.8rem;
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  font-size: 0.7rem;
+  box-shadow: none; /* ❌ NO GLOW BY DEFAULT */
+}
+
+/* --------------------------------------------------
+   ACTIVE (ONLY THIS GLOWS)
+-------------------------------------------------- */
+.banner-status-chip.active {
   background: radial-gradient(
     circle at 0% 0%,
     rgba(56, 189, 248, 0.95),
     rgba(37, 99, 235, 0.95)
   );
   color: #e0f2fe;
-  border: 1px solid rgba(59, 130, 246, 0.55);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 600;
-  font-size: 0.7rem;
+  border-color: rgba(59, 130, 246, 0.65);
   box-shadow: 0 0 16px rgba(37, 99, 235, 0.75), 0 0 8px rgba(56, 189, 248, 0.45);
 }
 
-/* When the banner is scheduled but not currently active */
+/* --------------------------------------------------
+   SCHEDULED (SUBTLE, NO GLOW)
+-------------------------------------------------- */
 .banner-status-chip.scheduled {
-  background: rgba(15, 23, 42, 0.85);
-  color: #cbd5f5;
-  border-color: rgba(148, 163, 184, 0.7);
-  box-shadow: 0 0 10px rgba(15, 23, 42, 0.8);
+  background: rgba(59, 130, 246, 0.14);
+  color: #bfdbfe;
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: none;
 }
 
-/* When the banner window has passed */
+/* --------------------------------------------------
+   EXPIRED (RED, CAN GLOW)
+-------------------------------------------------- */
 .banner-status-chip.expired {
   background: rgba(127, 29, 29, 0.9);
   border-color: rgba(248, 113, 113, 0.9);
@@ -893,21 +1029,26 @@
   box-shadow: 0 0 14px rgba(248, 113, 113, 0.65);
 }
 
-/* Optional “Always on” look */
+/* --------------------------------------------------
+   ALWAYS ON (GREEN, NO GLOW)
+-------------------------------------------------- */
 .banner-status-chip.always-on {
   background: linear-gradient(135deg, #22c55e, #16a34a);
   border-color: rgba(34, 197, 94, 0.85);
   color: #dcfce7;
+  box-shadow: none;
 }
 
-/* Date range text under the chip: “Dec 15 – Jan 5” / “All year” */
+/* --------------------------------------------------
+   DATE RANGE TEXT
+-------------------------------------------------- */
 .banner-schedule-range {
   color: #9ca3af;
   font-size: 0.78rem;
   text-align: center;
 }
 
-/* Slightly emphasize date range when the banner is the current active one */
+/* Emphasize date range only when ACTIVE */
 .banner-card.active .banner-schedule-range {
   color: #e5e7eb;
 }
@@ -1065,9 +1206,6 @@
 .admin-shell {
   overflow: visible !important; /* keep your premium window behavior */
 }
-
-/* ===== PREMIUM MODAL OVERLAY (fixed, no scrolling) ===== */
-
 /* ===== PREMIUM MODAL (scrolling content ONLY inside) ===== */
 .premium-modal {
   width: 720px;
@@ -1236,10 +1374,10 @@
 }
 
 .highlight-text {
-  background: rgba(246, 94, 0, 0.612); /* UTA blue tint */
-  color: #fff;
-  padding: 0 2px;
-  border-radius: 4px;
+  background: rgb(238, 255, 0); /* UTA blue tint */
+  color: #000000;
+  padding: 0 3px;
+  border-radius: 2px;
   font-weight: 600;
 }
 
@@ -1280,24 +1418,15 @@
   top: 12px;
   right: 12px;
   z-index: 10;
-
   width: 32px;
   height: 32px;
-
-  /* This creates the circle */
   border-radius: 50%;
-
-  /* FIX: Remove default button padding so it stays 32x32 */
   padding: 0;
-
-  /* FIX: Tighten line-height to help the 'X' center vertically */
   line-height: 1;
-
   border: 1px solid rgba(0, 0, 0, 0.3);
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(4px);
   color: white;
-
   font-size: 1.2rem; /* Reduced slightly to fit better in 32px */
   display: flex;
   align-items: center;
@@ -1313,9 +1442,9 @@
 }
 
 .banner-schedule-block {
-  padding-bottom: 1.25rem; /* creates breathing room above Set Active button */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 1.25rem;
   margin-bottom: 1rem;
+  border-bottom: none !important;
 }
 
 .banner-schedule-block .form-row {
@@ -1331,9 +1460,42 @@
   font-size: 0.9rem;
 }
 
-/* ============================================================
-   PREMIUM TAG INPUT (Matches existing input styles)
-   ============================================================ */
+/* ===== PREMIUM DATE INPUT (VisionOS flat glass) ===== */
+.form-row input[type='date'] {
+  appearance: none;
+  -webkit-appearance: none;
+
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.04)
+  );
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  height: 42px;
+
+  padding: 0 14px;
+  color: #f8fafc;
+  font-size: 0.88rem;
+
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* calendar icon */
+.form-row input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0.65;
+  filter: invert(1);
+  cursor: pointer;
+}
+
+/* focus */
+.form-row input[type='date']:focus {
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
 
 /* ============================================================
    PREMIUM TAG INPUT (Unified Single-Box Look)
@@ -1343,14 +1505,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-
-  /* Matches your standard input fields exactly */
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 10px;
-  padding: 6px 8px;
-  min-height: 44px; /* Matches standard input height */
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 16px;
+  padding: 10px;
   transition: border-color 0.2s, box-shadow 0.2s;
   cursor: text;
 }
@@ -1362,18 +1520,23 @@
 }
 
 /* The blue pills inside the box */
+/* Individual amenity chip */
 .admin-tag-chip {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  height: 28px;
+  padding: 6px 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(59, 130, 246, 0.95),
+    rgba(37, 99, 235, 0.9)
+  );
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fff;
+  margin-right: 5px;
+  margin-bottom: 5px;
 }
 
 /* The 'X' remove button */
@@ -1396,49 +1559,406 @@
 
 /* The typing area shares the same space */
 .admin-tag-input-field {
+  flex: 1;
+  width: 100%;
+  min-width: 250px;
+  height: 44px;
+  padding: 0 14px;
+
   background: transparent;
   border: none;
-  color: white;
-  outline: none;
-  flex: 1;
-  min-width: 100px;
+
+  color: #fff;
   font-size: 0.95rem;
-  padding: 4px 0;
-  height: 28px; /* Matches chip height */
-}
+  font-weight: 500;
+  line-height: 44px;
 
+  outline: none;
+}
 .admin-tag-input-field::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
 }
 
-/* Add to Adminpanel.css */
+.admin-tag-input-field:focus {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
+}
 
-/* Kiosk-friendly Add Button inside the input */
+/* Kiosk-friendly Add Button — premium aligned with inputs */
 .admin-tag-add-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   color: white;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   line-height: 1;
-  margin-left: auto; /* Pushes button to the far right */
+
+  margin-left: 8px;
+
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.15s ease;
 }
 
 .admin-tag-add-btn:hover {
-  background: rgba(37, 99, 235, 0.8); /* Blue highlight on hover */
-  border-color: rgba(37, 99, 235, 1);
-  box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
+  background: rgba(96, 165, 250, 0.35);
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
 }
 
 .admin-tag-add-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
+}
+
+/* ===== Amenities & Features (Premium Row-Centered) ===== */
+
+.amenities-row {
+  width: 100%;
+  max-width: 620px; /* matches visual width of top inputs */
+  margin: 0 auto;
+}
+
+.amenities-label {
+  display: block;
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.admin-tag-input-container.premium-amenities {
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Input + button row */
+.admin-tag-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Make + button visually balanced */
+.admin-tag-add-btn {
+  height: 44px;
+  width: 44px;
+  border-radius: 12px;
+  font-size: 1.3rem;
+}
+
+/* --- Banner Modal Styles (Moved from inline) --- */
+
+.banner-modal-actions {
+  margin-top: 2.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem; /* Breathing room for buttons */
+  width: 100%;
+}
+
+.banner-preview-container {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.banner-preview-img-large {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s ease;
+}
+
+.banner-preview-img-large:hover {
+  transform: scale(1.02);
+}
+
+/* Ensure the upload button in the first modal looks premium too */
+.banner-upload-btn {
+  width: 60%;
+  min-width: 200px;
+}
+
+.admin-tag-premium-input {
+  flex: 1;
+  min-width: 160px;
+}
+.admin-ai-prompt-premium {
+  min-height: 140px;
+  padding: 16px 18px;
+  line-height: 1.5;
+  resize: none;
+}
+
+/* =====================================================================
+   PREMIUM BANNER CARD ACTIONS (Spacious & Clean)
+   ===================================================================== */
+
+/* Container for the schedule Save/Clear buttons */
+.banner-schedule-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08); /* Subtle separator */
+}
+
+/* The main card footer (Edit, Active, Delete) */
+.banner-card-footer {
+  margin-top: auto; /* Push to bottom */
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1); /* Stronger separator */
+  display: flex;
+  flex-wrap: wrap; /* ✅ Allow buttons to wrap if needed */
+  justify-content: center;
+  gap: 0.85rem; /* ✅ Premium breathing room */
+}
+
+/* Make buttons look balanced */
+.banner-card-footer .admin-pill-button {
+  flex: 1; /* Distribute width evenly */
+  min-width: 90px; /* Don't get too small */
+  max-width: 140px; /* Don't get too wide */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px; /* Consistent height */
+}
+
+/* ===== PREMIUM BANNER SCHEDULING BLOCK ===== */
+.banner-schedule-block {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(0, 0, 0, 0.2)
+  );
+  border-radius: 16px;
+  padding: 1.4rem 1.4rem 1.6rem;
+  margin-top: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.banner-schedule-section .form-row {
+  margin-bottom: 1rem;
+}
+
+.banner-schedule-section label {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ===== Clear Schedule — intentional & calm ===== */
+.banner-schedule-section .admin-pill-subtle {
+  margin-top: 1.25rem;
+  align-self: center;
+  min-width: 190px;
+  height: 36px;
+
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+.banner-schedule-section .admin-pill-subtle:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+/* ===== Schedule section divider ===== */
+.banner-schedule-section {
+  margin-top: 2rem;
+  padding-top: 1.4rem;
+
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ===== UNIFIED PREMIUM INPUT (Text, URL, File) ===== */
+.form-row input[type='text'],
+.form-row input[type='url'],
+.form-row input[type='file'],
+.form-row input:not([type='date']) {
+  appearance: none;
+  -webkit-appearance: none;
+
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.04)
+  );
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  height: 42px;
+
+  padding: 0 14px;
+  color: #f8fafc;
+  font-size: 0.88rem;
+
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.form-row input[type='text']:focus,
+.form-row input[type='url']:focus,
+.form-row input[type='file']:focus,
+.form-row input:not([type='date']):focus {
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Placeholder */
+.modal input::placeholder,
+.modal textarea::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* =========================================================
+   SELECT FIX (was dark before)
+   ========================================================= */
+
+.modal select {
+  appearance: none;
+  background-image: linear-gradient(
+      45deg,
+      transparent 50%,
+      rgba(255, 255, 255, 0.8) 50%
+    ),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.8) 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(50% - 3px),
+    calc(100% - 15px) calc(50% - 3px);
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+
+/* =========================================================
+   FILE INPUT (Choose File looked wrong)
+   ========================================================= */
+
+.modal input[type='file'] {
+  padding: 0.45rem;
+}
+
+.modal input[type='file']::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.45rem 0.9rem;
+
+  border-radius: 10px;
+  border: none;
+
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal input[type='file']::file-selector-button:hover {
+  filter: brightness(1.1);
+}
+/* =========================================================
+   MODAL INPUT NORMALIZATION — SINGLE SOURCE OF TRUTH
+   Fixes: input/select/textarea color mismatch
+   Applies ONLY inside premium modals
+========================================================= */
+
+.premium-modal input,
+.premium-modal select,
+.premium-modal textarea {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  width: 100%;
+  height: 44px !important;
+  padding: 0 14px;
+  border-radius: 12px;
+
+  /* SAME glass color as Edit Room */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.04)
+  );
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f8fafc;
+
+  font-size: 0.88rem;
+  font-weight: 500;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
+  outline: none;
+  box-sizing: border-box;
+}
+
+/* Focus — SAME for ALL fields */
+.premium-modal input:focus,
+.premium-modal select:focus,
+.premium-modal textarea:focus {
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Textarea sizing (AI Prompt) */
+.premium-modal textarea {
+  min-height: 140px;
+  padding: 16px 18px;
+  line-height: 1.55;
+  resize: none;
+}
+
+/* ===============================
+   SELECT — remove macOS tint
+=============================== */
+.premium-modal select {
+  background-image: none !important;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+/* ===============================
+   FILE INPUT — clean + premium
+=============================== */
+.premium-modal input[type='file'] {
+  padding: 6px 10px;
+}
+
+.premium-modal input[type='file']::file-selector-button {
+  margin-right: 12px;
+  padding: 6px 14px;
+
+  border-radius: 10px;
+  border: none;
+
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.premium-modal input[type='file']::file-selector-button:hover {
+  filter: brightness(1.1);
+}
+
+/* Placeholder color */
+.premium-modal input::placeholder,
+.premium-modal textarea::placeholder {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* =====================================================================
