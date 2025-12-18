@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import CardSwipeModal from './CardSwipeModal';
+import { createPortal } from 'react-dom';
 
 import {
   loginWithSession,
@@ -123,7 +124,8 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
   });
 
   const [resetLoading, setResetLoading] = useState(false);
-
+  // src/components/AuthForm.jsx
+  const [swipeBtnState, setSwipeBtnState] = useState('idle');
   /* ===== Live validation helpers ===== */
   const validateFullNameLive = (value) => {
     const v = value.trim();
@@ -522,9 +524,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                       autoComplete='username'
                       disabled={loginStatus !== 'idle'} // Disable during login
                     />
-                    {!loginEmailError && email.trim() && (
-                      <span className='checkmark'>✔</span>
-                    )}
                   </div>
                   {loginEmailError && (
                     <div className='inline-error'>{loginEmailError}</div>
@@ -797,15 +796,25 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
               </button>
             </form>
           )}
-          <CardSwipeModal
-            isOpen={cardModalOpen}
-            onClose={() => setCardModalOpen(false)}
-            onCapture={(s) => {
-              setCardString(s);
-              setCardModalOpen(false);
-              showToast('success', 'Card captured!');
-            }}
-          />
+          {cardModalOpen &&
+            createPortal(
+              <CardSwipeModal
+                isOpen={cardModalOpen}
+                onClose={() => setCardModalOpen(false)}
+                onCapture={async (s) => {
+                  setSwipeBtnState('loading');
+                  setCardString(s);
+
+                  setTimeout(() => {
+                    setSwipeBtnState('success');
+                    setCardModalOpen(false);
+                  }, 800);
+
+                  return true;
+                }}
+              />,
+              document.body // This forces it to cover the entire page
+            )}
         </div>
       </div>
     </div>

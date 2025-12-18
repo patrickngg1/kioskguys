@@ -1,3 +1,4 @@
+// src/components/StartOverlay.jsx
 import React, { useState, useEffect } from 'react';
 import '../styles/App.css';
 
@@ -23,13 +24,13 @@ export default function StartOverlay({ onStart }) {
 
   useEffect(() => {
     if (banners.length <= 1) return;
-
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % banners.length);
-    }, 6000); // 6 seconds per banner
-
+    }, 6000);
     return () => clearInterval(interval);
   }, [banners]);
+
+  // src/components/StartOverlay.jsx
 
   return (
     <div
@@ -42,73 +43,45 @@ export default function StartOverlay({ onStart }) {
               backgroundImage: `url(${banners[activeIndex].image_url})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              transition: 'background-image 0.8s ease-in-out',
+              transition: 'background-image 1.2s cubic-bezier(0.4, 0, 0.2, 1)', // Smoother transition
             }
           : undefined
       }
       onClick={(e) => {
-        // Prevent click if they are trying to scan/touch the QR code
-        if (e.target.closest('.start-qr-container')) return;
-
+        if (e.target.closest('.start-qr-glass-plate')) return;
         setFadeOut(true);
-        setTimeout(() => onStart(), 0);
+        setTimeout(() => onStart(), 800);
       }}
     >
+      {/* 1. CINEMATIC VIGNETTE (Ensures text/QR always pops) */}
+      <div className='start-vignette-layer'></div>
+      {/* 2. THE TEXT STAGE */}
+      {/* src/components/StartOverlay.jsx */}
+
       <div
-        className={`start-text ${
-          banners.length > 0 ? 'start-text-bottom' : ''
+        className={`start-text-stage ${
+          banners.length > 0 ? 'at-bottom' : 'at-center'
         }`}
       >
-        <span>Tap to Begin</span>
-      </div>
+        {/* The Luxury Flash Element */}
+        <div className='glass-light-sweep'></div>
 
-      {/* ✅ QR CODE OVERLAY (Only if link exists) */}
+        <div className='text-pulsar'>
+          <h1 className='tap-to-begin-quantum'>Tap to Begin</h1>
+        </div>
+      </div>
+      {/* 3. FLOATING GLASS QR PLATE */}
       {banners[activeIndex]?.link && (
-        <div
-          className='start-qr-container'
-          style={{
-            position: 'absolute',
-            bottom: '2.5rem',
-            right: '2.5rem',
-            zIndex: 50,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            background: 'rgba(255, 255, 255, 0.92)',
-            backdropFilter: 'blur(12px)',
-            padding: '0.85rem',
-            borderRadius: '16px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
-            border: '1px solid rgba(255,255,255,0.4)',
-            animation: 'fadeIn 1.5s ease-out',
-          }}
-        >
+        <div className='start-qr-glass-plate'>
+          <div className='qr-glass-glow'></div>
           <img
             src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
               banners[activeIndex].link
             )}`}
-            alt='Scan for info'
-            style={{
-              width: '110px',
-              height: '110px',
-              display: 'block',
-              borderRadius: '6px',
-              mixBlendMode: 'multiply',
-            }}
+            alt='Scan'
+            className='qr-etched-image'
           />
-          <span
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              color: '#1e293b',
-              marginTop: '8px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-            }}
-          >
-            Scan for Info
-          </span>
+          <span className='qr-glass-label'>SCAN FOR INFO</span>
         </div>
       )}
     </div>

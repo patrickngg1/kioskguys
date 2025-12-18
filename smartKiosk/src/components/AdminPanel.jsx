@@ -1,11 +1,125 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import '../styles/AdminPanel.css';
 import '../styles/PremiumModal.css';
 import PremiumInput from './PremiumInput';
 import '../styles/PremiumInput.css';
 
-// ... [Keep existing to12Hour function and imports] ...
+// --- 1 TRILLION DOLLAR ANIMATIONS (Embedded for Instant Power) ---
+const PREMIUM_STYLES = `
+  @keyframes premium-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+  }
+  
+  /* ERROR STATE (Red) - Added Extra Padding Here */
+  .smart-submit-btn.error {
+    background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.6) !important;
+    animation: premium-shake 0.4s ease-in-out;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    cursor: not-allowed;
+    
+    /* 1 TRILLION DOLLAR PADDING FIX */
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+    min-width: 200px !important;
+    white-space: nowrap !important;
+  }
+
+  /* WARNING STATE (Amber) - Added Extra Padding Here */
+  .smart-submit-btn.warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important; /* Amber */
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.6) !important;
+    animation: premium-shake 0.4s ease-in-out;
+    cursor: not-allowed;
+    
+    /* 1 TRILLION DOLLAR PADDING FIX */
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+    min-width: 200px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Disabled state for Dirty Checking */
+  .smart-submit-btn:disabled:not(.error):not(.warning):not(.loading):not(.success) {
+    opacity: 0.5;
+    background: rgba(255,255,255,0.1) !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+    filter: grayscale(1);
+  }
+`;
+
+// --- HELPER: Smart Button Inner Content ---
+const SmartButtonContent = ({
+  btnState,
+  idleText,
+  loadingText,
+  successText,
+  errorText,
+}) => (
+  <>
+    {/* Layer 1: Idle Text */}
+    <span className={`btn-text-layer ${btnState === 'idle' ? 'visible' : ''}`}>
+      {idleText}
+    </span>
+
+    {/* Layer 2: Loading Spinner */}
+    <span
+      className={`btn-text-layer ${btnState === 'loading' ? 'visible' : ''}`}
+    >
+      <span
+        className='spinner-loader'
+        style={{ width: '14px', height: '14px', borderWidth: '2px' }}
+      ></span>
+      {loadingText && <span>{loadingText}</span>}
+    </span>
+
+    {/* Layer 3: Success Checkmark */}
+    <span
+      className={`btn-text-layer ${btnState === 'success' ? 'visible' : ''}`}
+    >
+      <svg
+        width='18'
+        height='18'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='3.5'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      >
+        <path d='M20 6L9 17l-5-5'></path>
+      </svg>
+      {successText}
+    </span>
+
+    {/* Layer 4: Error/Warning */}
+    <span
+      className={`btn-text-layer ${
+        btnState === 'error' || btnState === 'warning' ? 'visible' : ''
+      }`}
+    >
+      <svg
+        width='18'
+        height='18'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='3'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      >
+        <circle cx='12' cy='12' r='10'></circle>
+        <line x1='12' y1='8' x2='12' y2='12'></line>
+        <line x1='12' y1='16' x2='12.01' y2='16'></line>
+      </svg>
+      {errorText}
+    </span>
+  </>
+);
 
 const to12Hour = (time) => {
   if (!time) return '';
@@ -27,15 +141,16 @@ export default function AdminPanel({
   showToast,
   loadReservations,
 }) {
-  // ... [Keep existing AdminPanel logic, states, and load functions] ...
-
   const [activeSection, setActiveSection] = useState('reservations');
-  const [confirmCancelId, setConfirmCancelId] = useState(null);
+
+  // --- GLOBAL MODAL ACTION STATES ---
+  const [globalActionState, setGlobalActionState] = useState('idle');
 
   // --- RESERVATIONS STATE ---
   const [adminReservations, setAdminReservations] = useState([]);
   const [loadingAdminReservations, setLoadingAdminReservations] =
     useState(true);
+  const [confirmCancelId, setConfirmCancelId] = useState(null);
 
   // --- ROOMS FILTER STATE ---
   const [filterRoomsList, setFilterRoomsList] = useState(rooms || []);
@@ -51,11 +166,11 @@ export default function AdminPanel({
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deleteItemTarget, setDeleteItemTarget] = useState(null);
-  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
 
   // --- USERS STATE ---
   const [adminUsers, setAdminUsers] = useState(users || []);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
 
   const sections = [
     { key: 'reservations', label: 'Reservations' },
@@ -65,8 +180,7 @@ export default function AdminPanel({
     { key: 'users', label: 'Users' },
   ];
 
-  // ... [Keep all load functions: loadAdminReservations, loadAdminRooms, etc.] ...
-
+  // --- LOADERS ---
   const loadAdminReservations = async () => {
     setLoadingAdminReservations(true);
     try {
@@ -129,41 +243,37 @@ export default function AdminPanel({
     }
   };
 
-  // ... [Keep toggleUserAdmin, deleteUser, adminCancelReservation, etc.] ...
-
-  const toggleUserAdmin = async (userId) => {
-    try {
-      const res = await fetch(`/api/users/${userId}/toggle-admin/`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (!data.ok) return showToast?.(data.error, 'error');
-      setAdminUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, isAdmin: data.isAdmin } : u))
-      );
-      showToast?.(data.isAdmin ? 'User promoted' : 'User demoted', 'success');
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // --- ACTIONS ---
 
   const deleteUser = async (userId) => {
+    setGlobalActionState('loading');
     try {
       const res = await fetch(`/api/users/${userId}/delete/`, {
         method: 'POST',
         credentials: 'include',
       });
       const data = await res.json();
-      if (!data.ok) return showToast?.(data.error, 'error');
-      setAdminUsers((prev) => prev.filter((u) => u.id !== userId));
-      showToast?.('User removed', 'success');
+      if (!data.ok) {
+        showToast?.(data.error, 'error');
+        setGlobalActionState('idle');
+        return;
+      }
+
+      setGlobalActionState('success');
+      setTimeout(() => {
+        setAdminUsers((prev) => prev.filter((u) => u.id !== userId));
+        setConfirmDeleteUser(null);
+        setGlobalActionState('idle');
+      }, 1500);
     } catch (err) {
       console.error(err);
+      showToast?.('Network error', 'error');
+      setGlobalActionState('idle');
     }
   };
 
   const adminCancelReservation = async (reservationId) => {
+    setGlobalActionState('loading');
     try {
       const res = await fetch(
         `/api/rooms/reservations/${reservationId}/admin-cancel/`,
@@ -176,12 +286,18 @@ export default function AdminPanel({
       );
       const data = await res.json();
       if (data.ok) {
-        showToast?.('Reservation cancelled', 'success');
         if (typeof loadReservations === 'function') loadReservations();
-        await loadAdminReservations();
+        loadAdminReservations();
+        setConfirmCancelId(null);
+        setGlobalActionState('idle');
+      } else {
+        showToast?.(data.error || 'Failed to cancel', 'error');
+        setGlobalActionState('idle');
       }
     } catch (err) {
       console.error(err);
+      showToast?.('Network error', 'error');
+      setGlobalActionState('idle');
     }
   };
 
@@ -195,10 +311,29 @@ export default function AdminPanel({
   };
   const handleItemSaved = () => {
     loadAdminItems();
-    showToast?.('Item saved', 'success');
   };
   const handleDeleteItem = (item) => {
     setDeleteItemTarget(item);
+  };
+
+  const executeDeleteItem = async () => {
+    if (!deleteItemTarget) return;
+    setGlobalActionState('loading');
+    try {
+      await fetch(`/api/items/${deleteItemTarget.id}/delete/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      setGlobalActionState('success');
+      setTimeout(() => {
+        loadAdminItems();
+        setDeleteItemTarget(null);
+        setGlobalActionState('idle');
+      }, 1500);
+    } catch {
+      showToast?.('Failed to delete item', 'error');
+      setGlobalActionState('idle');
+    }
   };
 
   useEffect(() => {
@@ -229,6 +364,7 @@ export default function AdminPanel({
 
   return (
     <div className='admin-overlay'>
+      <style>{PREMIUM_STYLES}</style>
       <div
         className='admin-shell'
         onClick={(e) => e.stopPropagation()}
@@ -280,7 +416,6 @@ export default function AdminPanel({
             {activeSection === 'reservations' && (
               <ReservationsSection
                 reservations={filteredReservations}
-                adminCancelReservation={adminCancelReservation}
                 setConfirmCancelId={setConfirmCancelId}
                 loading={loadingAdminReservations}
                 filterRoom={filterRoom}
@@ -304,7 +439,6 @@ export default function AdminPanel({
                 onDeleteItem={handleDeleteItem}
               />
             )}
-            {/* Pass showToast to BannersSection so it can notify users */}
             {activeSection === 'banners' && (
               <BannersSection showToast={showToast} />
             )}
@@ -312,122 +446,152 @@ export default function AdminPanel({
               <UsersSection
                 users={adminUsers}
                 loading={loadingUsers}
-                toggleUserAdmin={toggleUserAdmin}
-                deleteUser={deleteUser}
+                setAdminUsers={setAdminUsers}
                 setConfirmDeleteUser={setConfirmDeleteUser}
+                showToast={showToast}
               />
             )}
           </section>
         </div>
 
-        {/* --- GLOBAL MODALS (Items, Users, Reservations) --- */}
-        {deleteItemTarget && (
-          <div className='modal-overlay'>
-            <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
-              <h2 className='premium-modal-title'>Delete Item?</h2>
-              <p className='premium-modal-message'>
-                You are about to permanently delete{' '}
-                <strong>{deleteItemTarget.name}</strong>.<br />
-                This action cannot be undone.
-              </p>
-              <div className='premium-modal-actions'>
-                <button
-                  className='modal-btn cancel'
-                  onClick={() => setDeleteItemTarget(null)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className='modal-btn delete'
-                  onClick={async () => {
-                    try {
-                      await fetch(`/api/items/${deleteItemTarget.id}/delete/`, {
-                        method: 'POST',
-                        credentials: 'include',
-                      });
-                      showToast?.(
-                        `Deleted "${deleteItemTarget.name}"`,
-                        'success'
-                      );
-                      loadAdminItems();
-                    } catch {
-                      showToast?.('Failed to delete item', 'error');
-                    }
-                    setDeleteItemTarget(null);
-                  }}
-                >
-                  Delete Item
-                </button>
+        {/* --- GLOBAL DELETE ITEM MODAL (PORTAL VERSION) --- */}
+        {deleteItemTarget &&
+          createPortal(
+            <div
+              className='modal-overlay'
+              onClick={() => {
+                // Only allow closing via overlay if not currently deleting
+                if (globalActionState === 'idle') setDeleteItemTarget(null);
+              }}
+            >
+              <div
+                className='premium-modal'
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className='premium-modal-title'>Delete Item?</h2>
+                <p className='premium-modal-message'>
+                  You are about to permanently delete{' '}
+                  <strong>{deleteItemTarget.name}</strong>.
+                  <br />
+                  This action cannot be undone.
+                </p>
+                <div className='premium-modal-actions'>
+                  <button
+                    className='premium-btn cancel'
+                    onClick={() => setDeleteItemTarget(null)}
+                    disabled={globalActionState !== 'idle'}
+                  >
+                    Keep Item
+                  </button>
+                  <button
+                    className={`premium-btn delete smart-submit-btn ${globalActionState}`}
+                    onClick={executeDeleteItem}
+                    disabled={globalActionState !== 'idle'}
+                  >
+                    <SmartButtonContent
+                      btnState={globalActionState}
+                      idleText='Delete Item'
+                      loadingText='Deleting...'
+                      successText='Deleted'
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body /* This is the secret for the full-page blur */
+          )}
 
-        {confirmDeleteUser && (
-          <div className='modal-overlay'>
-            <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
-              <h2 className='premium-modal-title'>Delete User?</h2>
-              <p className='premium-modal-message'>
-                You are about to permanently delete{' '}
-                <strong>
-                  {confirmDeleteUser.fullName || confirmDeleteUser.email}
-                </strong>
-                .<br />
-                This action cannot be undone.
-              </p>
-              <div className='premium-modal-actions'>
-                <button
-                  className='modal-btn cancel'
-                  onClick={() => setConfirmDeleteUser(null)}
-                >
-                  Keep User
-                </button>
-                <button
-                  className='modal-btn delete'
-                  onClick={async () => {
-                    await deleteUser(confirmDeleteUser.id);
-                    setConfirmDeleteUser(null);
-                  }}
-                >
-                  Delete User
-                </button>
+        {/* --- GLOBAL DELETE USER MODAL --- */}
+        {confirmDeleteUser &&
+          createPortal(
+            <div
+              className='modal-overlay'
+              onClick={() => {
+                if (globalActionState === 'idle') setConfirmDeleteUser(null);
+              }}
+            >
+              <div
+                className='premium-modal'
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className='premium-modal-title'>Delete User?</h2>
+                <p className='premium-modal-message'>
+                  You are about to permanently delete{' '}
+                  <strong>
+                    {confirmDeleteUser.fullName || confirmDeleteUser.email}
+                  </strong>
+                  .<br />
+                  This action cannot be undone.
+                </p>
+                <div className='premium-modal-actions'>
+                  <button
+                    className='premium-btn cancel'
+                    onClick={() => setConfirmDeleteUser(null)}
+                    disabled={globalActionState !== 'idle'}
+                  >
+                    Keep User
+                  </button>
+                  <button
+                    className={`premium-btn delete smart-submit-btn ${globalActionState}`}
+                    onClick={() => deleteUser(confirmDeleteUser.id)}
+                    disabled={globalActionState !== 'idle'}
+                  >
+                    <SmartButtonContent
+                      btnState={globalActionState}
+                      idleText='Delete User'
+                      loadingText='Deleting...'
+                      successText='Deleted'
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {confirmCancelId && (
-          <div
-            className='modal-overlay'
-            onClick={() => setConfirmCancelId(null)}
-          >
-            <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
-              <h2 className='premium-modal-title'>Cancel Reservation?</h2>
-              <p className='premium-modal-message'>
-                This reservation will be permanently removed.
-                <br />
-                Are you sure?
-              </p>
-              <div className='premium-modal-actions'>
-                <button
-                  className='modal-btn cancel'
-                  onClick={() => setConfirmCancelId(null)}
-                >
-                  Keep Reservation
-                </button>
-                <button
-                  className='modal-btn delete'
-                  onClick={() => {
-                    adminCancelReservation(confirmCancelId);
-                    setConfirmCancelId(null);
-                  }}
-                >
-                  Cancel Reservation
-                </button>
+            </div>,
+            document.body
+          )}
+        {/* --- GLOBAL CANCEL RESERVATION MODAL --- */}
+        {confirmCancelId &&
+          createPortal(
+            <div
+              className='modal-overlay'
+              onClick={() => {
+                if (globalActionState === 'idle') setConfirmCancelId(null);
+              }}
+            >
+              <div
+                className='premium-modal'
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className='premium-modal-title'>Cancel Reservation?</h2>
+                <p className='premium-modal-message'>
+                  This reservation will be permanently removed.
+                  <br />
+                  Are you sure?
+                </p>
+                <div className='premium-modal-actions'>
+                  <button
+                    className='premium-btn cancel'
+                    onClick={() => setConfirmCancelId(null)}
+                    disabled={globalActionState !== 'idle'}
+                  >
+                    Keep Reservation
+                  </button>
+                  <button
+                    className={`premium-btn delete smart-submit-btn ${globalActionState}`}
+                    onClick={() => adminCancelReservation(confirmCancelId)}
+                    disabled={globalActionState !== 'idle'}
+                  >
+                    <SmartButtonContent
+                      btnState={globalActionState}
+                      idleText='Cancel Reservation'
+                      loadingText='Cancelling...'
+                      successText='Cancelled'
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
 
         {showItemModal && (
           <ItemEditModal
@@ -443,11 +607,8 @@ export default function AdminPanel({
   );
 }
 
-// ... [Keep ReservationsSection, RoomsSection, ItemsSection as they are] ...
-// (I will omit repeating them here for brevity, assume they are unchanged)
 function ReservationsSection({
   reservations,
-  adminCancelReservation,
   setConfirmCancelId,
   loading,
   filterRoom,
@@ -458,7 +619,6 @@ function ReservationsSection({
   setFilterUser,
   rooms,
 }) {
-  // ... existing code ...
   return (
     <div className='admin-section'>
       <div className='admin-section-header'>
@@ -533,27 +693,52 @@ function ReservationsSection({
   );
 }
 
+// --- TRILLION DOLLAR ROOMS SECTION (Dirty Check + On-Button Error) ---
 function RoomsSection({ rooms, showToast }) {
-  // ... existing code ...
   const [roomList, setRoomList] = useState(rooms || []);
-  const [loading, setLoading] = useState(false); // ✅ Logic exists, just wasn't used
+  const [loading, setLoading] = useState(false);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('create');
 
-  // Form State
   const [roomForm, setRoomForm] = useState({
     id: null,
     name: '',
     capacity: '',
     features: [],
   });
-
+  const [originalForm, setOriginalForm] = useState(null); // For Dirty Checking
   const [featureInput, setFeatureInput] = useState('');
-  const [saving, setSaving] = useState(false);
+
+  // Smart Button States
+  const [btnState, setBtnState] = useState('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+  const errorTimerRef = useRef(null);
+
+  const [deleteBtnState, setDeleteBtnState] = useState('idle');
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+
+  // Dirty Check: Has anything changed?
+  const isDirty = useMemo(() => {
+    if (!originalForm) return false;
+    return (
+      roomForm.name !== originalForm.name ||
+      String(roomForm.capacity) !== String(originalForm.capacity) ||
+      JSON.stringify(roomForm.features.sort()) !==
+        JSON.stringify(originalForm.features.sort())
+    );
+  }, [roomForm, originalForm]);
+
+  const triggerError = (msg) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setErrorMsg(msg);
+    setBtnState('error'); // Triggers Red/Shake
+    errorTimerRef.current = setTimeout(() => {
+      setBtnState('idle');
+      setErrorMsg('');
+    }, 2500);
+  };
 
   const loadRooms = async () => {
     setLoading(true);
@@ -574,7 +759,10 @@ function RoomsSection({ rooms, showToast }) {
 
   const openAdd = () => {
     setModalMode('create');
-    setRoomForm({ id: null, name: '', capacity: '', features: [] });
+    const init = { id: null, name: '', capacity: '', features: [] };
+    setRoomForm(init);
+    setOriginalForm(init);
+    setBtnState('idle');
     setShowModal(true);
   };
 
@@ -585,12 +773,15 @@ function RoomsSection({ rooms, showToast }) {
       if (room.hasScreen) feats.push('Screen');
       if (room.hasHdmi) feats.push('HDMI');
     }
-    setRoomForm({
+    const init = {
       id: room.id,
       name: room.name,
       capacity: room.capacity,
       features: [...new Set(feats)],
-    });
+    };
+    setRoomForm(init);
+    setOriginalForm(init);
+    setBtnState('idle');
     setShowModal(true);
   };
 
@@ -615,9 +806,15 @@ function RoomsSection({ rooms, showToast }) {
     }));
   };
 
-  const handleSave = async () => {
-    if (!roomForm.name) return showToast('Name is required', 'error');
-    setSaving(true);
+  const handleSave = async (e) => {
+    if (e) e.preventDefault();
+
+    // 1. Validation -> Trigger Button Error
+    if (!roomForm.name.trim()) return triggerError('Name Required');
+    if (!roomForm.capacity) return triggerError('Capacity Required');
+
+    setBtnState('loading');
+
     try {
       const url =
         modalMode === 'edit'
@@ -636,35 +833,27 @@ function RoomsSection({ rooms, showToast }) {
       });
 
       const data = await res.json();
+
       if (data.ok) {
-        showToast(
-          `Room ${modalMode === 'edit' ? 'updated' : 'created'} successfully`,
-          'success'
-        );
-        setShowModal(false);
-        loadRooms();
+        setBtnState('success');
+        setTimeout(() => {
+          setShowModal(false);
+          setBtnState('idle');
+          loadRooms();
+        }, 1500);
       } else {
-        let msg = data.error || 'Failed to save changes.';
-        if (
-          msg.includes('{') ||
-          msg.includes('[') ||
-          msg.includes('IntegrityError')
-        ) {
-          msg = 'Could not save room. Name might already exist.';
-        }
-        showToast(msg, 'error');
+        let msg = data.error || 'Failed';
+        if (msg.includes('IntegrityError')) msg = 'Name Taken';
+        triggerError(msg);
       }
     } catch (err) {
-      console.error(err);
-      showToast('Network connection error. Try again.', 'error');
-    } finally {
-      setSaving(false);
+      triggerError('Network Error');
     }
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    setDeleting(true);
+    setDeleteBtnState('loading');
     try {
       const res = await fetch(`/api/rooms/${deleteTarget.id}/delete/`, {
         method: 'POST',
@@ -673,35 +862,20 @@ function RoomsSection({ rooms, showToast }) {
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        loadRooms();
-        setDeleteTarget(null);
-        showToast('Room deleted successfully', 'success');
+        setDeleteBtnState('success');
+        setTimeout(() => {
+          loadRooms();
+          setDeleteTarget(null);
+          setDeleteBtnState('idle');
+        }, 1500);
       } else {
-        let msg = data.error || 'Cannot delete room.';
-        if (msg.includes('reservations'))
-          msg = 'Cannot delete: Room has future reservations.';
-        showToast(msg, 'error');
+        showToast(data.error || 'Cannot delete room.', 'error');
+        setDeleteBtnState('idle');
       }
     } catch (e) {
-      console.error(e);
       showToast('Network error while deleting.', 'error');
-    } finally {
-      setDeleting(false);
+      setDeleteBtnState('idle');
     }
-  };
-
-  // --- PORTAL HELPER FOR NESTED MODALS ---
-  const ModalPortal = ({ children }) => {
-    return createPortal(
-      <div
-        className='premium-modal-overlay'
-        style={{ zIndex: 99999, backdropFilter: 'blur(8px)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>,
-      document.body
-    );
   };
 
   return (
@@ -728,7 +902,6 @@ function RoomsSection({ rooms, showToast }) {
         </button>
       </div>
 
-      {/* ✅ ADDED: Loading State */}
       {loading ? (
         <div className='admin-loading'>
           <div className='admin-spinner'></div>
@@ -778,7 +951,7 @@ function RoomsSection({ rooms, showToast }) {
         </div>
       )}
 
-      {/* EDIT/ADD MODAL (Portaled) */}
+      {/* EDIT/ADD MODAL */}
       {showModal &&
         createPortal(
           <div className='modal-overlay' style={{ zIndex: 99999 }}>
@@ -791,125 +964,125 @@ function RoomsSection({ rooms, showToast }) {
                 {modalMode === 'edit' ? 'Edit Room' : 'Add Room'}
               </h2>
 
-              {/* Room name + capacity */}
-              <div className='form-row' style={{ marginBottom: '1.2rem' }}>
-                <div style={{ flex: 2 }}>
-                  <label>Room Name</label>
-                  <PremiumInput
-                    value={roomForm.name}
-                    onChange={(e) =>
-                      setRoomForm({ ...roomForm, name: e.target.value })
-                    }
-                    placeholder='e.g. Conference Room A'
-                  />
+              <form onSubmit={handleSave}>
+                <div className='form-row' style={{ marginBottom: '1.2rem' }}>
+                  <div style={{ flex: 2 }}>
+                    <label>Room Name</label>
+                    <PremiumInput
+                      value={roomForm.name}
+                      onChange={(e) =>
+                        setRoomForm({ ...roomForm, name: e.target.value })
+                      }
+                      placeholder='e.g. Conference Room A'
+                    />
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <label>Capacity</label>
+                    <PremiumInput
+                      type='number'
+                      value={roomForm.capacity}
+                      onChange={(e) =>
+                        setRoomForm({ ...roomForm, capacity: e.target.value })
+                      }
+                      placeholder='8'
+                    />
+                  </div>
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <label>Capacity</label>
-                  <PremiumInput
-                    type='number'
-                    value={roomForm.capacity}
-                    onChange={(e) =>
-                      setRoomForm({ ...roomForm, capacity: e.target.value })
-                    }
-                    placeholder='8'
-                  />
-                </div>
-              </div>
-
-              {/* Amenities */}
-              <div className='form-row'>
-                <div
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                  }}
-                >
-                  <label style={{ marginBottom: '10px' }}>
-                    Amenities & Features
-                  </label>
-
+                <div className='form-row'>
                   <div
-                    className='admin-tag-input-container'
-                    style={{ width: '320px' }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                    }}
                   >
-                    {/* Chips */}
+                    <label style={{ marginBottom: '10px' }}>
+                      Amenities & Features
+                    </label>
                     <div
-                      className='admin-tag-chip-row'
-                      style={{
-                        justifyContent: 'center',
-                      }}
+                      className='admin-tag-input-container'
+                      style={{ width: '320px' }}
                     >
-                      {roomForm.features.map((feat) => (
-                        <span key={feat} className='admin-tag-chip'>
-                          {feat}
-                          <button
-                            type='button'
-                            onClick={() => removeFeature(feat)}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Input + add */}
-                    <div
-                      className='admin-tag-input-row'
-                      style={{
-                        justifyContent: 'center',
-                        paddingTop: '6px',
-                      }}
-                    >
-                      <input
-                        type='text'
-                        value={featureInput}
-                        onChange={(e) => setFeatureInput(e.target.value)}
-                        onKeyDown={addFeature}
-                        placeholder='Add a feature…'
-                        className='admin-tag-input-field'
-                      />
-
-                      <button
-                        type='button'
-                        className='admin-tag-add-btn'
-                        onClick={addFeature}
+                      <div
+                        className='admin-tag-chip-row'
+                        style={{ justifyContent: 'center' }}
                       >
-                        +
-                      </button>
+                        {roomForm.features.map((feat) => (
+                          <span key={feat} className='admin-tag-chip'>
+                            {feat}
+                            <button
+                              type='button'
+                              onClick={() => removeFeature(feat)}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div
+                        className='admin-tag-input-row'
+                        style={{ justifyContent: 'center', paddingTop: '6px' }}
+                      >
+                        <input
+                          type='text'
+                          value={featureInput}
+                          onChange={(e) => setFeatureInput(e.target.value)}
+                          onKeyDown={addFeature}
+                          placeholder='Add a feature…'
+                          className='admin-tag-input-field'
+                        />
+                        <button
+                          type='button'
+                          className='admin-tag-add-btn'
+                          onClick={addFeature}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div
-                className='premium-modal-actions'
-                style={{ marginTop: '2rem' }}
-              >
-                <button
-                  className='premium-btn cancel'
-                  onClick={() => setShowModal(false)}
+                <div
+                  className='premium-modal-actions'
+                  style={{ marginTop: '2rem' }}
                 >
-                  Cancel
-                </button>
-
-                <button
-                  className='premium-btn primary'
-                  onClick={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? 'Saving...' : 'Save Room'}
-                </button>
-              </div>
+                  <button
+                    type='button'
+                    className='premium-btn cancel'
+                    onClick={() => setShowModal(false)}
+                    disabled={btnState !== 'idle'}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type='submit'
+                    className={`premium-btn primary smart-submit-btn ${btnState}`}
+                    disabled={
+                      !isDirty || (btnState !== 'idle' && btnState !== 'error')
+                    }
+                  >
+                    <SmartButtonContent
+                      btnState={btnState}
+                      idleText={
+                        modalMode === 'edit' ? 'Save Changes' : 'Create Room'
+                      }
+                      loadingText='Saving...'
+                      successText={modalMode === 'edit' ? 'Saved' : 'Created'}
+                      errorText={errorMsg || 'Error'}
+                    />
+                  </button>
+                </div>
+              </form>
             </div>
           </div>,
           document.body
         )}
 
-      {/* DELETE CONFIRM (Portaled) */}
+      {/* DELETE CONFIRM */}
       {deleteTarget &&
         createPortal(
           <div className='modal-overlay' style={{ zIndex: 99999 }}>
@@ -923,15 +1096,21 @@ function RoomsSection({ rooms, showToast }) {
                 <button
                   className='premium-btn cancel'
                   onClick={() => setDeleteTarget(null)}
+                  disabled={deleteBtnState !== 'idle'}
                 >
                   Cancel
                 </button>
                 <button
-                  className='premium-btn delete'
+                  className={`premium-btn delete smart-submit-btn ${deleteBtnState}`}
                   onClick={handleDelete}
-                  disabled={deleting}
+                  disabled={deleteBtnState !== 'idle'}
                 >
-                  {deleting ? 'Deleting...' : 'Delete'}
+                  <SmartButtonContent
+                    btnState={deleteBtnState}
+                    idleText='Delete'
+                    loadingText='Deleting...'
+                    successText='Deleted'
+                  />
                 </button>
               </div>
             </div>
@@ -953,33 +1132,26 @@ function ItemsSection({
 
   const highlightMatch = (text) => {
     if (!searchQuery.trim()) return text;
-
     const query = searchQuery.trim().toLowerCase();
     const lower = text.toLowerCase();
-
     const parts = [];
     let i = 0;
-
     while (i < text.length) {
       const matchIndex = lower.indexOf(query, i);
       if (matchIndex === -1) {
         parts.push(text.slice(i));
         break;
       }
-
       if (matchIndex > i) {
         parts.push(text.slice(i, matchIndex));
       }
-
       parts.push(
         <span key={matchIndex} className='highlight-text'>
           {text.slice(matchIndex, matchIndex + query.length)}
         </span>
       );
-
       i = matchIndex + query.length;
     }
-
     return parts;
   };
 
@@ -1085,7 +1257,6 @@ function ItemsSection({
                       >
                         Edit
                       </button>
-
                       <button
                         type='button'
                         className='admin-pill-button admin-pill-danger'
@@ -1105,24 +1276,41 @@ function ItemsSection({
   );
 }
 
-// ----------------------------------------------------------------------------------
-// UPDATED BANNERS SECTION - Now uses Premium Modal for Delete
-// ----------------------------------------------------------------------------------
-
 function BannersSection({ showToast }) {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Upload modal state
+  // --- UPLOAD MODAL STATE ---
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerLink, setBannerLink] = useState('');
 
+  // Smart Button State
+  const [uploadBtnState, setUploadBtnState] = useState('idle');
+  const [uploadError, setUploadError] = useState('');
+  const errorTimerRef = useRef(null);
+
   // Edit / preview / delete state
   const [editingBanner, setEditingBanner] = useState(null);
   const [previewBanner, setPreviewBanner] = useState(null);
   const [confirmDeleteBanner, setConfirmDeleteBanner] = useState(null);
+  const [deleteBtnState, setDeleteBtnState] = useState('idle');
+
+  const [togglingBanners, setTogglingBanners] = useState({});
+
+  // Validation: Button is disabled until a file is picked and title is entered
+  const isUploadDirty = bannerTitle.trim() !== '' || uploadFile !== null;
+
+  const triggerUploadError = (msg) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setUploadError(msg);
+    setUploadBtnState('error');
+    errorTimerRef.current = setTimeout(() => {
+      setUploadBtnState('idle');
+      setUploadError('');
+    }, 2500);
+  };
 
   const loadBanners = async () => {
     setLoading(true);
@@ -1142,9 +1330,8 @@ function BannersSection({ showToast }) {
     loadBanners();
   }, []);
 
-  const openPreview = (banner) => setPreviewBanner(banner);
-
   const setBannerActiveState = async (id, shouldActivate) => {
+    setTogglingBanners((prev) => ({ ...prev, [id]: 'loading' }));
     try {
       const endpoint = shouldActivate
         ? `/api/banners/${id}/activate/`
@@ -1154,30 +1341,33 @@ function BannersSection({ showToast }) {
         method: 'POST',
         credentials: 'include',
       });
-
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Action failed');
 
-      showToast?.(
-        shouldActivate ? 'Banner activated' : 'Banner deactivated',
-        'success'
-      );
-
-      loadBanners();
+      setTogglingBanners((prev) => ({ ...prev, [id]: 'success' }));
+      setTimeout(() => {
+        loadBanners();
+        setTogglingBanners((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }, 1000);
     } catch (err) {
-      console.error(err);
-      showToast?.(
-        shouldActivate
-          ? 'Failed to activate banner'
-          : 'Failed to deactivate banner',
-        'error'
-      );
+      showToast?.('Action failed', 'error');
+      setTogglingBanners((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
   const handleUpload = async () => {
-    if (!uploadFile) return;
+    if (!bannerTitle.trim()) return triggerUploadError('Title Required');
+    if (!uploadFile) return triggerUploadError('File Required');
 
+    setUploadBtnState('loading');
     const formData = new FormData();
     formData.append('file', uploadFile);
     formData.append('label', bannerTitle);
@@ -1190,56 +1380,50 @@ function BannersSection({ showToast }) {
         body: formData,
       });
       const data = await res.json();
-
       if (data.ok) {
-        setShowUploadModal(false);
-        setUploadFile(null);
-        setBannerTitle('');
-        setBannerLink('');
-        showToast?.('Banner uploaded', 'success');
-        loadBanners();
+        setUploadBtnState('success');
+        setTimeout(() => {
+          setShowUploadModal(false);
+          setUploadFile(null);
+          setBannerTitle('');
+          setBannerLink('');
+          setUploadBtnState('idle');
+          loadBanners();
+        }, 1500);
       } else {
-        showToast?.(data.error || 'Upload failed', 'error');
+        triggerUploadError(data.error || 'Upload failed');
       }
     } catch (err) {
-      console.error(err);
-      showToast?.('Upload failed', 'error');
+      triggerUploadError('Network Error');
     }
   };
 
-  const handleBannerSaved = () => {
-    setEditingBanner(null);
-    loadBanners();
-  };
-
-  const handleDeleteClick = (banner) => setConfirmDeleteBanner(banner);
-
   const executeDeleteBanner = async () => {
     if (!confirmDeleteBanner) return;
+    setDeleteBtnState('loading');
     try {
       await fetch(`/api/banners/${confirmDeleteBanner.id}/delete/`, {
         method: 'POST',
         credentials: 'include',
       });
-      showToast?.('Banner deleted successfully', 'success');
-      loadBanners();
+      setDeleteBtnState('success');
+      setTimeout(() => {
+        loadBanners();
+        setConfirmDeleteBanner(null);
+        setDeleteBtnState('idle');
+      }, 1500);
     } catch (err) {
-      console.error(err);
-      showToast?.('Failed to delete banner', 'error');
-    } finally {
-      setConfirmDeleteBanner(null);
+      showToast?.('Delete failed', 'error');
+      setDeleteBtnState('idle');
     }
   };
 
   const computeStatus = (b) => {
     const today = new Date().toISOString().slice(0, 10);
     const { start_date, end_date, is_active, repeat_yearly } = b;
-
-    // Base
     let statusText = 'No schedule';
     let chipClass = 'banner-status-chip';
 
-    // Time-window awareness (future-proof; backend can interpret however it wants)
     if (is_active) {
       statusText = 'Active';
       chipClass += ' active';
@@ -1262,7 +1446,6 @@ function BannersSection({ showToast }) {
     if (start_date) dateParts.push(start_date);
     if (end_date) dateParts.push(end_date);
     const dateRange = dateParts.length ? dateParts.join(' → ') : '';
-
     return {
       statusText,
       chipClass,
@@ -1307,21 +1490,21 @@ function BannersSection({ showToast }) {
           {banners.map((b) => {
             const { statusText, chipClass, dateRange, repeatText } =
               computeStatus(b);
+            const toggleState = togglingBanners[b.id] || 'idle';
+            const isActive = b.is_active;
 
             return (
               <div
                 key={b.id}
-                className={`admin-card banner-card
-                ${b.is_active ? 'active' : ''}
-                ${
+                className={`admin-card banner-card ${
+                  b.is_active ? 'active' : ''
+                } ${
                   !b.is_active &&
                   (b.start_date || b.end_date) &&
                   statusText === 'Scheduled'
                     ? 'scheduled'
                     : ''
-                }
-                ${statusText === 'Expired' ? 'expired' : ''}
-              `}
+                } ${statusText === 'Expired' ? 'expired' : ''}`}
               >
                 <div className='admin-card-header'>
                   <img
@@ -1334,16 +1517,14 @@ function BannersSection({ showToast }) {
                       borderRadius: '10px',
                       cursor: 'pointer',
                     }}
-                    onClick={() => openPreview(b)}
+                    onClick={() => setPreviewBanner(b)}
                   />
                 </div>
-
                 <div
                   className='admin-card-body'
                   style={{ textAlign: 'center', marginBottom: '0.5rem' }}
                 >
                   <div className='banner-title'>{b.label || '(No title)'}</div>
-
                   {b.link && (
                     <div
                       style={{
@@ -1355,11 +1536,9 @@ function BannersSection({ showToast }) {
                       🔗 Has QR Link
                     </div>
                   )}
-
                   <div className='banner-meta-row'>
                     <span className={chipClass}>{statusText}</span>
                   </div>
-
                   {(dateRange || repeatText) && (
                     <div className='banner-schedule-summary'>
                       {dateRange && (
@@ -1371,22 +1550,31 @@ function BannersSection({ showToast }) {
                     </div>
                   )}
                 </div>
-
                 <div className='banner-card-footer'>
                   <button
                     className={`admin-pill-button ${
-                      b.is_active ? 'admin-pill-subtle' : 'admin-pill-primary'
+                      toggleState === 'success'
+                        ? 'admin-pill-success'
+                        : toggleState === 'loading'
+                        ? 'admin-pill-loading'
+                        : isActive
+                        ? 'admin-pill-subtle'
+                        : 'admin-pill-primary'
                     }`}
                     onClick={() => setBannerActiveState(b.id, !b.is_active)}
+                    disabled={toggleState !== 'idle'}
                   >
-                    {b.is_active ? 'Deactivate' : 'Set Active'}
+                    <SmartButtonContent
+                      btnState={toggleState}
+                      idleText={isActive ? 'Deactivate' : 'Set Active'}
+                      loadingText=''
+                      successText={isActive ? 'Deactivated' : 'Active'}
+                    />
                   </button>
-
                   <button
                     className='admin-pill-button admin-pill-subtle'
                     onClick={() => setEditingBanner(b)}
-                    aria-label='Edit banner'
-                    title='Edit'
+                    disabled={toggleState !== 'idle'}
                   >
                     Edit
                   </button>
@@ -1397,51 +1585,13 @@ function BannersSection({ showToast }) {
         </div>
       )}
 
-      {/* Delete Banner Confirmation (PORTALED – FIXED) */}
-      {confirmDeleteBanner &&
-        createPortal(
-          <div
-            className='modal-overlay'
-            style={{
-              zIndex: 99999,
-              backdropFilter: 'blur(8px)',
-            }}
-            onClick={() => setConfirmDeleteBanner(null)}
-          >
-            <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
-              <h2 className='premium-modal-title'>Delete Banner?</h2>
-              <p className='premium-modal-message'>
-                You are about to permanently delete{' '}
-                <strong>{confirmDeleteBanner.label || 'this banner'}</strong>.
-                <br />
-                This action cannot be undone.
-              </p>
-              <div className='premium-modal-actions'>
-                <button
-                  className='modal-btn cancel'
-                  onClick={() => setConfirmDeleteBanner(null)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className='modal-btn delete'
-                  onClick={executeDeleteBanner}
-                >
-                  Delete Banner
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Upload Modal — Updated to match Premium Style */}
+      {/* Upload Modal */}
       {showUploadModal && (
         <div className='modal-overlay' style={{ zIndex: 99999 }}>
           <div
             className='premium-modal'
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '520px' }} /* Consistent width */
+            style={{ maxWidth: '520px' }}
           >
             <button
               className='close-btn'
@@ -1449,21 +1599,26 @@ function BannersSection({ showToast }) {
             >
               ✕
             </button>
-
             <h2 className='premium-modal-title'>Upload Banner</h2>
-
-            {/* Title Input */}
             <div className='form-row'>
-              <label>Title</label>
+              <label
+                style={{
+                  color:
+                    uploadError === 'Title Required' ? '#ef4444' : 'inherit',
+                }}
+              >
+                Title {uploadError === 'Title Required' && '— Required'}
+              </label>
               <PremiumInput
                 type='text'
                 value={bannerTitle}
-                onChange={(e) => setBannerTitle(e.target.value)}
+                onChange={(e) => {
+                  setBannerTitle(e.target.value);
+                  if (uploadBtnState === 'error') setUploadBtnState('idle');
+                }}
                 placeholder='e.g. Winter Break'
               />
             </div>
-
-            {/* Link Input */}
             <div className='form-row'>
               <label>Link / URL (Optional)</label>
               <PremiumInput
@@ -1473,18 +1628,24 @@ function BannersSection({ showToast }) {
                 placeholder='https://uta.edu...'
               />
             </div>
-
-            {/* File Input */}
             <div className='form-row'>
-              <label>Image</label>
+              <label
+                style={{
+                  color:
+                    uploadError === 'File Required' ? '#ef4444' : 'inherit',
+                }}
+              >
+                Image {uploadError === 'File Required' && '— Required'}
+              </label>
               <PremiumInput
                 type='file'
                 accept='image/*'
-                onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  setUploadFile(e.target.files?.[0] || null);
+                  if (uploadBtnState === 'error') setUploadBtnState('idle');
+                }}
               />
             </div>
-
-            {/* Actions */}
             <div
               className='premium-modal-actions'
               style={{ marginTop: '2rem' }}
@@ -1492,32 +1653,88 @@ function BannersSection({ showToast }) {
               <button
                 className='premium-btn cancel'
                 onClick={() => setShowUploadModal(false)}
+                disabled={uploadBtnState !== 'idle'}
               >
                 Cancel
               </button>
-              <button className='premium-btn primary' onClick={handleUpload}>
-                Upload Banner
+              <button
+                className={`premium-btn primary smart-submit-btn ${uploadBtnState}`}
+                onClick={handleUpload}
+                disabled={
+                  !isUploadDirty ||
+                  (uploadBtnState !== 'idle' && uploadBtnState !== 'error')
+                }
+              >
+                <SmartButtonContent
+                  btnState={uploadBtnState}
+                  idleText='Upload Banner'
+                  loadingText='Uploading...'
+                  successText='Uploaded'
+                  errorText={uploadError || 'Error'}
+                />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Modal */}
       {editingBanner && (
         <BannerEditModal
           isOpen={!!editingBanner}
           onClose={() => setEditingBanner(null)}
           banner={editingBanner}
-          onSaved={handleBannerSaved}
-          onRequestDelete={handleDeleteClick}
+          onSaved={() => {
+            setEditingBanner(null);
+            loadBanners();
+          }}
+          onRequestDelete={(b) => setConfirmDeleteBanner(b)}
           showToast={showToast}
         />
       )}
 
-      {/* Preview Modal */}
+      {confirmDeleteBanner &&
+        createPortal(
+          <div
+            className='modal-overlay'
+            style={{ zIndex: 99999 }}
+            onClick={() => {
+              if (deleteBtnState === 'idle') setConfirmDeleteBanner(null);
+            }}
+          >
+            <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
+              <h2 className='premium-modal-title'>Delete Banner?</h2>
+              <p className='premium-modal-message'>
+                You are about to permanently delete{' '}
+                <strong>{confirmDeleteBanner.label || 'this banner'}</strong>.
+              </p>
+              <div className='premium-modal-actions'>
+                <button
+                  className='premium-btn cancel'
+                  onClick={() => setConfirmDeleteBanner(null)}
+                  disabled={deleteBtnState !== 'idle'}
+                >
+                  Cancel
+                </button>
+                <button
+                  className={`premium-btn delete smart-submit-btn ${deleteBtnState}`}
+                  onClick={executeDeleteBanner}
+                  disabled={deleteBtnState !== 'idle'}
+                >
+                  <SmartButtonContent
+                    btnState={deleteBtnState}
+                    idleText='Delete Banner'
+                    loadingText='Deleting...'
+                    successText='Deleted'
+                  />
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
       {previewBanner && (
-        <div className='modal-overlay'>
+        <div className='modal-overlay' onClick={() => setPreviewBanner(null)}>
           <div className='preview-modal' onClick={(e) => e.stopPropagation()}>
             <img
               src={previewBanner.image_url}
@@ -1549,14 +1766,25 @@ function BannerEditModal({
   const [link, setLink] = useState(banner?.link || '');
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(banner?.image_url || null);
-
-  // Scheduling
   const [startDate, setStartDate] = useState(banner?.start_date || '');
   const [endDate, setEndDate] = useState(banner?.end_date || '');
   const [repeatYearly, setRepeatYearly] = useState(!!banner?.repeat_yearly);
-  const [scheduleError, setScheduleError] = useState('');
 
-  const [saving, setSaving] = useState(false);
+  const [btnState, setBtnState] = useState('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+  const errorTimerRef = useRef(null);
+
+  const isDirty = useMemo(() => {
+    if (!banner) return false;
+    if (imageFile !== null) return true;
+    return (
+      label !== (banner.label || '') ||
+      link !== (banner.link || '') ||
+      startDate !== (banner.start_date || '') ||
+      endDate !== (banner.end_date || '') ||
+      repeatYearly !== !!banner.repeat_yearly
+    );
+  }, [banner, label, link, imageFile, startDate, endDate, repeatYearly]);
 
   useEffect(() => {
     if (!banner) return;
@@ -1564,60 +1792,40 @@ function BannerEditModal({
     setLink(banner.link || '');
     setPreviewUrl(banner.image_url);
     setImageFile(null);
-
     setStartDate(banner.start_date || '');
     setEndDate(banner.end_date || '');
     setRepeatYearly(!!banner.repeat_yearly);
-    setScheduleError('');
+    setBtnState('idle');
+    setErrorMsg('');
   }, [banner]);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
-  const validateSchedule = () => {
-    setScheduleError('');
-    if (repeatYearly && (!startDate || !endDate)) {
-      setScheduleError('Yearly repeat requires both start and end dates.');
-      return false;
-    }
-    if (startDate && endDate && endDate < startDate) {
-      setScheduleError('End date must be after start date.');
-      return false;
-    }
-    return true;
-  };
-
-  const saveSchedule = async () => {
-    const scheduleData = new FormData();
-    scheduleData.append('start_date', startDate || '');
-    scheduleData.append('end_date', endDate || '');
-    scheduleData.append('repeat_yearly', repeatYearly ? 'true' : 'false');
-
-    const res = await fetch(`/api/banners/${banner.id}/schedule/`, {
-      method: 'POST',
-      credentials: 'include',
-      body: scheduleData,
-    });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'Failed to save schedule');
+  const triggerError = (msg) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setErrorMsg(msg);
+    setBtnState('error');
+    errorTimerRef.current = setTimeout(() => {
+      setBtnState('idle');
+      setErrorMsg('');
+    }, 2500);
   };
 
   const handleSave = async () => {
-    if (!validateSchedule()) return;
-    setSaving(true);
+    if (!label.trim()) return triggerError('Title Required');
+    if (startDate && endDate && endDate < startDate)
+      return triggerError('Invalid Dates');
+    if (repeatYearly && (!startDate || !endDate))
+      return triggerError('Schedule Required');
 
+    setBtnState('loading');
     const formData = new FormData();
     formData.append('label', label);
     formData.append('link', link);
     if (imageFile) formData.append('file', imageFile);
+    formData.append('start_date', startDate || '');
+    formData.append('end_date', endDate || '');
+    formData.append('repeat_yearly', repeatYearly ? 'true' : 'false');
 
     try {
-      // 1) Save metadata/image
       const res = await fetch(`/api/banners/${banner.id}/update/`, {
         method: 'POST',
         credentials: 'include',
@@ -1625,17 +1833,13 @@ function BannerEditModal({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Update failed');
-
-      // 2) Save schedule
-      await saveSchedule();
-
-      showToast?.('Banner updated', 'success');
-      onSaved?.();
+      setBtnState('success');
+      setTimeout(() => {
+        onSaved?.();
+        setBtnState('idle');
+      }, 1500);
     } catch (err) {
-      console.error(err);
-      showToast?.(err.message || 'Update error', 'error');
-    } finally {
-      setSaving(false);
+      triggerError(err.message || 'Update Error');
     }
   };
 
@@ -1646,44 +1850,49 @@ function BannerEditModal({
       <div
         className='premium-modal'
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '520px' }} /* Matches Upload Banner width */
+        style={{ maxWidth: '520px' }}
       >
-        <button className='close-btn' onClick={onClose} aria-label='Close'>
+        <button className='close-btn' onClick={onClose}>
           ✕
         </button>
-
-        {/* Updated Class to match others */}
         <h2 className='premium-modal-title'>Edit Banner</h2>
-
         <div className='form-row'>
-          <label>Banner Title</label>
+          <label
+            style={{
+              color: errorMsg === 'Title Required' ? '#ef4444' : 'inherit',
+            }}
+          >
+            Banner Title {errorMsg === 'Title Required' && '— Required'}
+          </label>
           <PremiumInput
             type='text'
             value={label}
-            placeholder='e.g. Independence Day'
-            onChange={(e) => setLabel(e.target.value)}
+            onChange={(e) => {
+              setLabel(e.target.value);
+              if (btnState === 'error') setBtnState('idle');
+            }}
           />
         </div>
-
         <div className='form-row'>
           <label>Link / URL (Optional)</label>
           <PremiumInput
             type='text'
             value={link}
-            placeholder='https://uta.edu...'
             onChange={(e) => setLink(e.target.value)}
           />
         </div>
-
         <div className='form-row'>
           <label>Replace Image (Optional)</label>
           <PremiumInput
             type='file'
             accept='image/*'
-            onChange={handleImageChange}
+            onChange={(e) => {
+              setImageFile(e.target.files?.[0] || null);
+              setPreviewUrl(URL.createObjectURL(e.target.files[0]));
+              if (btnState === 'error') setBtnState('idle');
+            }}
           />
         </div>
-
         {previewUrl && (
           <div className='banner-preview-container'>
             <img
@@ -1693,8 +1902,6 @@ function BannerEditModal({
             />
           </div>
         )}
-
-        {/* Scheduling Section */}
         <div
           className='banner-schedule-section'
           style={{
@@ -1713,7 +1920,6 @@ function BannerEditModal({
           >
             Display Schedule
           </h3>
-
           <div className='form-row'>
             <label>Start Date</label>
             <PremiumInput
@@ -1722,7 +1928,6 @@ function BannerEditModal({
               onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
-
           <div className='form-row'>
             <label>End Date</label>
             <PremiumInput
@@ -1731,56 +1936,18 @@ function BannerEditModal({
               onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
-
           <div className='form-row' style={{ marginTop: '0.8rem' }}>
-            <div className='repeat-checkbox-row'>
-              <label className='premium-checkbox'>
-                <input
-                  type='checkbox'
-                  checked={repeatYearly}
-                  onChange={(e) => setRepeatYearly(e.target.checked)}
-                />
-                <span className='checkbox-ui' />
-                <span className='checkbox-label'>Repeat every year</span>
-              </label>
-            </div>
-            <div
-              style={{
-                fontSize: '0.8rem',
-                opacity: 0.6,
-                marginTop: '4px',
-                marginLeft: '28px',
-              }}
-            >
-              Useful for recurring holidays like Thanksgiving or July 4th.
-            </div>
+            <label className='premium-checkbox'>
+              <input
+                type='checkbox'
+                checked={repeatYearly}
+                onChange={(e) => setRepeatYearly(e.target.checked)}
+              />
+              <span className='checkbox-ui' />
+              <span className='checkbox-label'>Repeat every year</span>
+            </label>
           </div>
-
-          {(startDate || endDate || repeatYearly) && (
-            <div
-              style={{
-                marginTop: '1rem',
-                display: 'flex',
-                justifyContent: 'center',
-              }}
-            >
-              <button
-                type='button'
-                className='admin-pill-button admin-pill-subtle'
-                style={{ fontSize: '0.75rem', padding: '0.4rem 1rem' }}
-                onClick={() => {
-                  setStartDate('');
-                  setEndDate('');
-                  setRepeatYearly(false);
-                  setScheduleError('');
-                }}
-              >
-                Clear Schedule
-              </button>
-            </div>
-          )}
-
-          {scheduleError && (
+          {errorMsg && errorMsg !== 'Title Required' && (
             <div
               style={{
                 marginTop: '0.8rem',
@@ -1789,35 +1956,37 @@ function BannerEditModal({
                 textAlign: 'center',
               }}
             >
-              {scheduleError}
+              {errorMsg}
             </div>
           )}
         </div>
-
-        {/* Actions - Consistent Order & Classes */}
         <div className='premium-modal-actions' style={{ marginTop: '2rem' }}>
           <button
             className='premium-btn cancel'
             onClick={onClose}
-            disabled={saving}
+            disabled={btnState !== 'idle'}
           >
             Cancel
           </button>
-
           <button
             className='premium-btn danger'
             onClick={() => onRequestDelete?.(banner)}
-            disabled={saving}
+            disabled={btnState !== 'idle'}
           >
             Delete
           </button>
-
           <button
-            className='premium-btn primary'
+            className={`premium-btn primary smart-submit-btn ${btnState}`}
             onClick={handleSave}
-            disabled={saving}
+            disabled={!isDirty || (btnState !== 'idle' && btnState !== 'error')}
           >
-            {saving ? 'Saving…' : 'Save Changes'}
+            <SmartButtonContent
+              btnState={btnState}
+              idleText='Save Changes'
+              loadingText='Saving...'
+              successText='Saved'
+              errorText={errorMsg || 'Error'}
+            />
           </button>
         </div>
       </div>
@@ -1825,14 +1994,57 @@ function BannerEditModal({
     document.body
   );
 }
-
 function UsersSection({
   users,
   loading,
-  toggleUserAdmin,
-  deleteUser,
+  setAdminUsers,
   setConfirmDeleteUser,
+  showToast,
 }) {
+  const [togglingUsers, setTogglingUsers] = useState({});
+
+  const toggleUserAdmin = async (userId) => {
+    setTogglingUsers((prev) => ({ ...prev, [userId]: 'loading' }));
+    try {
+      const res = await fetch(`/api/users/${userId}/toggle-admin/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showToast?.(data.error, 'error');
+        setTogglingUsers((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+        return;
+      }
+
+      setTogglingUsers((prev) => ({ ...prev, [userId]: 'success' }));
+
+      setTimeout(() => {
+        setAdminUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId ? { ...u, isAdmin: data.isAdmin } : u
+          )
+        );
+        setTogglingUsers((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+      }, 1200);
+    } catch (err) {
+      console.error(err);
+      setTogglingUsers((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+    }
+  };
+
   return (
     <div className='admin-section'>
       <div className='admin-section-header'>
@@ -1851,64 +2063,86 @@ function UsersSection({
         <p className='admin-empty'>No users found.</p>
       ) : (
         <div className='admin-list'>
-          {users.map((u) => (
-            <div key={u.id} className='admin-list-row'>
-              <div className='admin-list-main'>
-                <div className='admin-item-title'>{u.fullName || u.email}</div>
-                <div className='admin-list-meta admin-list-meta-secondary'>
-                  {u.email}
+          {users.map((u) => {
+            const toggleState = togglingUsers[u.id] || 'idle';
+            const actionClass = u.isAdmin
+              ? 'admin-pill-warning'
+              : 'admin-pill-primary';
+
+            return (
+              <div key={u.id} className='admin-list-row'>
+                <div className='admin-list-main'>
+                  <div className='admin-item-title'>
+                    {u.fullName || u.email}
+                  </div>
+                  <div className='admin-list-meta admin-list-meta-secondary'>
+                    {u.email}
+                  </div>
+                </div>
+
+                <div className='admin-list-actions'>
+                  <span
+                    className={`admin-role-chip ${
+                      u.isAdmin ? 'admin-role-admin' : 'admin-role-user'
+                    }`}
+                  >
+                    {u.isAdmin ? 'Admin' : 'User'}
+                  </span>
+
+                  <button
+                    type='button'
+                    className={`admin-pill-button ${
+                      toggleState === 'success'
+                        ? 'admin-pill-success'
+                        : toggleState === 'loading'
+                        ? 'admin-pill-loading'
+                        : actionClass
+                    }`}
+                    onClick={() => toggleUserAdmin(u.id)}
+                    disabled={toggleState !== 'idle'}
+                  >
+                    <SmartButtonContent
+                      btnState={toggleState}
+                      idleText={u.isAdmin ? 'Remove Admin' : 'Make Admin'}
+                      loadingText=''
+                      successText={u.isAdmin ? 'Removed' : 'Promoted'}
+                    />
+                  </button>
+
+                  <button
+                    type='button'
+                    className='admin-pill-button admin-pill-danger'
+                    onClick={() => setConfirmDeleteUser(u)}
+                  >
+                    Delete User
+                  </button>
                 </div>
               </div>
-
-              <div className='admin-list-actions'>
-                <span
-                  className={`admin-role-chip ${
-                    u.isAdmin ? 'admin-role-admin' : 'admin-role-user'
-                  }`}
-                >
-                  {u.isAdmin ? 'Admin' : 'User'}
-                </span>
-
-                <button
-                  type='button'
-                  className='admin-pill-button admin-pill-subtle'
-                  onClick={() => toggleUserAdmin(u.id)}
-                >
-                  {u.isAdmin ? 'Remove Admin' : 'Make Admin'}
-                </button>
-
-                <button
-                  type='button'
-                  className='admin-pill-button admin-pill-danger'
-                  onClick={() => setConfirmDeleteUser(u)}
-                >
-                  Delete User
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-// ======================================================================
-// FIXED ItemEditModal (With Portal) — Matches Edit Room Styles Exactly
-// ======================================================================
-
+// --- TRILLION DOLLAR ITEM EDIT MODAL (Dirty Check + On-Button Error) ---
 function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
   const isEdit = !!item;
-
   const [name, setName] = useState(item?.name || '');
   const [categoryKey, setCategoryKey] = useState(item?.category_key || '');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(item?.image || null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
-  // Generate options for the Select dropdown
+  // Dirty Check State
+  const [initialState, setInitialState] = useState(null);
+
+  // Smart Button State
+  const [btnState, setBtnState] = useState('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+  const errorTimerRef = useRef(null);
+
   const categoryOptions = React.useMemo(() => {
     const opts = [];
     const seen = new Set();
@@ -1925,13 +2159,21 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    setName(item?.name || '');
-    setCategoryKey(item?.category_key || '');
+    const init = {
+      name: item?.name || '',
+      categoryKey: item?.category_key || '',
+      newCategoryName: '',
+      previewUrl: item?.image || null,
+    };
+    setName(init.name);
+    setCategoryKey(init.categoryKey);
     setNewCategoryName('');
     setImageFile(null);
-    setPreviewUrl(item?.image || null);
-    setSaving(false);
-    setError('');
+    setPreviewUrl(init.previewUrl);
+
+    setInitialState(init); // Set baseline for dirty check
+    setBtnState('idle');
+    setErrorMsg('');
   }, [isOpen, item]);
 
   const handleImageChange = (e) => {
@@ -1941,73 +2183,82 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
     setPreviewUrl(URL.createObjectURL(file));
   };
 
+  // Dirty Check: Compare current inputs against initial state
+  const isDirty = useMemo(() => {
+    if (!initialState) return false;
+    // If image file is selected, it's dirty
+    if (imageFile) return true;
+    return (
+      name !== initialState.name ||
+      categoryKey !== initialState.categoryKey ||
+      newCategoryName !== initialState.newCategoryName
+    );
+  }, [name, categoryKey, newCategoryName, imageFile, initialState]);
+
+  const triggerError = (msg) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setErrorMsg(msg);
+    setBtnState('error');
+    errorTimerRef.current = setTimeout(() => {
+      setBtnState('idle');
+      setErrorMsg('');
+    }, 2500);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
 
+    // 1. Validation -> Trigger Button Error
     const trimmedName = name
       .trim()
       .split(' ')
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(' ');
+    if (!trimmedName) return triggerError('Name Required');
 
-    if (!trimmedName) {
-      setError('Name is required.');
-      return;
-    }
-
-    const payload = {
-      id: item?.id || null,
-      name: trimmedName,
-    };
-
+    const payload = { id: item?.id || null, name: trimmedName };
     if (categoryKey && categoryKey !== '__new__') {
       payload.category_key = categoryKey;
     } else if (categoryKey === '__new__' && newCategoryName.trim()) {
       payload.new_category_name = newCategoryName.trim();
     }
 
+    setBtnState('loading');
+
     try {
-      setSaving(true);
       const res = await fetch('/api/items/save/', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!data.ok) {
-        throw new Error(data.error || 'Failed to save item');
-      }
+      if (!data.ok) throw new Error(data.error || 'Failed to save item');
 
       let savedItem = data.item;
 
       if (imageFile) {
         const formData = new FormData();
         formData.append('file', imageFile);
-
         const imgRes = await fetch(`/api/items/${savedItem.id}/upload-image/`, {
           method: 'POST',
           credentials: 'include',
           body: formData,
         });
         const imgData = await imgRes.json();
-        if (!imgData.ok) {
-          console.error('Image upload failed:', imgData.error);
-        } else if (imgData.image) {
+        if (imgData.image) {
           savedItem = { ...savedItem, image: imgData.image };
         }
       }
 
-      onSaved && onSaved(savedItem);
-      onClose();
+      setBtnState('success');
+      setTimeout(() => {
+        onSaved && onSaved(savedItem);
+        onClose();
+        setBtnState('idle');
+      }, 1500);
     } catch (err) {
-      console.error(err);
-      setError(err.message || 'Failed to save item.');
-    } finally {
-      setSaving(false);
+      triggerError(err.message || 'Failed to save item.');
     }
   };
 
@@ -2016,10 +2267,7 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
   return createPortal(
     <div
       className='modal-overlay'
-      style={{
-        zIndex: 99999,
-        backdropFilter: 'blur(8px)',
-      }}
+      style={{ zIndex: 99999, backdropFilter: 'blur(8px)' }}
       onClick={(e) => e.stopPropagation()}
     >
       <div
@@ -2027,11 +2275,7 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
         onClick={(e) => e.stopPropagation()}
         role='dialog'
         aria-modal='true'
-        // Matched Edit Room sizing logic
-        style={{
-          width: '720px',
-          maxWidth: '92vw',
-        }}
+        style={{ width: '720px', maxWidth: '92vw' }}
       >
         <button
           type='button'
@@ -2046,17 +2290,7 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
           {isEdit ? 'Edit Supply Item' : 'Add Supply Item'}
         </h2>
 
-        {/* REMOVED className='reserve-form' 
-           Now it inherits standard premium-modal input styles (darker glass) 
-        */}
         <form onSubmit={handleSubmit}>
-          {error && (
-            <p className='admin-error-text' style={{ marginBottom: '1rem' }}>
-              {error}
-            </p>
-          )}
-
-          {/* Row 1: Name & Category - Matched Layout to Edit Room */}
           <div className='form-row' style={{ marginBottom: '1.2rem' }}>
             <div style={{ flex: 2 }}>
               <label>Item Name</label>
@@ -2067,7 +2301,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
                 placeholder='e.g., AA Batteries'
               />
             </div>
-
             <div style={{ flex: 1 }}>
               <label>Category</label>
               <PremiumInput
@@ -2086,7 +2319,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
             </div>
           </div>
 
-          {/* Conditional New Category Row */}
           {categoryKey === '__new__' && (
             <div className='form-row' style={{ marginBottom: '1.2rem' }}>
               <div style={{ flex: 1 }}>
@@ -2101,7 +2333,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
             </div>
           )}
 
-          {/* Row 2: Image & Preview */}
           <div className='form-row' style={{ alignItems: 'flex-start' }}>
             <div style={{ flex: 2 }}>
               <label>Item Image (Optional)</label>
@@ -2120,7 +2351,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
                 Recommended size: 500x500px, PNG or JPG.
               </div>
             </div>
-
             <div
               style={{
                 flex: 1,
@@ -2142,70 +2372,34 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
             </div>
           </div>
 
-          {/* AI Prompt Section */}
-          {name.trim() !== '' && (
-            <div className='admin-ai-block' style={{ marginTop: '2rem' }}>
-              <label className='admin-ai-label'>
-                AI Image Prompt (Optional)
-              </label>
-
-              <PremiumInput
-                as='textarea'
-                value={`A 50×50 Apple-style photorealistic product render of ${name} on a bright navy blue gradient background, polished metal look, subtle reflections, centered product shot.`}
-                readOnly
-                className='admin-ai-prompt-premium'
-              />
-
-              <div
-                className='admin-ai-actions'
-                style={{ justifyContent: 'flex-end', marginTop: '0.8rem' }}
-              >
-                <button
-                  type='button'
-                  className='admin-pill-button admin-pill-subtle'
-                  onClick={(e) => {
-                    const prompt = `A 50×50 Apple-style photorealistic product render of ${name} on a bright navy blue gradient background, polished metal look, subtle reflections, centered product shot.`;
-                    navigator.clipboard.writeText(prompt);
-                    const btn = e.target;
-                    const original = btn.textContent;
-                    btn.textContent = 'Copied!';
-                    setTimeout(() => {
-                      btn.textContent = original;
-                    }, 2000);
-                  }}
-                >
-                  Copy Prompt
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
           <div
             className='premium-modal-actions'
             style={{ marginTop: '2.5rem' }}
           >
             <button
               type='button'
-              className='premium-btn cancel' // Changed from modal-btn to match Edit Room
+              className='premium-btn cancel'
               onClick={onClose}
-              disabled={saving}
+              disabled={btnState !== 'idle'}
             >
               Cancel
             </button>
 
+            {/* SENTIENT BUTTON: Disabled if clean, Error state if invalid */}
             <button
               type='submit'
-              className='premium-btn primary' // Changed from modal-btn to match Edit Room
-              disabled={saving}
+              className={`premium-btn primary smart-submit-btn ${btnState}`}
+              disabled={
+                !isDirty || (btnState !== 'idle' && btnState !== 'error')
+              }
             >
-              {saving
-                ? isEdit
-                  ? 'Saving…'
-                  : 'Creating…'
-                : isEdit
-                ? 'Save Changes'
-                : 'Create Item'}
+              <SmartButtonContent
+                btnState={btnState}
+                idleText={isEdit ? 'Save Changes' : 'Create Item'}
+                loadingText={isEdit ? 'Saving...' : 'Creating...'}
+                successText={isEdit ? 'Saved' : 'Created'}
+                errorText={errorMsg || 'Error'}
+              />
             </button>
           </div>
         </form>

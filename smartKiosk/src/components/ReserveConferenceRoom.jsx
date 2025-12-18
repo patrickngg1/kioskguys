@@ -3,7 +3,126 @@ import '../styles/Dashboard.css';
 import '../styles/reserveModal.css';
 import '../styles/PremiumInput.css';
 import PremiumInput from './PremiumInput';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+
+// --- 100 BILLION DOLLAR STYLES (Embedded for Instant Power) ---
+const PREMIUM_STYLES = `
+  @keyframes premium-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+  }
+  
+  .smart-submit-btn.error {
+    background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.6) !important;
+    animation: premium-shake 0.4s ease-in-out;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+  }
+
+  .smart-submit-btn.warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important; /* Amber */
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.6) !important;
+    animation: premium-shake 0.4s ease-in-out;
+  }
+
+  /* Refined Text Layers for Smart Button */
+  .btn-text-layer {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+    position: absolute;
+    inset: 0;
+    justify-content: center;
+    pointer-events: none;
+  }
+  
+  .btn-text-layer.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    position: relative;
+    pointer-events: auto;
+  }
+`;
+
+// --- HELPER: Smart Button Content (Now supports Error/Warning) ---
+const SmartButtonContent = ({
+  btnState,
+  idleText,
+  loadingText,
+  successText,
+  errorText,
+}) => (
+  <>
+    {/* Layer 1: Idle */}
+    <span className={`btn-text-layer ${btnState === 'idle' ? 'visible' : ''}`}>
+      {idleText}
+    </span>
+
+    {/* Layer 2: Loading */}
+    <span
+      className={`btn-text-layer ${btnState === 'loading' ? 'visible' : ''}`}
+    >
+      <span
+        className='spinner-loader'
+        style={{
+          width: '16px',
+          height: '16px',
+          border: '2px solid rgba(255,255,255,0.3)',
+          borderTopColor: '#fff',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }}
+      ></span>
+      {loadingText}
+    </span>
+
+    {/* Layer 3: Success */}
+    <span
+      className={`btn-text-layer ${btnState === 'success' ? 'visible' : ''}`}
+    >
+      <svg
+        width='18'
+        height='18'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='3.5'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      >
+        <path d='M20 6L9 17l-5-5'></path>
+      </svg>
+      {successText}
+    </span>
+
+    {/* Layer 4: Error/Warning (The Fix) */}
+    <span
+      className={`btn-text-layer ${
+        btnState === 'error' || btnState === 'warning' ? 'visible' : ''
+      }`}
+    >
+      <svg
+        width='18'
+        height='18'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='3'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      >
+        <circle cx='12' cy='12' r='10'></circle>
+        <line x1='12' y1='8' x2='12' y2='12'></line>
+        <line x1='12' y1='16' x2='12.01' y2='16'></line>
+      </svg>
+      {errorText}
+    </span>
+  </>
+);
 
 // --- HELPER FUNCTIONS ---
 const to24h = (hour, minute, period) => {
@@ -40,7 +159,7 @@ const timeToMinutes = (timeStr) => {
   return h * 60 + m;
 };
 
-// --- AVAILABILITY GRID COMPONENT ---
+// --- AVAILABILITY GRID COMPONENT (Unchanged) ---
 function RoomDayAvailability({ rooms, reservations, selectedRoomId, date }) {
   if (!date || !rooms || rooms.length === 0) return null;
 
@@ -244,14 +363,22 @@ function ReserveConferenceRoom({
   isOpen,
   onClose,
   user,
-  setToast,
-  setToastShake,
-  onReservationCreated,
+  onReservationCreated, // Note: Removed setToast props as we don't use them anymore
   existingReservations = [],
 }) {
   const [rooms, setRooms] = useState([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+
+  // --- SMART BUTTON STATE ---
+  const [btnState, setBtnState] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error' | 'warning'
+  const [errorMsg, setErrorMsg] = useState(''); // Text to show on button
+  const errorTimerRef = useRef(null); // Ref to clear timeout prevents flickering
+
+  // --- SMART CANCEL BUTTON ---
+  const [cancelBtnState, setCancelBtnState] = useState('idle');
+  const [cancelErrorMsg, setCancelErrorMsg] = useState('');
+  const cancelTimerRef = useRef(null);
+
   const [showOvernightModal, setShowOvernightModal] = useState(false);
   const [pendingRequest, setPendingRequest] = useState(null);
 
@@ -275,13 +402,41 @@ function ReserveConferenceRoom({
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
-  const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [locallyCancelledIds, setLocallyCancelledIds] = useState([]);
 
   const todayISO = new Date().toISOString().split('T')[0];
   const cardsShouldShow = rooms.length > 0 && rooms.length <= 2;
   const [cardsRender, setCardsRender] = useState(false);
   const [cardsVisible, setCardsVisible] = useState(false);
+
+  // --- PREMIUM ERROR TRIGGER ---
+  // Replaces cheap toasts with button-based feedback
+  const triggerError = (msg, isWarning = false) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setErrorMsg(msg);
+    setBtnState(isWarning ? 'warning' : 'error');
+    errorTimerRef.current = setTimeout(() => {
+      setBtnState('idle');
+      setErrorMsg('');
+    }, 2500);
+  };
+
+  const triggerCancelError = (msg) => {
+    if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+    setCancelErrorMsg(msg);
+    setCancelBtnState('error');
+    cancelTimerRef.current = setTimeout(() => {
+      setCancelBtnState('idle');
+      setCancelErrorMsg('');
+    }, 2500);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setBtnState('idle');
+      setCancelBtnState('idle');
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (cardsShouldShow) {
@@ -392,45 +547,27 @@ function ReserveConferenceRoom({
     setConfirmingCancel(false);
   };
 
+  // --- 100 BILLION DOLLAR SUBMIT LOGIC ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) {
-      setToast('Please sign in first.');
-      setToastShake(true);
-      return;
-    }
-    const {
-      roomId,
-      date,
-      startHour,
-      startMin,
-      startPeriod,
-      endHour,
-      endMin,
-      endPeriod,
-    } = reservationData;
+
+    // 1. Validation -> Trigger Warning Button
+    if (!user) return triggerError('Sign In Required', true);
+
+    const { roomId, date, startHour, startMin, endHour, endMin } =
+      reservationData;
     if (!roomId || !date || !startHour || !startMin || !endHour || !endMin) {
-      setToast('Please complete all fields.');
-      setToastShake(true);
-      return;
+      return triggerError('Complete All Fields', true);
     }
 
-    const start24 = to24h(startHour, startMin, startPeriod);
-    const end24 = to24h(endHour, endMin, endPeriod);
-    if (!start24 || !end24) {
-      setToast('Invalid time.');
-      setToastShake(true);
-      return;
-    }
+    const start24 = to24h(startHour, startMin, reservationData.startPeriod);
+    const end24 = to24h(endHour, endMin, reservationData.endPeriod);
+    if (!start24 || !end24) return triggerError('Invalid Time', true);
 
     const startDT = combineDateTime(date, start24);
     let endDT = combineDateTime(date, end24);
-    if (!startDT || !endDT) {
-      setToast('Invalid date/time.');
-      setToastShake(true);
-      return;
-    }
+    if (!startDT || !endDT) return triggerError('Invalid Date', true);
 
     const isOvernight = endDT <= startDT;
     if (isOvernight) {
@@ -440,13 +577,12 @@ function ReserveConferenceRoom({
     }
 
     const now = new Date();
-    if (date === todayISO && endDT <= now) {
-      setToast('Please choose a time later today.');
-      setToastShake(true);
-      return;
-    }
+    if (date === todayISO && endDT <= now)
+      return triggerError('Time has passed', true);
+
     if (endDT <= startDT) endDT = new Date(endDT.getTime() + 86400000);
 
+    // 2. Conflict Check -> Trigger Error Button
     const combined = [
       ...(existingReservations || []),
       ...(myReservations || []),
@@ -464,15 +600,11 @@ function ReserveConferenceRoom({
       return startDT < rEnd && endDT > rStart;
     });
 
-    if (conflict) {
-      setToast('That time slot is already reserved.');
-      setToastShake(true);
-      return;
-    }
+    if (conflict) return triggerError('Slot Unavailable');
 
-    setSubmitting(true);
-    setToast('Submitting...');
-    setToastShake(false);
+    // 3. API Call -> Loading State
+    setBtnState('loading');
+
     try {
       const res = await fetch('/api/rooms/reserve/', {
         method: 'POST',
@@ -486,21 +618,19 @@ function ReserveConferenceRoom({
         }),
       });
       const data = await res.json();
+
       if (!res.ok || !data.ok) {
-        setToast(data.error || 'Reservation failed.');
-        setToastShake(true);
-        return;
+        // API Error -> Trigger Error Button
+        return triggerError(data.error || 'Reservation Failed');
       }
 
+      // 4. Success -> Green Button
       const r = data.reservation;
-      onReservationCreated(r);
+      if (onReservationCreated) onReservationCreated(r);
       setMyReservations((prev) => [...prev, r]);
-      setToast(
-        `Room Reserved:\n${r.roomName}\n${to12HourDisplay(
-          r.startTime
-        )} → ${to12HourDisplay(r.endTime)}`
-      );
-      setToastShake(false);
+
+      setBtnState('success');
+
       setReservationData({
         roomId: '',
         date: '',
@@ -511,54 +641,49 @@ function ReserveConferenceRoom({
         endMin: '',
         endPeriod: 'AM',
       });
-      onClose();
+
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch {
-      setToast('Network error.');
-      setToastShake(true);
-    } finally {
-      setSubmitting(false);
+      triggerError('Network Error');
     }
   };
 
   const finalizeReservation = async (req) => {
-    const { roomId, date, startTime, endTime } = req;
-    setSubmitting(true);
-    setToast('Submitting...');
+    // If called from overnight modal, update main button state
+    setBtnState('loading');
     try {
       const res = await fetch('/api/rooms/reserve/', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, date, startTime, endTime }),
+        body: JSON.stringify(req),
       });
       const data = await res.json();
+
       if (!res.ok || !data.ok) {
-        setToast(data.error || 'Reservation failed.');
-        setToastShake(true);
-        return;
+        return triggerError(data.error || 'Reservation Failed');
       }
+
       const r = data.reservation;
-      setToast(
-        `Room Reserved:\n${r.roomName}\n${to12HourDisplay(
-          r.startTime
-        )} → ${to12HourDisplay(r.endTime)}`
-      );
-      setToastShake(false);
-      onReservationCreated(r);
-      onClose();
+      setBtnState('success');
+      if (onReservationCreated) onReservationCreated(r);
+      setTimeout(() => onClose(), 1500);
     } catch {
-      setToast('Network error.');
-      setToastShake(true);
-    } finally {
-      setSubmitting(false);
+      triggerError('Network Error');
     }
   };
 
+  // --- SMART CANCEL BUTTON LOGIC ---
   const handleConfirmCancelSelected = async () => {
     if (selectedIds.length === 0) return;
-    setCancelSubmitting(true);
-    setToast('Cancelling...');
+    setCancelBtnState('loading');
+
     try {
+      let success = false;
+      let error = '';
+
       if (selectedIds.length === 1) {
         const id = selectedIds[0];
         const res = await fetch(`/api/rooms/reservations/${id}/cancel/`, {
@@ -566,13 +691,8 @@ function ReserveConferenceRoom({
           credentials: 'include',
         });
         const data = await res.json();
-        if (data.ok) {
-          setMyReservations((prev) => prev.filter((r) => r.id !== id));
-          setToast('Reservation cancelled.');
-        } else {
-          setToast(data.error);
-          setToastShake(true);
-        }
+        if (data.ok) success = true;
+        else error = data.error;
       } else {
         const res = await fetch('/api/rooms/reservations/cancel-bulk/', {
           method: 'POST',
@@ -581,45 +701,53 @@ function ReserveConferenceRoom({
           body: JSON.stringify({ ids: selectedIds, reason: 'User cancelled.' }),
         });
         const data = await res.json();
-        if (data.ok) {
+        if (data.ok) success = true;
+        else error = data.error;
+      }
+
+      if (success) {
+        setCancelBtnState('success');
+        setTimeout(() => {
           setMyReservations((prev) =>
             prev.filter((r) => !selectedIds.includes(r.id))
           );
-          setToast(`Cancelled ${selectedIds.length}.`);
-        } else {
-          setToast(data.error);
-          setToastShake(true);
-        }
+          clearSelection();
+          setCancelBtnState('idle');
+        }, 1500);
+      } else {
+        triggerCancelError(error || 'Failed');
       }
     } catch {
-      setToast('Network error.');
-      setToastShake(true);
-    } finally {
-      clearSelection();
-      setCancelSubmitting(false);
+      triggerCancelError('Network Error');
     }
   };
 
   return (
     <div className='modal-overlay'>
+      {/* Inject animations directly */}
+      <style>{PREMIUM_STYLES}</style>
+
       <div
         className='modal-box reserve-box fixed-layout'
         onClick={(e) => e.stopPropagation()}
-        style={{ width: '850px', maxWidth: '95vw' }}
       >
-        {/* --- FIXED HEADER --- */}
         <div className='modal-header-fixed'>
           <button
             className='close-btn'
             type='button'
-            onClick={() => !submitting && onClose()}
+            onClick={() => {
+              if (btnState !== 'loading' && btnState !== 'success') onClose();
+            }}
           >
             ✕
           </button>
           <h2>Reserve Conference Room</h2>
+          <p className='supply-hint'>
+            Reserve a conference room, check the availability, and cancel
+            reservations
+          </p>
         </div>
 
-        {/* --- SCROLLABLE BODY --- */}
         <div
           className='modal-scroll-content'
           onScroll={(e) => {
@@ -719,16 +847,8 @@ function ReserveConferenceRoom({
                       </div>
                     );
                   })}
-
                   {!confirmingCancel && selectedIds.length > 0 && (
-                    <div
-                      className='myres-actions'
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        marginTop: '0.5rem',
-                      }}
-                    >
+                    <div className='myres-actions'>
                       <button
                         className='admin-pill-button admin-pill-danger'
                         onClick={() => setConfirmingCancel(true)}
@@ -737,28 +857,35 @@ function ReserveConferenceRoom({
                       </button>
                     </div>
                   )}
-
                   {confirmingCancel && (
-                    <div
-                      className='cancel-confirm-actions'
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: '0.75rem',
-                        marginTop: '0.5rem',
-                      }}
-                    >
+                    <div className='cancel-confirm-actions'>
                       <button
                         className='admin-pill-button admin-pill-subtle'
                         onClick={() => setConfirmingCancel(false)}
+                        disabled={cancelBtnState !== 'idle'}
                       >
                         Go Back
                       </button>
                       <button
-                        className='admin-pill-button admin-pill-danger'
+                        className={`admin-pill-button ${
+                          cancelBtnState === 'success'
+                            ? 'admin-pill-success'
+                            : cancelBtnState === 'loading'
+                            ? 'admin-pill-loading'
+                            : cancelBtnState === 'error'
+                            ? 'admin-pill-danger'
+                            : 'admin-pill-danger'
+                        }`}
                         onClick={handleConfirmCancelSelected}
+                        disabled={cancelBtnState !== 'idle'}
                       >
-                        Confirm Cancel
+                        <SmartButtonContent
+                          btnState={cancelBtnState}
+                          idleText='Confirm Cancel'
+                          loadingText='Cancelling...'
+                          successText='Cancelled'
+                          errorText={cancelErrorMsg || 'Failed'}
+                        />
                       </button>
                     </div>
                   )}
@@ -829,7 +956,6 @@ function ReserveConferenceRoom({
               className='form-row'
               style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem' }}
             >
-              {/* Start Time */}
               <div style={{ flex: 1 }}>
                 <label>Start Time</label>
                 <div
@@ -884,20 +1010,19 @@ function ReserveConferenceRoom({
                           ? 'am-mode'
                           : 'pm-mode'
                       }`}
-                      onClick={() =>
+                      onClick={(e) => {
+                        e.preventDefault();
                         setReservationData((d) => ({
                           ...d,
                           startPeriod: d.startPeriod === 'AM' ? 'PM' : 'AM',
-                        }))
-                      }
+                        }));
+                      }}
                     >
                       {reservationData.startPeriod || 'AM'}
                     </PremiumInput>
                   </div>
                 </div>
               </div>
-
-              {/* End Time */}
               <div style={{ flex: 1 }}>
                 <label>End Time</label>
                 <div
@@ -952,12 +1077,13 @@ function ReserveConferenceRoom({
                           ? 'am-mode'
                           : 'pm-mode'
                       }`}
-                      onClick={() =>
+                      onClick={(e) => {
+                        e.preventDefault();
                         setReservationData((d) => ({
                           ...d,
                           endPeriod: d.endPeriod === 'AM' ? 'PM' : 'AM',
-                        }))
-                      }
+                        }));
+                      }}
                     >
                       {reservationData.endPeriod || 'AM'}
                     </PremiumInput>
@@ -966,14 +1092,23 @@ function ReserveConferenceRoom({
               </div>
             </div>
 
-            {/* STICKY FOOTER BUTTON WRAPPER */}
             <div className='submit-request-sticky'>
               <button
                 type='submit'
-                className='btn btn-primary w-full mt-2'
-                disabled={submitting || loadingRooms}
+                className={`btn btn-primary w-full mt-2 smart-submit-btn ${btnState}`}
+                disabled={
+                  btnState !== 'idle' &&
+                  btnState !== 'error' &&
+                  btnState !== 'warning'
+                }
               >
-                {submitting ? 'Reserving...' : 'Confirm Reservation'}
+                <SmartButtonContent
+                  btnState={btnState}
+                  idleText='Confirm Reservation'
+                  loadingText='Reserving Room...'
+                  successText='Reservation Confirmed'
+                  errorText={errorMsg || 'Error'}
+                />
               </button>
             </div>
           </form>

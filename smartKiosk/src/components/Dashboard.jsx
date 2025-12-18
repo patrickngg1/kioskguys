@@ -8,6 +8,7 @@ import '../styles/App.css';
 import '../styles/CardSwipeModal.css';
 import '../styles/PremiumModal.css';
 import '../styles/PremiumInput.css';
+import '../styles/AdminPanel.css'; // ✅ Imported to get Premium Button Styles
 import DashboardToast from './DashboardToast';
 import AdminPanel from './AdminPanel';
 import RequestSupply from './RequestSupply';
@@ -15,7 +16,58 @@ import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
 import SetPasswordOverlay from './SetPasswordOverlay';
 import CardSwipeModal from './CardSwipeModal';
-import PremiumInput from './PremiumInput'; // ✅ Added Import
+import PremiumInput from './PremiumInput';
+
+// --- HELPER: Smart Button Inner Content ---
+// (Identical to AdminPanel to ensure premium animations)
+const SmartButtonContent = ({
+  btnState,
+  idleText,
+  loadingText,
+  successText,
+  successIcon = true,
+}) => (
+  <>
+    {/* Layer 1: Idle Text */}
+    <span className={`btn-text-layer ${btnState === 'idle' ? 'visible' : ''}`}>
+      {idleText}
+    </span>
+
+    {/* Layer 2: Loading Spinner */}
+    <span
+      className={`btn-text-layer ${btnState === 'loading' ? 'visible' : ''}`}
+    >
+      <span
+        className='spinner-loader'
+        style={{ width: '14px', height: '14px', borderWidth: '2px' }}
+      ></span>
+      {loadingText && <span>{loadingText}</span>}
+    </span>
+
+    {/* Layer 3: Success Checkmark */}
+    <span
+      className={`btn-text-layer ${btnState === 'success' ? 'visible' : ''}`}
+    >
+      {successIcon && (
+        <svg
+          className='checkmark-icon'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='3.5'
+          style={{ width: '16px', height: '16px' }}
+        >
+          <path
+            d='M5 13l4 4L19 7'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+          />
+        </svg>
+      )}
+      {successText}
+    </span>
+  </>
+);
 
 function extractUTAID(raw) {
   if (!raw) return null;
@@ -43,6 +95,8 @@ export default function Dashboard() {
   // Name Editing State
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
+  // ✅ NEW: Button State for Edit Name
+  const [editNameBtnState, setEditNameBtnState] = useState('idle');
 
   // Inactivity / Countdown State
   const [ringProgress, setRingProgress] = useState(0);
@@ -66,11 +120,25 @@ export default function Dashboard() {
     chimeRef.current = new Audio('/soft-chime.wav');
   }, []);
 
+  // src/components/Dashboard.jsx
+
   function startLogoutSplash() {
     setShowLogoutSplash(true);
-    setTimeout(() => navigate('/', { state: { startOverlay: true } }), 3000);
-  }
 
+    // 1. Initial Void Warping
+    document.body.classList.add('astral-void-active');
+
+    // 2. The Quantum Implosion (Blinding white flash right before redirect)
+    setTimeout(() => {
+      document.body.classList.add('astral-supernova');
+    }, 3200);
+
+    // 3. Final Redirect
+    setTimeout(() => {
+      document.body.classList.remove('astral-void-active', 'astral-supernova');
+      navigate('/', { state: { startOverlay: true } });
+    }, 4000);
+  }
   // ------------------------ Load User ------------------------
   useEffect(() => {
     async function initUser() {
@@ -231,10 +299,14 @@ export default function Dashboard() {
 
   const openEditName = () => {
     setEditNameValue(profile?.fullName || user?.fullName || '');
+    setEditNameBtnState('idle'); // Reset button
     setShowEditNameModal(true);
   };
 
-  const handleSaveName = async () => {
+  // ✅ SUPER PREMIUM SAVE: Updates button instead of Toast
+  const handleSaveName = async (e) => {
+    e.preventDefault(); // Ensure form doesn't reload
+
     // 1. Clean up extra spaces
     const cleanName = editNameValue.trim().replace(/\s+/g, ' ');
 
@@ -248,6 +320,8 @@ export default function Dashboard() {
     if (nameParts.length < 2) {
       return showToast('Please enter your full name (First & Last).', 'error');
     }
+
+    setEditNameBtnState('loading'); // Start Loading Spinner
 
     try {
       const res = await fetch('/api/me/update-name/', {
@@ -263,13 +337,21 @@ export default function Dashboard() {
         const newName = data.fullName;
         setUser((prev) => ({ ...prev, fullName: newName }));
         setProfile((prev) => ({ ...prev, fullName: newName }));
-        showToast('Name updated successfully', 'success');
-        setShowEditNameModal(false);
+
+        // ✅ Success Animation (No Toast)
+        setEditNameBtnState('success');
+
+        setTimeout(() => {
+          setShowEditNameModal(false);
+          setEditNameBtnState('idle');
+        }, 1500);
       } else {
         showToast(data.error || 'Failed to update name', 'error');
+        setEditNameBtnState('idle');
       }
     } catch (err) {
       showToast('Network error', 'error');
+      setEditNameBtnState('idle');
     }
   };
 
@@ -386,13 +468,9 @@ export default function Dashboard() {
 
   const submitSupplies = async () => {
     if (selectedSupplies.length === 0) {
-      setToast('Please select at least one item.');
-      setToastShake(true);
-      return;
+      return false;
     }
     try {
-      setToast('Submitting request…');
-      setToastShake(false);
       const res = await fetch('/api/supplies/request/', {
         method: 'POST',
         credentials: 'include',
@@ -400,22 +478,15 @@ export default function Dashboard() {
         body: JSON.stringify({ items: selectedSupplies }),
       });
       const data = await res.json();
+
       if (!res.ok || (!data.ok && !data.requestId)) {
-        setToast(data.error || 'Request failed.');
-        setToastShake(true);
-        return;
+        console.error(data.error || 'Request failed.');
+        return false;
       }
-      const allItems = Object.values(itemsByCategory).flat();
-      const itemNames = selectedSupplies
-        .map((id) => allItems.find((x) => x.id === id)?.name || 'Item')
-        .join(', ');
-      setToast(`Request submitted successfully!\nItems: ${itemNames}`);
-      setToastShake(false);
-      setSelectedSupplies([]);
-      setShowSuppliesModal(false);
+      return true;
     } catch (err) {
-      setToast('Network error. Please try again.');
-      setToastShake(true);
+      console.error('Network error', err);
+      return false;
     }
   };
 
@@ -466,12 +537,12 @@ export default function Dashboard() {
   else if (toast?.toLowerCase().includes('submitting')) toastType = 'loading';
   else if (toast?.toLowerCase().includes('error')) toastType = 'error';
 
+  // src/components/Dashboard.jsx
+
   const handleCardRegister = async ({ raw, uta_id }) => {
     try {
-      if (!raw && !uta_id) {
-        showToast('Could not read card data. Try again.', 'error');
-        return;
-      }
+      if (!raw && !uta_id) return false;
+
       const res = await fetch('/api/card/register/', {
         method: 'POST',
         credentials: 'include',
@@ -479,18 +550,18 @@ export default function Dashboard() {
         body: JSON.stringify({ raw_swipe: raw, uta_id: uta_id }),
       });
       const data = await res.json();
+
       if (res.ok && data.ok) {
-        showToast('Card successfully linked!');
-        setShowSwipeModal(false);
         setUser((prev) => ({ ...prev, hasCard: true }));
+        return true; // Modal will show "Identity Secured"
       } else {
-        showToast(data.error || 'Could not link card.', 'error');
+        // If the card is wrong type or invalid, return false
+        return false; // Modal will show "Access Denied"
       }
     } catch (err) {
-      showToast('Network error while linking card.', 'error');
+      return false;
     }
   };
-
   return (
     <>
       {/* MAIN DASHBOARD */}
@@ -649,15 +720,16 @@ export default function Dashboard() {
                 {banners[bannerIdx].cta.label}
               </button>
             ) : banners.length > 0 && banners[bannerIdx]?.link ? (
-              <div className='banner-qr-container'>
+              <div className='start-qr-glass-plate dashboard-qr-adjust'>
+                <div className='qr-glass-glow'></div>
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
                     banners[bannerIdx].link
                   )}`}
-                  alt='Scan for info'
-                  className='banner-qr-image'
+                  alt='Scan'
+                  className='qr-etched-image'
                 />
-                <span className='banner-qr-text'>Scan for Info</span>
+                <span className='qr-glass-label'>SCAN FOR INFO</span>
               </div>
             ) : null}
           </div>
@@ -683,7 +755,8 @@ export default function Dashboard() {
           {/* MAP */}
           <div
             className='map-container'
-            style={{ gridArea: 'map', gridRow: 'reserve / supplies' }}
+            // ✅ FIX: Removed 'gridRow' constraint, added 'height: 100%' so it fills entire column
+            style={{ gridArea: 'map', height: '100%', minHeight: '100%' }}
           >
             <KioskMap />
           </div>
@@ -802,7 +875,7 @@ export default function Dashboard() {
         renderSection={renderSection}
       />
 
-      {/* EDIT NAME MODAL (Updated Input) */}
+      {/* EDIT NAME MODAL (Updated Input & Smart Button) */}
       {showEditNameModal && (
         <div className='modal-overlay'>
           <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
@@ -816,38 +889,50 @@ export default function Dashboard() {
             <p className='premium-modal-message'>
               Correct a typo or update how your name appears on reservations.
             </p>
-            <div
-              className='form-row'
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem',
-                marginTop: '-1rem',
-                marginBottom: '2rem',
-              }}
-            >
-              <label style={{ textAlign: 'left' }}>Full Name</label>
-              {/* ✅ UPDATED: Used PremiumInput instead of raw <input> */}
-              <PremiumInput
-                type='text'
-                value={editNameValue}
-                onChange={(e) => setEditNameValue(e.target.value)}
-                placeholder='e.g. John Doe'
-                autoFocus
-              />
-            </div>
-
-            <div className='premium-modal-actions'>
-              <button
-                className='premium-btn cancel'
-                onClick={() => setShowEditNameModal(false)}
+            <form onSubmit={handleSaveName}>
+              <div
+                className='form-row'
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                  marginTop: '-1rem',
+                  marginBottom: '2rem',
+                }}
               >
-                Cancel
-              </button>
-              <button className='premium-btn primary' onClick={handleSaveName}>
-                Save Changes
-              </button>
-            </div>
+                <label style={{ textAlign: 'left' }}>Full Name</label>
+                <PremiumInput
+                  type='text'
+                  value={editNameValue}
+                  onChange={(e) => setEditNameValue(e.target.value)}
+                  placeholder='e.g. John Doe'
+                  autoFocus
+                />
+              </div>
+
+              <div className='premium-modal-actions'>
+                <button
+                  type='button'
+                  className='premium-btn cancel'
+                  onClick={() => setShowEditNameModal(false)}
+                  disabled={editNameBtnState !== 'idle'}
+                >
+                  Cancel
+                </button>
+                <button
+                  type='submit'
+                  className={`premium-btn primary smart-submit-btn ${editNameBtnState}`}
+                  disabled={editNameBtnState !== 'idle'}
+                >
+                  <SmartButtonContent
+                    btnState={editNameBtnState}
+                    idleText='Save Changes'
+                    loadingText='Saving...'
+                    successText='Saved'
+                  />
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
