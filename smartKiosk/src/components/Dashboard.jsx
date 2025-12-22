@@ -104,7 +104,7 @@ export default function Dashboard() {
   const [countdown, setCountdown] = useState(30);
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 2 * 60 * 1000;
+  const INACTIVITY_LIMIT = 30 * 1000;
   const WARNING_TIME = 30;
   const inactivityTimer = useRef(null);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
@@ -125,15 +125,15 @@ export default function Dashboard() {
   function startLogoutSplash() {
     setShowLogoutSplash(true);
 
-    // 1. Initial Void Warping
+    // 1. Initial Void Warping (The screen starts to darken and blur)
     document.body.classList.add('astral-void-active');
 
-    // 2. The Quantum Implosion (Blinding white flash right before redirect)
+    // 2. The Quantum Implosion (A blinding white flash at 3.2 seconds)
     setTimeout(() => {
       document.body.classList.add('astral-supernova');
     }, 3200);
 
-    // 3. Final Redirect
+    // 3. Final Redirect at 4 seconds
     setTimeout(() => {
       document.body.classList.remove('astral-void-active', 'astral-supernova');
       navigate('/', { state: { startOverlay: true } });
@@ -271,9 +271,17 @@ export default function Dashboard() {
         const pct = ((WARNING_TIME - next) / WARNING_TIME) * 360;
         setRingProgress(pct);
 
-        if (prev === 1) {
+        if (prev === 0) {
           clearInterval(countdownRef.current);
-          logoutSession().finally(() => startLogoutSplash());
+
+          // 1. Immediately hide the countdown modal
+          setShowInactivityModal(false);
+
+          // 2. IMMEDIATELY start the animation (don't wait for the server)
+          startLogoutSplash();
+
+          // 3. Fire the logout request in the background
+          logoutSession();
         }
 
         return next;
@@ -942,7 +950,7 @@ export default function Dashboard() {
 
       {/* INACTIVITY MODAL */}
       {showInactivityModal && (
-        <div className='modal-overlay' style={{ zIndex: 9999 }}>
+        <div className='modal-overlay' style={{ zIndex: 999 }}>
           <div
             className='modal-box inactivity-modal-enter'
             style={{ maxWidth: 420, textAlign: 'center' }}
@@ -1048,12 +1056,10 @@ export default function Dashboard() {
       <SetPasswordOverlay
         isOpen={mustSetPassword}
         onSuccess={(success) => {
-          if (success) {
-            setToast('Password updated successfully!');
-            setToastShake(false);
-          }
           setMustSetPassword(false);
           setIsSetPasswordOpen(false);
+
+          // Sync the local user state to reflect the password update
           setUser((prev) =>
             prev ? { ...prev, mustSetPassword: false } : prev
           );

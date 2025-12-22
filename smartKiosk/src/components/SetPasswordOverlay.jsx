@@ -1,345 +1,161 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import '../styles/Login.css';
 
-// Helper to read csrftoken cookie
-function getCookie(name) {
-  if (typeof document === 'undefined') return null;
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return null;
+// Helper for strength logic (Mirrors your registration form)
+function getPasswordStrength(password) {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (score === 0) return { label: '', level: 0 };
+  if (score === 1) return { label: 'Weak', level: 1 };
+  if (score === 2) return { label: 'Okay', level: 2 };
+  if (score === 3) return { label: 'Good', level: 3 };
+  return { label: 'Strong', level: 4 };
 }
 
-// Same password rules as your register form: length, upper, lower, digit, symbol
-function validatePasswordRules(password) {
-  const length = password.length >= 8;
-  const upper = /[A-Z]/.test(password);
-  const lower = /[a-z]/.test(password);
-  const digit = /[0-9]/.test(password);
-  const special = /[^A-Za-z0-9]/.test(password);
-
-  return { length, upper, lower, digit, special };
-}
-
-// Small password input with eye icon, using the same CSS classes you already have
-// in login.css: .input-wrap, .input-field.with-eye, .eye-btn
-function PasswordInput({ value, onChange, placeholder, autoComplete }) {
-  const [show, setShow] = useState(false);
-
-  return (
-    <div className='input-wrap'>
-      <input
-        className='input-field with-eye'
-        type={show ? 'text' : 'password'}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-      />
-      <button
-        type='button'
-        className={`eye-btn ${show ? 'is-showing' : ''}`}
-        onClick={() => setShow((s) => !s)}
-        aria-label={show ? 'Hide password' : 'Show password'}
-      />
-    </div>
-  );
-}
-
-export default function SetPasswordOverlay({
-  isOpen,
-  onSuccess,
-  onRequestClose,
-}) {
+export default function SetPasswordOverlay({ isOpen, onSuccess }) {
   const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [toast, setToast] = useState(false);
+  const [status, setStatus] = useState('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [strength, setStrength] = useState({ label: '', level: 0 });
 
-  // Compute which rules are satisfied
-  const rules = useMemo(() => validatePasswordRules(password), [password]);
+  useEffect(() => {
+    setStrength(getPasswordStrength(password));
+  }, [password]);
 
-  if (!isOpen) return null;
-
-  const allPassed =
-    rules.length && rules.upper && rules.lower && rules.digit && rules.special;
-
-  async function handleSubmit(e) {
+  const handleSetPassword = async (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!password || !confirm) {
-      setError('Please enter and confirm your new password.');
-      return;
-    }
-
-    if (password !== confirm) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    if (!allPassed) {
-      setError('Please meet all password requirements before continuing.');
-      return;
-    }
-
-    setSubmitting(true);
+    setStatus('loading');
 
     try {
-      const csrftoken = getCookie('csrftoken');
+      // ✅ Extract CSRF token to authorize the POST request
+      const csrfToken = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('csrftoken='))
+        ?.split('=')[1];
 
-      const res = await fetch('/api/set-password/', {
+      const res = await fetch('/api/me/set-password/', {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(csrftoken ? { 'X-CSRFToken': csrftoken } : {}),
+          'X-CSRFToken': csrfToken, // ✅ Required for Django POST
         },
         body: JSON.stringify({ password }),
+        credentials: 'include', // ✅ Ensures session cookies are sent
       });
 
       const data = await res.json();
-
-      // Treat only actual failures as failures
-      if (!data.ok) {
-        setError(data.error || 'Unable to update password.');
-        return;
+      if (data.ok) {
+        setStatus('success');
+        // Transition back after showing the emerald state
+        setTimeout(() => onSuccess(true), 1500);
+      } else {
+        throw new Error(data.error || 'Update failed');
       }
-
-      // -------------------------
-      //     SUCCESS PATH
-      // -------------------------
-
-      // Clear any old error
-      setError('');
-
-      // Show local toast
-      setToast(true);
-
-      // Auto-close toast after 1.5s, then notify Dashboard to close overlay
-      setTimeout(() => {
-        setToast(false);
-
-        if (typeof onSuccess === 'function') {
-          onSuccess(true);
-        }
-      }, 1500);
     } catch (err) {
-      console.error(err);
-      setError('Network error. Please try again in a moment.');
-    } finally {
-      setSubmitting(false);
+      setStatus('error');
+      setErrorMsg(err.message);
+      setTimeout(() => setStatus('idle'), 2500);
     }
-  }
+  };
 
-  function renderRule(label, passed) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.4rem',
-          fontSize: '0.8rem',
-        }}
-      >
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '16px',
-            height: '16px',
-            borderRadius: '999px',
-            border: passed ? '1px solid #10b981' : '1px solid #9ca3af',
-            backgroundColor: passed ? '#10b981' : 'transparent',
-            color: passed ? '#ffffff' : 'transparent',
-            fontSize: '0.65rem',
-          }}
-        >
-          {passed ? '✓' : ''}
-        </span>
-        <span
-          style={{
-            color: passed ? '#374151' : '#6b7280',
-          }}
-        >
-          {label}
-        </span>
-      </div>
-    );
-  }
+  if (!isOpen) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 999999, // ⬅⬅⬅ MAXIMUM PRIORITY ABOVE HEADER
-        pointerEvents: 'auto',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: '6rem',
-        background:
-          'radial-gradient(circle at top, rgba(15,23,42,0.6), rgba(15,23,42,0.9))',
-        backdropFilter: 'blur(18px)',
-        WebkitBackdropFilter: 'blur(18px)',
-      }}
-    >
-      {/* Card reusing your glassmorphism auth styles */}
-      <div
-        className='form-container'
-        style={{
-          position: 'relative',
-          width: 'clamp(400px, 32vw, 480px)',
-          maxWidth: '520px',
-          zIndex: 1000001,
-        }}
-      >
-        {/* Optional close button (only when onRequestClose is provided and reset is not forced) */}
-        {typeof onRequestClose === 'function' && (
-          <button
-            type='button'
-            onClick={onRequestClose}
-            aria-label='Close'
-            style={{
-              position: 'absolute',
-              top: '0.75rem',
-              right: '0.75rem',
-              border: 'none',
-              background: 'transparent',
-              fontSize: '1.1rem',
-              cursor: 'pointer',
-              color: '#6b7280',
-            }}
-          >
-            ✕
-          </button>
-        )}
-
-        <h1 className='kiosk-title' style={{ marginBottom: '0.9rem' }}>
-          Set Your Smart Kiosk Password
-        </h1>
-
+    <div className='modal-overlay'>
+      <div className='form-container' onClick={(e) => e.stopPropagation()}>
+        <h1 className='kiosk-title'>SECURE ACCOUNT</h1>
         <p
           style={{
-            marginBottom: '1.1rem',
-            fontSize: '0.9rem',
-            lineHeight: 1.45,
-            color: '#4b5563',
+            textAlign: 'center',
+            marginBottom: '1.5rem',
+            color: '#475569',
+            fontSize: '0.95rem',
+            lineHeight: '1.4',
           }}
         >
-          You just signed in using a six-digit code. To keep your account safe,
-          choose a strong password you’ll use for future logins.
+          Please set a permanent password. <br />
+          <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+            Requirement: At least 8 characters, including one capital letter,
+            one number, and one special symbol.
+          </span>
         </p>
 
-        <form onSubmit={handleSubmit} className='form-body'>
-          {/* New Password */}
+        <form onSubmit={handleSetPassword}>
           <div className='form-group'>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-              New Password
-            </label>
-            <div
-              className={`input-check-wrap ${
-                allPassed && password ? 'valid-field' : ''
-              }`}
-            >
-              <PasswordInput
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder='Create a strong password'
-                autoComplete='new-password'
-              />
-              {allPassed && password && <span className='checkmark'>✔</span>}
-            </div>
+            <label className='form-label'>New Password</label>
+            <input
+              type='password'
+              className='input-field'
+              placeholder='••••••••'
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoFocus
+            />
+
+            {/* ✅ Live Strength Meter */}
+            {password && (
+              <div
+                className='pw-strength-container'
+                style={{ marginTop: '10px' }}
+              >
+                <div className={`pw-strength-bar level-${strength.level}`} />
+                <span className='pw-strength-label'>{strength.label}</span>
+              </div>
+            )}
+
+            {status === 'error' && (
+              <div
+                className='inline-error'
+                style={{
+                  color: '#ef4444',
+                  fontSize: '0.8rem',
+                  marginTop: '5px',
+                }}
+              >
+                {errorMsg}
+              </div>
+            )}
           </div>
 
-          {/* Confirm Password */}
-          <div className='form-group' style={{ marginTop: '0.9rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-              Confirm Password
-            </label>
-            <div
-              className={`input-check-wrap ${
-                confirm && password === confirm ? 'valid-field' : ''
-              }`}
-            >
-              <PasswordInput
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder='Re-enter your password'
-                autoComplete='new-password'
-              />
-              {confirm && password === confirm && (
-                <span className='checkmark'>✔</span>
-              )}
-            </div>
-          </div>
-
-          {/* Rules list */}
-          <div
-            style={{
-              marginTop: '0.9rem',
-              padding: '0.75rem 0.85rem',
-              borderRadius: '0.75rem',
-              background: 'rgba(249,250,251,0.9)',
-              border: '1px solid rgba(209,213,219,0.9)',
-              display: 'grid',
-              gridTemplateColumns: '1fr',
-              rowGap: '0.35rem',
-            }}
-          >
-            {renderRule('At least 8 characters', rules.length)}
-            {renderRule('One uppercase letter (A–Z)', rules.upper)}
-            {renderRule('One lowercase letter (a–z)', rules.lower)}
-            {renderRule('One number (0–9)', rules.digit)}
-            {renderRule('One symbol (!@#$…)', rules.special)}
-          </div>
-
-          {/* Error message */}
-          {error && (
-            <div
-              className='inline-error'
-              style={{ marginTop: '0.8rem', lineHeight: 1.4 }}
-            >
-              {error}
-            </div>
-          )}
-
-          {/* Save button */}
           <button
             type='submit'
-            className='auth-button'
-            disabled={submitting}
-            style={{ marginTop: '1.3rem' }}
+            className={`auth-button smart-kinetic-btn ${status}`}
+            disabled={strength.level < 4}
+            style={{ minHeight: '60px', marginTop: '1.5rem', width: '100%' }}
           >
-            {submitting ? 'Saving…' : 'Save Password'}
-          </button>
-
-          <p
-            style={{
-              marginTop: '0.9rem',
-              fontSize: '0.78rem',
-              color: '#6b7280',
-              lineHeight: 1.4,
-            }}
-          >
-            You’ll use this password with your email the next time you log in.
-            The 6-digit code is just for getting you in this time.
-          </p>
-        </form>
-
-        {/* Local toast inside overlay */}
-        {toast && (
-          <div className='dash-toast-wrapper'>
-            <div className='dash-toast-card success fade-in'>
-              <div className='dash-toast-emoji'>✔</div>
-              <div className='dash-toast-text'>
-                Password updated successfully!
-              </div>
+            <div
+              className={`status-layer idle ${
+                status === 'idle' ? 'active' : ''
+              }`}
+            >
+              SAVE PASSWORD
             </div>
-          </div>
-        )}
+            <div
+              className={`status-layer loading ${
+                status === 'loading' ? 'active' : ''
+              }`}
+            >
+              <span className='galactic-spinner'></span> UPDATING...
+            </div>
+            <div
+              className={`status-layer success ${
+                status === 'success' ? 'active' : ''
+              }`}
+            >
+              <span className='checkmark-kinetic'>✓</span> SAVED
+            </div>
+            <div
+              className={`status-layer error ${
+                status === 'error' ? 'active' : ''
+              }`}
+            >
+              <span className='error-cross'>✕</span> TRY AGAIN
+            </div>
+          </button>
+        </form>
       </div>
     </div>
   );

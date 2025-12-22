@@ -13,11 +13,8 @@ urlpatterns = [
     path("register/", views.register_user, name="register_user"),      # ✅ Added safely
     path("me/", get_session_user, name="get_session_user"),
     path("me/update-name/", views.update_user_name, name="update_user_name"),
-
     path("password-reset/request/", password_reset_request, name="password_reset_request"),
-    # ... other paths ...
-    path("password-reset/request/", password_reset_request, name="password_reset_request"),
-    path("set-password/", views.set_password),
+    path("me/set-password/", views.set_password),
 
     # --------------------------
     # Supplies

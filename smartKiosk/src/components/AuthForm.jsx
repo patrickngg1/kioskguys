@@ -9,13 +9,7 @@ import {
 } from '../api/authApi';
 import AuthToast from './AuthToast';
 
-function extractUTAID(raw) {
-  const t3 = raw.match(/\+(\d+)\?/);
-  if (t3) return t3[1];
-  const t2 = raw.match(/;(\d+)=/);
-  if (t2) return t2[1];
-  return null;
-}
+// --- HELPERS ---
 function validateEmailDomain(email) {
   const v = email.toLowerCase();
   const domain = v.substring(v.lastIndexOf('@'));
@@ -45,7 +39,6 @@ function formatFullName(value) {
 
 function getPasswordStrength(password) {
   let score = 0;
-
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
@@ -58,10 +51,10 @@ function getPasswordStrength(password) {
   return { label: 'Strong', level: 4 };
 }
 
-/* Password input with show/hide eye */
 function PasswordInput({
   value,
   onChange,
+  onBlur,
   placeholder,
   inputClass = 'input-field',
   autoComplete,
@@ -75,9 +68,9 @@ function PasswordInput({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        onBlur={onBlur}
         autoComplete={autoComplete}
       />
-
       <button
         type='button'
         className={`eye-btn ${show ? 'is-showing' : ''}`}
@@ -87,10 +80,11 @@ function PasswordInput({
   );
 }
 
-// 🔹 Updated: Accepts swipeState prop
 export default function AuthForm({ onLoginSuccess, swipeState }) {
-  const [view, setView] = useState('login'); // 'login' | 'register'
-  const [resetMode, setResetMode] = useState(false); // login vs reset-email mode
+  const [view, setView] = useState('login');
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetStatus, setResetStatus] = useState('idle');
 
   const [toast, setToast] = useState(null);
   const showToast = (type, message) => setToast({ type, message });
@@ -100,15 +94,13 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [fullName, setFullName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Separate error state for Login to show live validation
   const [loginEmailError, setLoginEmailError] = useState('');
-
-  // Button state management ('idle' | 'loading' | 'success')
   const [loginStatus, setLoginStatus] = useState('idle');
+  const [registerStatus, setRegisterStatus] = useState('idle');
+  const [swipeBtnState, setSwipeBtnState] = useState('idle');
 
   const [errors, setErrors] = useState({
     fullName: '',
@@ -123,40 +115,29 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
     level: 0,
   });
 
-  const [resetLoading, setResetLoading] = useState(false);
-  // src/components/AuthForm.jsx
-  const [swipeBtnState, setSwipeBtnState] = useState('idle');
-  /* ===== Live validation helpers ===== */
-  const validateFullNameLive = (value) => {
-    const v = value.trim();
-    if (!v) return 'Full name is required.';
-
-    const parts = v.split(/\s+/);
-    if (parts.length < 2) return 'Enter your first and last name.';
-
-    for (const p of parts) {
-      const cleaned = p.replace('.', '');
-      if (cleaned.length < 2) return 'Each name must be at least 2 letters.';
-    }
+  // 🔹 VALIDATION LOGIC
+  const validateFullNameLive = (v) => {
+    if (!v.trim()) return 'Full name is required.';
+    if (v.trim().split(/\s+/).length < 2)
+      return 'Enter your first and last name.';
     return '';
   };
 
-  const validateEmailLive = (value) => {
-    const v = value.trim().toLowerCase();
-    if (!v) return 'Email is required.';
-    if (!validateEmailDomain(v)) return 'Must be @mavs.uta.edu or @uta.edu';
+  const validateEmailLive = (v) => {
+    const val = v.trim().toLowerCase();
+    if (!val) return 'Email is required.';
+    if (!validateEmailDomain(val)) return 'Must be @mavs.uta.edu or @uta.edu';
     return '';
   };
 
-  const validatePasswordLive = (value) => {
-    if (!value) return 'Password required.';
-    const rule = validatePassword(value);
-    return rule ? rule : '';
+  const validatePasswordLive = (v) => {
+    if (!v) return 'Password required.';
+    return validatePassword(v) || '';
   };
 
-  const validateConfirmPasswordLive = (value, pwd) => {
-    if (!value) return 'Confirm password.';
-    if (value !== pwd) return 'Passwords do not match.';
+  const validateConfirmPasswordLive = (v, pwd) => {
+    if (!v) return 'Confirm password.';
+    if (v !== pwd) return 'Passwords do not match.';
     return '';
   };
 
@@ -165,223 +146,95 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
     setTimeout(() => setShake(false), 400);
   };
 
-  /* Derived flags */
-  const isRegisterValid =
-    fullName.trim() &&
-    email.trim() &&
-    password &&
-    confirmPassword &&
-    !errors.fullName &&
-    !errors.email &&
-    !errors.password &&
-    !errors.confirmPassword;
-
-  // Check if Login is ready (Valid email + non-empty password)
-  const isLoginValid =
-    email.trim() && !loginEmailError && password.trim().length > 0;
-
-  // Check if Reset is ready (Valid email only)
-  const isResetValid = email.trim() && !loginEmailError;
-
-  /* ===== LOGIN handler (normal or with 6-digit code) ===== */
+  // --- HANDLERS ---
   async function handleLogin(e) {
     e.preventDefault();
+    if (loginStatus !== 'idle') return;
 
-    if (loginStatus !== 'idle') return; // Prevent double clicks
-
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPassword = password.trim();
-
-    if (!trimmedEmail || !trimmedPassword) {
+    const emailErr = validateEmailLive(email);
+    if (emailErr || !password) {
+      setLoginEmailError(emailErr);
+      setLoginStatus('error');
       triggerShake();
+      setTimeout(() => setLoginStatus('idle'), 2000);
       return;
     }
 
-    if (!validateEmailDomain(trimmedEmail)) {
-      showToast('error', 'Must use @mavs.uta.edu or @uta.edu email.');
-      triggerShake();
-      return;
-    }
-
-    // 1. Change button to "Signing In..."
     setLoginStatus('loading');
-
     try {
-      const response = await loginWithSession(trimmedEmail, trimmedPassword);
-
-      // 2. Change button to "Success! ✔"
+      const response = await loginWithSession(
+        email.trim().toLowerCase(),
+        password.trim()
+      );
       setLoginStatus('success');
-
-      const userPayload = {
-        id: response.id,
-        email: response.email,
-        fullName: response.fullName,
-        isAdmin: response.isAdmin,
-        mustSetPassword: !!response.mustSetPassword,
-      };
-
-      // 3. Wait a moment for the user to see the success state
-      setTimeout(() => {
-        onLoginSuccess?.(userPayload);
-      }, 1000);
+      setTimeout(() => onLoginSuccess?.(response), 1500);
     } catch (err) {
-      // Revert button state on error
-      setLoginStatus('idle');
-
-      setToast({
-        type: 'error',
-        message: err.message.includes('Failed to fetch')
-          ? 'Server unreachable. Try again.'
-          : 'Invalid email, password, or reset code.',
-      });
+      setLoginStatus('error');
       triggerShake();
+      setTimeout(() => setLoginStatus('idle'), 2500);
     }
   }
 
-  /* ===== RESET CODE REQUEST handler ===== */
-  async function handleResetRequest(e) {
-    e.preventDefault();
-
-    const trimmedEmail = email.trim().toLowerCase();
-
-    if (!trimmedEmail) {
-      triggerShake();
-      return;
-    }
-
-    if (!validateEmailDomain(trimmedEmail)) {
-      showToast('error', 'Must use @mavs.uta.edu or @uta.edu email.');
-      triggerShake();
-      return;
-    }
-
-    try {
-      setResetLoading(true);
-      showToast('success', 'Sending reset code…');
-
-      await requestPasswordReset(trimmedEmail);
-
-      showToast(
-        'success',
-        'Reset code sent! Check your email and spam folder.'
-      );
-      setResetMode(false);
-      setPassword('');
-
-      setResetMode(false);
-      setView('login');
-      setPassword('');
-
-      setTimeout(() => {
-        document.querySelector('input[type="password"]')?.focus();
-      }, 10);
-    } catch (err) {
-      showToast(
-        'error',
-        err?.message || 'Could not send reset code. Please try again.'
-      );
-      triggerShake();
-    } finally {
-      setResetLoading(false);
-    }
-  }
-
-  /* ===== Register handler ===== */
   async function handleRegister(e) {
     e.preventDefault();
+    if (registerStatus !== 'idle') return;
 
-    const lowerEmail = email.trim().toLowerCase();
-    const fullNameErr = validateFullNameLive(fullName);
-    const emailErr = validateEmailLive(lowerEmail);
-    const passwordErr = validatePasswordLive(password);
-    const confirmErr = validateConfirmPasswordLive(confirmPassword, password);
+    // Force validation on all fields
+    const fNameErr = validateFullNameLive(fullName);
+    const mEmailErr = validateEmailLive(email);
+    const pwdErr = validatePasswordLive(password);
+    const confErr = validateConfirmPasswordLive(confirmPassword, password);
 
     setErrors({
-      fullName: fullNameErr,
-      email: emailErr,
-      password: passwordErr,
-      confirmPassword: confirmErr,
+      fullName: fNameErr,
+      email: mEmailErr,
+      password: pwdErr,
+      confirmPassword: confErr,
     });
 
-    if (fullNameErr || emailErr || passwordErr || confirmErr) {
+    if (fNameErr || mEmailErr || pwdErr || confErr) {
+      setRegisterStatus('error');
       triggerShake();
+      setTimeout(() => setRegisterStatus('idle'), 2000);
       return;
     }
 
-    const pwErr = validatePassword(password);
-    if (pwErr) {
-      showToast('error', pwErr);
-      triggerShake();
-      return;
-    }
-
+    setRegisterStatus('loading');
     try {
-      await registerWithSession(fullName, lowerEmail, password, cardString);
-
-      showToast('success', 'Account created! Please sign in.');
-      setView('login');
-      setResetMode(false);
-      setTimeout(() => {
-        document
-          .querySelector('#login-password-input, input[type="password"]')
-          ?.focus();
-      }, 50);
-
-      setPassword('');
-      setConfirmPassword('');
-      setPasswordStrength({ label: '', level: 0 });
-      setErrors({
-        fullName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-      });
-    } catch (err) {
-      showToast(
-        'error',
-        err?.message?.includes('already')
-          ? 'This email is already registered.'
-          : 'Registration failed.'
+      const result = await registerWithSession(
+        fullName,
+        email.trim().toLowerCase(),
+        password,
+        cardString
       );
+      if (result && result.error) {
+        showToast('error', result.error);
+        setRegisterStatus('error');
+        triggerShake();
+        setTimeout(() => setRegisterStatus('idle'), 2500);
+        return;
+      }
+      setRegisterStatus('success');
+      setTimeout(() => {
+        setView('login');
+        setRegisterStatus('idle');
+        setPassword('');
+        setConfirmPassword('');
+      }, 2000);
+    } catch (err) {
+      setRegisterStatus('error');
       triggerShake();
+      setTimeout(() => setRegisterStatus('idle'), 2500);
     }
   }
 
-  // Helper to get button content based on state
-  const getLoginButtonContent = () => {
-    if (loginStatus === 'loading') return 'Signing In...';
-    if (loginStatus === 'success') return 'Success! ✔';
-    return 'Sign In';
-  };
-
-  // 🔹 UPDATED: Luxury Button Style (Gold)
-  const getLoginButtonStyle = () => {
-    if (loginStatus === 'success') {
-      return {
-        backgroundColor: '#D4AF37', // Gold
-        borderColor: '#D4AF37',
-        color: '#fff',
-        transition: 'all 0.3s ease',
-      };
-    }
-    if (loginStatus === 'loading') {
-      return { opacity: 0.8, cursor: 'wait' };
-    }
-    return {};
-  };
-
-  // 🔹 HELPER: Determine visual class for scanner
   const getScannerClass = () => {
     if (!swipeState) return '';
-    if (swipeState.status === 'processing') return 'scanner-processing';
-    if (swipeState.status === 'success') return 'scanner-success';
-    if (swipeState.status === 'error') return 'scanner-error';
-    return '';
+    return `scanner-${swipeState.status}`;
   };
 
   return (
     <div id='auth-container' className='form-container'>
-      {/* Toast overlay */}
       {toast && (
         <>
           <div className='auth-blur-overlay' />
@@ -395,258 +248,179 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
         </>
       )}
 
-      {/* Card */}
       <div className={toast ? 'blurred-card' : ''}>
         <h1 className='kiosk-title'>KIOSK ACCESS</h1>
 
-        <div className='tab-bar'>
-          <button
-            type='button'
-            className={`tab-button ${view === 'login' ? 'active' : ''}`}
-            onClick={() => {
-              if (loginStatus !== 'idle') return; // Lock tabs during login
-              setView('login');
-              setResetMode(false);
-              setLoginEmailError('');
-            }}
-          >
-            Sign In
-          </button>
-
-          <button
-            type='button'
-            className={`tab-button ${view === 'register' ? 'active' : ''}`}
-            onClick={() => {
-              if (loginStatus !== 'idle') return; // Lock tabs during login
-              setView('register');
-              setResetMode(false);
-              setTimeout(() => {
-                document.getElementById('register-fullname-input')?.focus();
-              }, 10);
-            }}
-          >
-            Sign Up
-          </button>
-        </div>
+        {!resetMode && (
+          <div className='tab-bar'>
+            <button
+              type='button'
+              className={`tab-button ${view === 'login' ? 'active' : ''}`}
+              onClick={() => setView('login')}
+            >
+              SIGN IN
+            </button>
+            <button
+              type='button'
+              className={`tab-button ${view === 'register' ? 'active' : ''}`}
+              onClick={() => setView('register')}
+            >
+              SIGN UP
+            </button>
+          </div>
+        )}
 
         <div className={`form-body ${shake ? 'shake' : ''}`}>
-          {view === 'login' ? (
-            /* ========== LOGIN VIEW (normal or reset mode) ========== */
-            resetMode ? (
-              /* ------ RESET EMAIL MODE ------ */
-              <form onSubmit={handleResetRequest}>
-                <div className='form-group'>
-                  <label>UTA Email</label>
-                  <div
-                    className={`input-check-wrap ${
-                      !loginEmailError && email.trim() ? 'valid-field' : ''
-                    }`}
-                  >
-                    <input
-                      id='reset-email-input'
-                      className='input-field'
-                      type='email'
-                      placeholder='email@mavs.uta.edu'
-                      value={email}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setEmail(v);
-                        setLoginEmailError(validateEmailLive(v));
-                      }}
-                      autoComplete='email'
-                    />
-                    {!loginEmailError && email.trim() && (
-                      <span className='checkmark'>✔</span>
-                    )}
-                  </div>
-                  {loginEmailError && (
-                    <div className='inline-error'>{loginEmailError}</div>
-                  )}
+          {resetMode ? (
+            <form onSubmit={handleLogin}>
+              <div className='form-group'>
+                <label>UTA Email</label>
+                <input
+                  className='input-field'
+                  type='email'
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setLoginEmailError(validateEmailLive(e.target.value));
+                  }}
+                />
+                {loginEmailError && (
+                  <div className='inline-error'>{loginEmailError}</div>
+                )}
+              </div>
+              <button
+                className={`auth-button smart-kinetic-btn ${resetStatus}`}
+                style={{ minHeight: '60px' }}
+              >
+                <div
+                  className={`status-layer idle ${
+                    resetStatus === 'idle' ? 'active' : ''
+                  }`}
+                >
+                  SEND RESET CODE
                 </div>
-
-                <p
-                  style={{
-                    fontSize: '0.85rem',
-                    opacity: 0.85,
-                    marginTop: '0.25rem',
-                    marginBottom: '1rem',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  We will email you a 6-digit reset code you can use to sign in.
-                  Please check your inbox and your spam folder.
-                </p>
-
-                <button
-                  className='auth-button'
-                  disabled={!isResetValid || resetLoading}
-                >
-                  {resetLoading ? 'Sending reset code…' : 'Send Reset Code'}
-                </button>
-
-                <button
-                  type='button'
-                  className='forgot-password-link'
-                  style={{
-                    marginTop: '1rem',
-                    width: '100%',
-                    textAlign: 'center',
-                  }}
-                  onClick={() => {
-                    setResetMode(false);
-                    setLoginEmailError('');
-                  }}
-                >
-                  Back to Sign In
-                </button>
-              </form>
-            ) : (
-              /* ------ NORMAL LOGIN MODE ------ */
-              <form onSubmit={handleLogin}>
-                <div className='form-group'>
-                  <label>Email</label>
-                  <div
-                    className={`input-check-wrap ${
-                      !loginEmailError && email.trim() ? 'valid-field' : ''
-                    }`}
-                  >
-                    <input
-                      id='login-email-input'
-                      className='input-field'
-                      type='email'
-                      placeholder='email@uta.edu'
-                      value={email}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setEmail(v);
-                        setLoginEmailError(validateEmailLive(v));
-                      }}
-                      autoComplete='username'
-                      disabled={loginStatus !== 'idle'} // Disable during login
-                    />
-                  </div>
-                  {loginEmailError && (
-                    <div className='inline-error'>{loginEmailError}</div>
-                  )}
-                </div>
-
-                <div className='form-group'>
-                  <label>Password</label>
-                  <PasswordInput
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder='Enter your password'
-                    inputClass='input-field'
-                    autoComplete='current-password'
-                    // Add logic to disable input if needed
-                  />
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      marginTop: '0.35rem',
+              </button>
+            </form>
+          ) : view === 'login' ? (
+            <form onSubmit={handleLogin}>
+              <div className='form-group'>
+                <label>Email</label>
+                <div className='input-check-wrap'>
+                  <input
+                    className='input-field'
+                    type='email'
+                    placeholder='email@uta.edu'
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (loginEmailError)
+                        setLoginEmailError(validateEmailLive(e.target.value));
                     }}
-                  >
-                    <div className='forgot-password-container'>
-                      <button
-                        type='button'
-                        className='forgot-password-link'
-                        disabled={loginStatus !== 'idle'}
-                        onClick={() => {
-                          setResetMode(true);
-                          setLoginEmailError(validateEmailLive(email));
-                          setTimeout(() => {
-                            document
-                              .getElementById('reset-email-input')
-                              ?.focus();
-                          }, 10);
-                        }}
-                      >
-                        Reset password
-                      </button>
-                    </div>
-                  </div>
+                    onBlur={() => setLoginEmailError(validateEmailLive(email))}
+                  />
+                  {/* NO TICK ON LOGIN FORM AS REQUESTED */}
                 </div>
+                {loginEmailError && (
+                  <div className='inline-error'>{loginEmailError}</div>
+                )}
+              </div>
 
-                {/* 🔹 Elegant Dynamic Button */}
-                <button
-                  className='auth-button'
-                  disabled={!isLoginValid || loginStatus !== 'idle'}
-                  style={getLoginButtonStyle()}
+              <div className='form-group'>
+                <label>
+                  {showCodeInput ? 'Enter 6-Digit Code' : 'Password'}
+                </label>
+                <PasswordInput
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={showCodeInput ? '123456' : 'Enter your password'}
+                />
+              </div>
+
+              <button
+                className={`auth-button smart-kinetic-btn ${loginStatus}`}
+                style={{ position: 'relative', minHeight: '60px' }}
+              >
+                <div
+                  className={`status-layer idle ${
+                    loginStatus === 'idle' ? 'active' : ''
+                  }`}
                 >
-                  {getLoginButtonContent()}
-                </button>
+                  {showCodeInput ? 'VERIFY CODE' : 'SIGN IN'}
+                </div>
+                <div
+                  className={`status-layer loading ${
+                    loginStatus === 'loading' ? 'active' : ''
+                  }`}
+                >
+                  <span className='galactic-spinner'></span>ENCRYPTING...
+                </div>
+                <div
+                  className={`status-layer success ${
+                    loginStatus === 'success' ? 'active' : ''
+                  }`}
+                >
+                  <span className='checkmark-kinetic'>✓</span>IDENTITY SECURED
+                </div>
+                <div
+                  className={`status-layer error ${
+                    loginStatus === 'error' ? 'active' : ''
+                  }`}
+                >
+                  <span className='error-cross'>✕</span>DENIED
+                </div>
+              </button>
 
-                {/* ✅ LUXURY SWIPE INDICATOR (Final) */}
-                <div className='swipe-section-premium'>
-                  <div className='premium-divider'>
-                    <span className='divider-line'></span>
-                    <span className='divider-text'>ALTERNATIVE LOGIN</span>
-                    <span className='divider-line'></span>
-                  </div>
-
-                  {/* 🔹 Dynamic Class applied here */}
-                  <div className={`glass-scanner-card ${getScannerClass()}`}>
-                    <div className='scanner-beam'></div>
-                    <div className='scanner-glow-overlay'></div>
-                    <div className='scanner-content'>
-                      <div className='scanner-icon'>
-                        <div className='card-shape'>
-                          <div className='mag-strip'></div>
-                        </div>
-                        {/* 🔹 Hide scan-line on error/success for cleaner look */}
-                        {(!swipeState || swipeState.status === 'idle') && (
-                          <div className='scan-line'></div>
-                        )}
+              <div className='swipe-section-premium'>
+                <div className='premium-divider'>
+                  <span className='divider-line'></span>
+                  <span className='divider-text'>ALTERNATIVE LOGIN</span>
+                  <span className='divider-line'></span>
+                </div>
+                <div className={`glass-scanner-card ${getScannerClass()}`}>
+                  <div className='scanner-beam'></div>
+                  <div className='scanner-content'>
+                    <div className='scanner-icon'>
+                      <div className='card-shape'>
+                        <div className='mag-strip'></div>
+                        <div className='scan-line'></div>
                       </div>
-                      <div className='scanner-text-group'>
-                        <span className='scanner-label'>Swipe Access</span>
-                        {/* 🔹 Dynamic Message */}
-                        <span className='scanner-status'>
-                          {swipeState ? swipeState.message : 'Reader Ready...'}
-                        </span>
-                      </div>
+                    </div>
+                    <div className='scanner-text-group'>
+                      <span className='scanner-label'>Swipe Access</span>
+                      <span className='scanner-status'>
+                        {swipeState ? swipeState.message : 'Reader Ready...'}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </form>
-            )
+              </div>
+            </form>
           ) : (
-            /* ========== REGISTER FORM ========== */
             <form onSubmit={handleRegister}>
-              {/* FULL NAME */}
               <div className='form-group'>
                 <label>Full Name</label>
                 <div
                   className={`input-check-wrap ${
-                    !errors.fullName && fullName.trim() ? 'valid-field' : ''
+                    !validateFullNameLive(fullName) && fullName.trim()
+                      ? 'valid-field'
+                      : ''
                   }`}
                 >
                   <input
-                    id='register-fullname-input'
                     className='input-field'
                     type='text'
                     placeholder='Jane Doe'
                     value={fullName}
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      setFullName(raw);
+                      setFullName(e.target.value);
                       setErrors((prev) => ({
                         ...prev,
-                        fullName: validateFullNameLive(raw),
+                        fullName: validateFullNameLive(e.target.value),
                       }));
                     }}
-                    onBlur={(e) => {
-                      const cleaned = formatFullName(e.target.value);
-                      setFullName(cleaned);
-                      setErrors((prev) => ({
-                        ...prev,
-                        fullName: validateFullNameLive(cleaned),
-                      }));
-                    }}
-                    autoComplete='name'
+                    onBlur={() => setFullName(formatFullName(fullName))}
                   />
-                  {!errors.fullName && fullName.trim() && (
+                  {!validateFullNameLive(fullName) && fullName.trim() && (
                     <span className='checkmark'>✔</span>
                   )}
                 </div>
@@ -655,12 +429,13 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                 )}
               </div>
 
-              {/* UTA EMAIL */}
               <div className='form-group'>
                 <label>UTA Email</label>
                 <div
                   className={`input-check-wrap ${
-                    !errors.email && email.trim() ? 'valid-field' : ''
+                    !validateEmailLive(email) && email.trim()
+                      ? 'valid-field'
+                      : ''
                   }`}
                 >
                   <input
@@ -669,16 +444,14 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                     placeholder='email@mavs.uta.edu'
                     value={email}
                     onChange={(e) => {
-                      const v = e.target.value;
-                      setEmail(v);
+                      setEmail(e.target.value);
                       setErrors((prev) => ({
                         ...prev,
-                        email: validateEmailLive(v.toLowerCase()),
+                        email: validateEmailLive(e.target.value),
                       }));
                     }}
-                    autoComplete='email'
                   />
-                  {!errors.email && email.trim() && (
+                  {!validateEmailLive(email) && email.trim() && (
                     <span className='checkmark'>✔</span>
                   )}
                 </div>
@@ -687,38 +460,33 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                 )}
               </div>
 
-              {/* PASSWORD */}
               <div className='form-group'>
                 <label>Password</label>
                 <div
                   className={`input-check-wrap ${
-                    !errors.password && password ? 'valid-field' : ''
+                    !validatePasswordLive(password) && password
+                      ? 'valid-field'
+                      : ''
                   }`}
                 >
                   <PasswordInput
                     value={password}
                     onChange={(e) => {
-                      const v = e.target.value;
-                      setPassword(v);
+                      setPassword(e.target.value);
+                      setPasswordStrength(getPasswordStrength(e.target.value));
                       setErrors((prev) => ({
                         ...prev,
-                        password: validatePasswordLive(v),
+                        password: validatePasswordLive(e.target.value),
                       }));
-                      setPasswordStrength(getPasswordStrength(v));
                     }}
-                    placeholder='Min. 8 chars, 1 uppercase, 1 number, 1 special symbol'
-                    inputClass='input-field'
-                    autoComplete='new-password'
                   />
-                  {!errors.password && password && (
+                  {!validatePasswordLive(password) && password && (
                     <span className='checkmark'>✔</span>
                   )}
                 </div>
                 {errors.password && (
                   <div className='inline-error'>{errors.password}</div>
                 )}
-
-                {/* Strength bar */}
                 {password && (
                   <div className='pw-strength-container'>
                     <div
@@ -731,12 +499,12 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                 )}
               </div>
 
-              {/* CONFIRM PASSWORD */}
               <div className='form-group'>
                 <label>Confirm Password</label>
                 <div
                   className={`input-check-wrap ${
-                    !errors.confirmPassword && confirmPassword
+                    !validateConfirmPasswordLive(confirmPassword, password) &&
+                    confirmPassword
                       ? 'valid-field'
                       : ''
                   }`}
@@ -744,58 +512,85 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                   <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => {
-                      const v = e.target.value;
-                      setConfirmPassword(v);
+                      setConfirmPassword(e.target.value);
                       setErrors((prev) => ({
                         ...prev,
                         confirmPassword: validateConfirmPasswordLive(
-                          v,
+                          e.target.value,
                           password
                         ),
                       }));
                     }}
-                    placeholder='Confirm your password'
-                    inputClass='input-field'
-                    autoComplete='new-password'
                   />
-                  {!errors.confirmPassword && confirmPassword && (
-                    <span className='checkmark'>✔</span>
-                  )}
+                  {!validateConfirmPasswordLive(confirmPassword, password) &&
+                    confirmPassword && <span className='checkmark'>✔</span>}
                 </div>
                 {errors.confirmPassword && (
                   <div className='inline-error'>{errors.confirmPassword}</div>
                 )}
               </div>
 
-              <div className='form-group' style={{ marginTop: '1rem' }}>
-                <label>UTA ID Swipe (optional)</label>
+              <div className='form-group' style={{ marginTop: '1.5rem' }}>
+                <label>MavID Card (optional)</label>
                 <button
                   type='button'
-                  className='auth-button'
-                  style={{ background: 'var(--uta-orange)' }}
+                  className={`auth-button smart-kinetic-btn ${swipeBtnState}`}
+                  style={{ minHeight: '56px' }}
                   onClick={() => setCardModalOpen(true)}
                 >
-                  Capture Card Swipe
-                </button>
-
-                {cardString && (
                   <div
-                    style={{
-                      marginTop: '0.5rem',
-                      fontSize: '0.9rem',
-                      opacity: 0.7,
-                    }}
+                    className={`status-layer idle ${
+                      swipeBtnState === 'idle' ? 'active' : ''
+                    }`}
                   >
-                    Card linked ✓
+                    {cardString ? 'CARD SCANNED' : 'CAPTURE MavID SWIPE'}
                   </div>
-                )}
+                  <div
+                    className={`status-layer success ${
+                      swipeBtnState === 'success' ? 'active' : ''
+                    }`}
+                  >
+                    <span className='checkmark-kinetic'>✓</span>MavID LINKED
+                  </div>
+                </button>
               </div>
 
-              <button className='auth-button' disabled={!isRegisterValid}>
-                Register
+              <button
+                className={`auth-button smart-kinetic-btn ${registerStatus}`}
+                style={{ minHeight: '60px', marginTop: '1.5rem' }}
+              >
+                <div
+                  className={`status-layer idle ${
+                    registerStatus === 'idle' ? 'active' : ''
+                  }`}
+                >
+                  CREATE ACCOUNT
+                </div>
+                <div
+                  className={`status-layer loading ${
+                    registerStatus === 'loading' ? 'active' : ''
+                  }`}
+                >
+                  <span className='galactic-spinner'></span>SYNCING...
+                </div>
+                <div
+                  className={`status-layer success ${
+                    registerStatus === 'success' ? 'active' : ''
+                  }`}
+                >
+                  <span className='checkmark-kinetic'>✓</span>SECURED
+                </div>
+                <div
+                  className={`status-layer error ${
+                    registerStatus === 'error' ? 'active' : ''
+                  }`}
+                >
+                  <span className='error-cross'>✕</span>FAILED
+                </div>
               </button>
             </form>
           )}
+
           {cardModalOpen &&
             createPortal(
               <CardSwipeModal
@@ -804,16 +599,14 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                 onCapture={async (s) => {
                   setSwipeBtnState('loading');
                   setCardString(s);
-
                   setTimeout(() => {
                     setSwipeBtnState('success');
                     setCardModalOpen(false);
                   }, 800);
-
                   return true;
                 }}
               />,
-              document.body // This forces it to cover the entire page
+              document.body
             )}
         </div>
       </div>

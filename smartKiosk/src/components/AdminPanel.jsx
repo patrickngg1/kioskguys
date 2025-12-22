@@ -271,9 +271,8 @@ export default function AdminPanel({
       setGlobalActionState('idle');
     }
   };
-
   const adminCancelReservation = async (reservationId) => {
-    setGlobalActionState('loading');
+    setGlobalActionState('loading'); // Triggers loading spinner
     try {
       const res = await fetch(
         `/api/rooms/reservations/${reservationId}/admin-cancel/`,
@@ -286,10 +285,15 @@ export default function AdminPanel({
       );
       const data = await res.json();
       if (data.ok) {
-        if (typeof loadReservations === 'function') loadReservations();
-        loadAdminReservations();
-        setConfirmCancelId(null);
-        setGlobalActionState('idle');
+        setGlobalActionState('success'); // Triggers green "Cancelled" state
+
+        // Pause so the admin can see the success animation on the Kiosk
+        setTimeout(() => {
+          if (typeof loadReservations === 'function') loadReservations();
+          loadAdminReservations();
+          setConfirmCancelId(null); // Closes the confirmation modal
+          setGlobalActionState('idle'); // Resets button state
+        }, 1500);
       } else {
         showToast?.(data.error || 'Failed to cancel', 'error');
         setGlobalActionState('idle');
@@ -549,6 +553,7 @@ export default function AdminPanel({
             document.body
           )}
         {/* --- GLOBAL CANCEL RESERVATION MODAL --- */}
+        {/* --- GLOBAL CANCEL RESERVATION MODAL --- */}
         {confirmCancelId &&
           createPortal(
             <div
@@ -563,9 +568,7 @@ export default function AdminPanel({
               >
                 <h2 className='premium-modal-title'>Cancel Reservation?</h2>
                 <p className='premium-modal-message'>
-                  This reservation will be permanently removed.
-                  <br />
-                  Are you sure?
+                  This reservation will be permanently removed. Are you sure?
                 </p>
                 <div className='premium-modal-actions'>
                   <button
@@ -575,6 +578,7 @@ export default function AdminPanel({
                   >
                     Keep Reservation
                   </button>
+                  {/* Smart Delete Button linked to global state */}
                   <button
                     className={`premium-btn delete smart-submit-btn ${globalActionState}`}
                     onClick={() => adminCancelReservation(confirmCancelId)}
@@ -997,6 +1001,7 @@ function RoomsSection({ rooms, showToast }) {
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
+                      marginBottom: '1.5rem',
                     }}
                   >
                     <label style={{ marginBottom: '10px' }}>
@@ -2271,11 +2276,10 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
       onClick={(e) => e.stopPropagation()}
     >
       <div
-        className='premium-modal'
+        className='premium-modal premium-modal-large'
         onClick={(e) => e.stopPropagation()}
         role='dialog'
         aria-modal='true'
-        style={{ width: '720px', maxWidth: '92vw' }}
       >
         <button
           type='button'

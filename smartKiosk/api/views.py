@@ -470,66 +470,52 @@ def send_via_sendgrid(
 # POST /api/register/
 # Create a new Django User + UserProfile (TiDB-backed)
 # ---------------------------------------------------------
+
 @csrf_exempt
 @require_POST
 def register_user(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
-
         email = data.get("email", "").lower().strip()
         password = data.get("password", "")
-        full_name = data.get("fullName", "").strip()
-
+        raw_full_name = data.get("fullName", "").strip() # Renamed to raw_full_name
     except Exception:
-        return JsonResponse(
-            {"ok": False, "error": "Invalid JSON or missing fields"},
-            status=400
-        )
+        return JsonResponse({"ok": False, "error": "Invalid JSON or missing fields"}, status=400)
 
-    # Validate required fields
-    if not email or not password or not full_name:
-        return JsonResponse(
-            {"ok": False, "error": "All fields are required"},
-            status=400
-        )
+    if not email or not password or not raw_full_name:
+        return JsonResponse({"ok": False, "error": "All fields are required"}, status=400)
 
-    # Check for existing email
     if User.objects.filter(email=email).exists():
-        return JsonResponse(
-            {"ok": False, "error": "This email is already registered"},
-            status=409
-        )
+        return JsonResponse({"ok": False, "error": "This email is already registered"}, status=409)
 
     try:
-        # Create Django user using email as username
-        user = User.objects.create_user(
-            username=email,
-            email=email,
-            password=password
-        )
+        # 1. PROFESSIONAL NAME CLEANING: Handle "PrakashSapkota" -> "Prakash Sapkota"
+        # Only add a space if one doesn't exist
+        cleaned_name = raw_full_name
+        if ' ' not in cleaned_name:
+            # Insert space before capital letters (except the first one)
+            cleaned_name = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', cleaned_name)
+        
+        # 2. Normalize to Title Case (prakash sapkota -> Prakash Sapkota)
+        name_parts = cleaned_name.split()
+        name_parts = [p.capitalize() for p in name_parts]
+        final_full_name = " ".join(name_parts)
 
-        # ---------------------------------------------------------
-        # SAVE first_name + last_name properly into Django's User model
-        # ---------------------------------------------------------
-        parts = full_name.split()
-        first = parts[0]
-        last = " ".join(parts[1:]) if len(parts) > 1 else ""
+        # Create Django user
+        user = User.objects.create_user(username=email, email=email, password=password)
 
-        user.first_name = first
-        user.last_name = last
+        # 3. Save split names to Django's internal User model
+        user.first_name = name_parts[0] if name_parts else ""
+        user.last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
         user.save()
 
-        # ---------------------------------------------------------
-        # Create UserProfile and store full_name there too
-        # ---------------------------------------------------------
+        # 4. Save formatted name to UserProfile
         profile = UserProfile.objects.get(user=user)
-        profile.full_name = full_name
-        profile.must_set_password = False  # New users do NOT need forced reset
+        profile.full_name = final_full_name # ✅ Clean, Spaced, and Capitalized
+        profile.must_set_password = False
         profile.save()
 
-        # ---------------------------------------------------------
-        # OPTIONAL: Save card swipe if provided
-        # ---------------------------------------------------------
+        # 5. Handle card swipe if provided
         uta_id = data.get("utaId")
         if uta_id:
             card_obj, _ = UserCard.objects.get_or_create(user=user)
@@ -538,15 +524,9 @@ def register_user(request):
 
     except Exception as e:
         print("Registration error:", e)
-        return JsonResponse(
-            {"ok": False, "error": "Registration failed due to server error"},
-            status=500
-        )
+        return JsonResponse({"ok": False, "error": "Registration failed"}, status=500)
 
-    return JsonResponse(
-        {"ok": True, "message": "Account created successfully"},
-        status=201
-    )
+    return JsonResponse({"ok": True, "message": "Account created successfully"}, status=201)
 
 
 
@@ -1976,25 +1956,26 @@ def set_password(request):
 
     try:
         data = json.loads(request.body.decode("utf-8"))
+        new_password = data.get("password")
     except:
         return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
 
-    new_password = data.get("password")
     if not new_password:
         return JsonResponse({"ok": False, "error": "Password required"}, status=400)
 
     user = request.user
-    user.set_password(new_password)
-    user.save()
-    update_session_auth_hash(request, user)
+    user.set_password(new_password) #
+    user.save() #
+    
+    update_session_auth_hash(request, user) #
 
+    # ✅ CRITICAL: Using update_or_create ensures the flag is cleared even if profile didn't exist
+    UserProfile.objects.update_or_create(
+        user=user,
+        defaults={"must_set_password": False}
+    ) #
 
-    # Update user profile flag
-    profile = UserProfile.objects.get(user=user)
-    profile.must_set_password = False
-    profile.save()
-
-    return JsonResponse({"ok": True, "message": "Password updated successfully"})
+    return JsonResponse({"ok": True, "message": "Password updated successfully"}) #
 
 # Helper to extract the best ID from a swipe string
 def parse_uta_card(raw_swipe):
@@ -2039,31 +2020,29 @@ def register_card(request):
     if not raw_swipe:
         return JsonResponse({"ok": False, "error": "No card data received"}, status=400)
 
-    # 1. Extract ID using new logic (Track 3 priority)
+    # 1. Extract ID using new logic
     extracted_id = parse_uta_card(raw_swipe)
-
     if not extracted_id:
         return JsonResponse({"ok": False, "error": "Could not read card format."}, status=400)
 
-    # 2. SECURITY CHECK: Block Credit Cards
-    # UTA cards start with 100 (Student ID) or 600/639 (ISO Number).
-    # Credit cards start with 4 (Visa), 5 (Mastercard), 3 (Amex), 6011 (Discover).
-    
+    # 2. UNIQUENESS CHECK: Ensure ID isn't already linked to someone else
+    exists = UserCard.objects.filter(uta_id=extracted_id).exclude(user=request.user).exists()
+    if exists:
+        return JsonResponse({"ok": False, "error": "This MavID is already linked."}, status=409)
+
+    # 3. SECURITY CHECK: Block Credit Cards (Existing logic)
     valid_prefixes = ["100", "600", "639"]
     is_valid_uta = any(extracted_id.startswith(p) for p in valid_prefixes)
-
-    # Double check: explicitly block financial prefixes if they slipped through
     if extracted_id.startswith(("4", "5", "34", "37", "51", "52", "53", "54", "55")):
         is_valid_uta = False
 
     if not is_valid_uta:
-        print(f"BLOCKED: User {request.user.email} tried to link invalid ID {extracted_id}")
         return JsonResponse({
             "ok": False, 
             "error": "Invalid Card. Please use your official UTA MavID."
         }, status=400)
 
-    # 3. Save to Database
+    # 4. Save to Database
     UserCard.objects.update_or_create(
         user=request.user,
         defaults={
@@ -2074,8 +2053,10 @@ def register_card(request):
 
     return JsonResponse({
         "ok": True, 
-        "message": f"UTA Card linked successfully (ID: {extracted_id})"
+        "message": "UTA Card linked successfully"
     })
+
+
 
 
 @csrf_exempt
@@ -2084,48 +2065,62 @@ def login_with_card(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
         raw_swipe = str(data.get("raw_swipe", "")).strip()
-    except:
+    except Exception:
         return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
 
     if not raw_swipe:
         return JsonResponse({"ok": False, "error": "Card data required"}, status=400)
 
-    # 1. Extract ID using same logic
     extracted_id = parse_uta_card(raw_swipe)
-    
-    print(f"LOGIN ATTEMPT: Raw={raw_swipe} | Extracted={extracted_id}")
-
     card_obj = None
 
-    # 2. Try finding user by Extracted ID (Primary)
     if extracted_id:
         card_obj = UserCard.objects.filter(uta_id=extracted_id).first()
-
-    # 3. Fallback: Try Raw Swipe match (For older registrations or weird reads)
     if not card_obj:
         card_obj = UserCard.objects.filter(raw_swipe=raw_swipe).first()
 
     if not card_obj:
         return JsonResponse({"ok": False, "error": "Card not registered."}, status=401)
 
-    # Login Success
     user = card_obj.user
     user.backend = "django.contrib.auth.backends.ModelBackend"
     login(request, user)
+
+    full_name = ""
+    must_set_pw = False
 
     try:
         profile = UserProfile.objects.get(user=user)
         full_name = profile.full_name
         must_set_pw = profile.must_set_password
     except UserProfile.DoesNotExist:
-        full_name = user.get_full_name() or user.username
-        must_set_pw = False
+        full_name = (user.first_name + " " + user.last_name).strip()
+
+    if not full_name:
+        full_name = user.email.split('@')[0]
+
+    # --- PROFESSIONAL FIX FOR GREETING ---
+    # 1. Insert space for joined names: "PrakashSapkota" -> "Prakash Sapkota"
+    # api/views.py
+
+    # --- PROFESSIONAL FIX FOR GREETING ---
+    # 1. Standardize separators: Replace periods, underscores, or dashes with spaces
+    if full_name:
+        # Replaces characters like '.' or '_' with a space
+        full_name = re.sub(r'[._-]', ' ', full_name)
+        
+        # 2. Insert space for joined names: "PrakashSapkota" -> "Prakash Sapkota"
+        full_name = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', full_name)
+
+    # 3. Extract ONLY the first name for the frontend greeting
+    name_parts = full_name.split()
+    first_name_only = name_parts[0] if name_parts else "Maverick"
 
     return JsonResponse({
         "ok": True,
         "id": user.id,
         "email": user.email,
-        "fullName": full_name,
+        "fullName": first_name_only, # ✅ Strictly sending "Prakash"
         "isAdmin": user.is_staff,
         "mustSetPassword": must_set_pw,
     })

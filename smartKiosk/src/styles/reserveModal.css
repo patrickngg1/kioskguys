@@ -115,12 +115,15 @@
   left: calc(100% - 26px);
 }
 
-/* ---------------- Panel open/close ---------------- */
+/* =========================================================
+   FIX: ALLOW PANEL TO GROW FOR MANY RESERVATIONS
+   ========================================================= */
+
 .myres-panel {
   overflow: hidden;
-  transition: max-height 440ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 260ms ease, transform 440ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 260ms ease;
+  /* Smooth open/close animation */
+  transition: max-height 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease,
+    transform 0.4s ease, filter 0.3s ease;
   max-height: 0;
   opacity: 0;
   transform: translateY(-10px);
@@ -129,10 +132,12 @@
 }
 
 .myres-panel.open {
-  max-height: 900px;
+  /* ✅ INCREASED LIMIT: 3000px ensures buttons are never cut off */
+  max-height: 3000px;
   opacity: 1;
   transform: translateY(0);
   filter: blur(0);
+  padding-bottom: 1rem; /* Space at the bottom */
 }
 
 /* ---------------- List container ---------------- */
@@ -140,14 +145,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-  padding-top: 0.4rem;
-  padding-bottom: 0.2rem;
-
-  /* room for halo fade so no hard left/right cutoffs */
-  padding-left: 18px;
-  padding-right: 18px;
-  padding-top: 0.4rem;
-  padding-bottom: 6rem; /* ⭐ ADD THIS LINE */
+  padding: 0.4rem 0.5rem 1rem 0.5rem; /* Added padding for shadows */
 }
 
 /* Fix last reservation hidden behind sticky footer */
@@ -156,7 +154,6 @@
 }
 
 /* ================== Reservation cards ================== */
-/* ================== Reservation cards ================== */
 .myres-card {
   position: relative;
   display: flex;
@@ -164,20 +161,13 @@
   justify-content: space-between;
   padding: 1.15rem 1.3rem;
   border-radius: 18px;
-
-  /* UPDATED: Brighter glass background */
   background: rgba(255, 255, 255, 0.08);
 
-  /* UPDATED: Added a subtle white border for definition */
   border: 1px solid rgba(255, 255, 255, 0.12);
-
   backdrop-filter: blur(20px) saturate(165%);
   -webkit-backdrop-filter: blur(20px) saturate(165%);
-
-  /* UPDATED: Brighter inner glow (the inset part) */
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3),
     inset 0 0 25px rgba(255, 255, 255, 0.05);
-
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease,
     border-color 220ms ease;
@@ -219,8 +209,6 @@
 .myres-card:hover {
   transform: translateY(-4px) scale(1.012);
   background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 18px rgba(59, 130, 246, 0.12),
-    inset 0 0 22px rgba(255, 255, 255, 0.02);
 }
 .myres-card:hover::after {
   opacity: 0.3;
@@ -272,7 +260,7 @@
   z-index: 50;
   border-radius: 15px;
   /* Glassmorphism */
-  background: rgba(39, 49, 76, 0);
+  background: tra;
   backdrop-filter: blur(22px) saturate(180%);
   -webkit-backdrop-filter: blur(22px) saturate(180%);
   display: flex;
@@ -590,10 +578,9 @@
 }
 
 /* -----------------------------------------------------------
-   APPLE-STYLE HOUR LABEL ROW (12H CLEAN FORMAT, FIXED)
+   HOUR LABEL ROW (12H CLEAN FORMAT)
    ----------------------------------------------------------- */
 
-/* Top hour row (12,1,2,...11 | 12,1,...11) */
 .hour-label-row {
   display: grid;
   grid-template-columns: repeat(24, 1fr);
@@ -860,6 +847,117 @@
   opacity: 0.9;
 }
 
+/* =========================================================
+   ACTION BAR LAYOUT (Sticky + Split)
+   ========================================================= */
+
+/* Container for the buttons */
+.myres-actions,
+.cancel-confirm-actions {
+  display: flex;
+  align-items: center;
+
+  /* Stick to the bottom of the reservation list so they are always visible */
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+
+  /* Glass Background to hide scrolling items behind it */
+  background: rgba(17, 24, 39, 0); /* Matches dark modal theme */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  /* Spacing */
+  margin: 0 -0.5rem -1rem -0.5rem; /* Negative margin to touch edges */
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0 0 18px 18px; /* Round bottom corners */
+
+  animation: slideUpFade 0.3s ease-out;
+}
+
+/* 1. INITIAL STATE: "Cancel Selected" on the Right */
+.myres-actions {
+  justify-content: flex-end;
+}
+
+/* 2. CONFIRM STATE: Split "Go Back" (Left) and "Confirm" (Right) */
+.cancel-confirm-actions {
+  justify-content: space-between;
+}
+
+/* Button Base Styles */
+.admin-pill-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 130px;
+  height: 42px;
+  padding: 0 1.2rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+/* --- BUTTON VARIANTS --- */
+
+/* Gray / Subtle (Go Back) */
+.admin-pill-subtle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+}
+.admin-pill-subtle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Red / Danger (Initial Cancel) */
+.admin-pill-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+.admin-pill-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Green / Success (Cancelled) */
+.admin-pill-success {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.5) !important;
+  color: #6ee7b7 !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  cursor: default !important;
+}
+
+/* Blue / Loading */
+.admin-pill-loading {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+  color: #93c5fd !important;
+  cursor: wait !important;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 /* -----------------------------------------------------------
    VISIONOS FLOATING HINT PILL — Option A
    ----------------------------------------------------------- */
@@ -977,16 +1075,6 @@
 }
 
 /* ===== Reserve Modal – Input Field Polish ===== */
-/* =========================================================
-   Reserve Conference Room – Premium Glass Inputs (Admin Match)
-   ========================================================= */
-
-/* =========================================================
-   Ultra Premium Glass OS Inputs – Reserve Conference Room
-   ========================================================= */
-/* =========================================================
-   GLASS INPUTS — Date, Select, Time
-   ========================================================= */
 
 .reserve-box input,
 .reserve-box select {
@@ -1074,4 +1162,7 @@
 
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45),
     0 10px 28px rgba(37, 99, 235, 0.75);
+}
+.modal-header-fixed {
+  background-color: transparent;
 }

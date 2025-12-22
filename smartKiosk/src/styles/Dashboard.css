@@ -417,7 +417,7 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(3px);
-  z-index: 9998;
+  z-index: 99999;
   animation: dimIn 0.35s ease forwards;
 }
 
@@ -474,7 +474,7 @@
   color: white;
   font-size: 3rem;
   font-weight: 900;
-  z-index: 99999;
+  z-index: 999999 !important;
   animation: splashFade 1s ease forwards;
 }
 
@@ -505,7 +505,7 @@
   -webkit-backdrop-filter: blur(22px) saturate(180%);
   z-index: 9999999 !important;
   animation: fadeIn 0.3s ease;
-  padding-top: 8rem;
+  padding-top: 4rem;
   padding-bottom: 2rem;
 }
 
@@ -523,9 +523,7 @@
   border-radius: 1.75rem;
   box-shadow: 0 0 35px rgba(0, 0, 0, 0.55), 0 0 35px rgba(37, 99, 235, 0.25);
   color: #e5e7eb;
-  width: min(900px, 92%);
-  max-height: calc(85vh - 2rem); /* ✅ gives a safe gap from bottom */
-  padding: 2.5rem 2.5rem 2.25rem;
+  padding: 2.5rem;
   overflow-y: auto;
   animation: slideUp 0.3s ease;
   backdrop-filter: blur(20px) saturate(180%);
@@ -614,8 +612,13 @@
 /* New class added dynamically by React when any items are selected */
 .btn.btn-primary.active-glow:not(.banner-cta),
 .btn.btn-primary.w-full.mt-2.active-glow {
-  background: linear-gradient(90deg, #1e40af, #1d4ed8);
-  box-shadow: 0 0 15px rgba(249, 115, 22, 0.65);
+  background: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9))
+      padding-box,
+    linear-gradient(135deg, #2563eb, #f97316) border-box;
+  border: 2px solid transparent;
+
+  box-shadow: 0 0 35px rgba(37, 99, 235, 0.45),
+    inset 0 0 20px rgba(37, 99, 235, 0.2);
   /* box-shadow: 0 0 10px #f97316, 0 0 15px #f97316; */
   transform: translateY(-2px);
   filter: brightness(1.1);
@@ -643,13 +646,13 @@
 /* --- QR Code Overlay for Banners --- */
 .banner-qr-container {
   position: absolute;
-  bottom: 1.5rem;
-  right: 1.5rem;
+  bottom: 1rem;
+  right: 1rem;
   z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.659);
   padding: 0.6rem;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -840,7 +843,7 @@
   background: linear-gradient(
     to bottom right,
     rgba(30, 41, 59, 0.75),
-    rgba(15, 23, 42, 0.9)
+    rgba(15, 23, 42, 0.327)
   );
   border-radius: 1.25rem;
   padding: 1.5rem 1rem;
@@ -973,7 +976,8 @@
 }
 
 .supply-section {
-  margin-bottom: 1.5rem;
+  margin: 0;
+  padding: 0;
 }
 .supply-title {
   font-weight: 800;
@@ -1067,6 +1071,31 @@
 
 .luxury-card-btn:active {
   transform: scale(0.98);
+}
+
+/* src/styles/Dashboard.css */
+
+/* 1. Nuke the browser focus ring globally for premium buttons */
+.luxury-card-btn:focus,
+.smart-submit-btn:focus,
+.btn:focus {
+  outline: none !important;
+  box-shadow: none !important; /* Prevents the "Sticky Blue" border */
+}
+
+/* 2. Success state override: Emerald Glow only, NO selection border */
+.smart-submit-btn.success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6) !important;
+  border: 1px solid rgba(16, 185, 129, 0.5) !important; /* Emerald border, not blue */
+  transform: scale(1) !important;
+  pointer-events: none; /* Prevents further clicks during the success animation */
+}
+
+/* 3. Ensure the "UTA Swipe" button returns to its platinum state gracefully */
+.luxury-card-btn {
+  /* ... existing styles ... */
+  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }
 
 /* Internal Layout */
@@ -1521,6 +1550,97 @@ select::-webkit-scrollbar-thumb {
 }
 
 /* ============================================================
+   PREMIUM "SMART BUTTON" ANIMATIONS (Zero Toast)
+   ============================================================ */
+
+/* 1. Base Button Layout */
+.smart-submit-btn {
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 2. Layer Logic (Keeps text centered and swappable) */
+.btn-text-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+
+.btn-text-layer.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* 3. Loading State (Blue Pulse) */
+.smart-submit-btn.loading {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.4) !important;
+  cursor: wait;
+  transform: scale(0.98);
+  opacity: 1 !important; /* Force opacity even if disabled attribute is set */
+}
+
+/* 4. Success State (Emerald Green Transformation) */
+.smart-submit-btn.success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6) !important;
+  border: 1px solid rgba(16, 185, 129, 0.5) !important;
+  color: #fff !important;
+  transform: scale(1);
+  cursor: default;
+  opacity: 1 !important;
+}
+
+/* 5. The Spinner */
+.spinner-loader {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* 6. The Checkmark Pop */
+.checkmark-icon {
+  width: 22px;
+  height: 22px;
+  animation: checkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* --- Keyframes --- */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+/* ============================================================
    PERFECT COLUMN ALIGNMENT FOR RESERVATION FORM
    ============================================================ */
 
@@ -1635,15 +1755,13 @@ select option {
 .submit-request-sticky {
   position: sticky;
   bottom: -2.2rem;
-  background: rgba(17, 24, 39, 0.75);
+  background: transparent;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   padding: 1rem 1.25rem 2.25rem 1rem;
   z-index: 25;
   border-top: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 15px;
-
-  /* resting state */
   transform: translateY(0);
   transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1),
     /* smoother spring-like drop */ background 0.3s ease;
@@ -1674,11 +1792,7 @@ select option {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(
-    to top,
-    rgba(15, 23, 42, 0.5) 80%,
-    rgba(15, 23, 42, 0.5) 100%
-  );
+  background: transparent;
   pointer-events: none;
   z-index: -1;
 }
@@ -1743,6 +1857,7 @@ select option {
   animation: logoutCardIn 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   transform: scale(0.85) translateY(20px);
   opacity: 0;
+  z-index: 999999;
 }
 
 /* Card scale + drift */
@@ -1902,7 +2017,7 @@ select option {
 .astral-logout-overlay {
   position: fixed;
   inset: 0;
-  z-index: 12000 !important;
+  z-index: 999999 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2380,7 +2495,7 @@ select option {
 
 /* Astral logout animation (absolute top) */
 .astral-logout-overlay {
-  z-index: 12000 !important;
+  z-index: 999999 !important;
 }
 
 /* ============================================================
@@ -2507,21 +2622,26 @@ select option {
 /* ============================================================
    PREMIUM "GLASS OS" SUPPLY GRID (Refined V3)
    ============================================================ */
-
+.request-supply {
+  min-width: 60% !important;
+}
 /* 1. Modal Layout Fix */
 .modal-box.fixed-layout {
   display: flex;
   flex-direction: column;
   padding: 0 !important;
   overflow: hidden;
-  max-height: 85vh;
+  margin-top: 4rem;
+  min-width: 50%;
+  background: rgba(2, 6, 23, 0.226); /* Deep Void */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .modal-header-fixed {
   flex-shrink: 0;
-  padding: 2rem 2.5rem 1.5rem;
-  background: rgba(17, 24, 39, 0.85);
-  backdrop-filter: blur(16px);
+  padding: 0rem 0.5rem 1rem;
+  background: transparent;
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 50;
@@ -2531,14 +2651,15 @@ select option {
 .modal-scroll-content {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem 2.5rem 0rem;
+  padding: 1rem 2.5rem 0rem;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  max-height: 65vh;
 }
 
 .modal-header-fixed .close-btn {
-  top: 1.5rem;
-  right: 1.5rem;
+  top: -1.5rem;
+  right: -2rem;
 }
 
 /* 2. The Premium Grid */
@@ -2556,7 +2677,7 @@ select option {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 210px; /* Taller for elegance */
+  min-height: 210px;
 
   /* Lighter Glass Background for Contrast */
   background: linear-gradient(
@@ -2670,7 +2791,6 @@ select option {
 
   box-shadow: 0 0 35px rgba(37, 99, 235, 0.45),
     inset 0 0 20px rgba(37, 99, 235, 0.2);
-  transform: translateY(-4px);
 }
 
 .supply-item.selected span {
@@ -2683,13 +2803,132 @@ select option {
 .modal-scroll-content .submit-request-sticky {
   position: sticky;
   bottom: 0;
-  margin: 1rem -2.5rem 0;
+  margin: 1rem -2.5rem;
   padding: 1.5rem 2.5rem 2.5rem; /* Increased bottom padding */
-  background: rgba(17, 24, 39, 0.95);
+  background: transparent;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 40;
+}
+/* src/styles/CardSwipeModal.css */
+
+/* 1. Success Pill Styling */
+.swipe-hint.saved {
+  color: #10b981 !important; /* Emerald Green */
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+  animation: savedPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes savedPop {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 2. Full Modal Success Glow */
+.status-saved-glow {
+  box-shadow: 0 0 60px rgba(16, 185, 129, 0.3), 0 30px 70px rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  transition: all 0.5s ease;
+}
+
+/* 3. Card Bloom - The card itself glows green when saved */
+.card-saved-bloom {
+  filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.5)) !important;
+  animation: savedBloom 1.5s ease-out forwards;
+}
+
+@keyframes savedBloom {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.success-check-mini {
+  margin-right: 8px;
+  font-weight: 900;
+}
+/* --- UNIVERSAL OBSIDIAN GLASS QR PLATE --- */
+
+.start-qr-glass-plate {
+  position: absolute;
+  bottom: 2.5rem;
+  right: 2.5rem;
+  z-index: 50;
+
+  /* 1 Trillion Dollar Glass Base */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(25px) saturate(160%);
+  -webkit-backdrop-filter: blur(25px) saturate(160%);
+
+  padding: 1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.4s ease;
+}
+
+/* Specific Dashboard Tweak: Slightly smaller & centered in the corner */
+.dashboard-qr-adjust {
+  bottom: 1.5rem !important;
+  right: 1.5rem !important;
+  transform: scale(0.85); /* Keeps the dashboard clean */
+  background: rgba(
+    15,
+    23,
+    42,
+    0.4
+  ); /* Darker obsidian for dashboard legibility */
+}
+
+.qr-etched-image {
+  width: 110px;
+  height: 110px;
+  border-radius: 8px;
+  /* This makes the QR look etched into the crystal */
+  mix-blend-mode: screen;
+  filter: brightness(1.4) contrast(1.1);
+}
+
+.qr-glass-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.qr-glass-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at center,
+    rgba(59, 130, 246, 0.2) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
 }
 /* ===========================================================
   RESPONSIVE DASHBOARD LAYOUT FIXES
@@ -2744,5 +2983,123 @@ select option {
   }
   .dashboard-view .dashboard-grid > *:hover {
     transform: translateY(-4px);
+  }
+}
+/* --- $100 TRILLION ASTRAL EVENT HORIZON --- */
+
+.astral-logout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000; /* Deep Obsidian Void */
+  overflow: hidden;
+}
+
+/* Layered Parallax Nebulas */
+.astral-logout-overlay::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+      circle at 30% 30%,
+      rgba(37, 99, 235, 0.2) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 70% 70%,
+      rgba(249, 115, 22, 0.15) 0%,
+      transparent 50%
+    );
+  filter: blur(100px);
+  animation: cosmicDrift 20s linear infinite alternate;
+}
+
+/* THE PORTAL CARD: Upgraded with Prismatic Glass Refraction */
+.astral-portal-card {
+  position: relative;
+  width: 380px; /* Slightly larger for presence */
+  height: 400px;
+  border-radius: 40px;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  backdrop-filter: blur(60px) saturate(250%) contrast(110%);
+  -webkit-backdrop-filter: blur(60px) saturate(250%) contrast(110%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 3px rgba(255, 255, 255, 0.4),
+    /* Sharp top rim light */ 0 50px 100px rgba(0, 0, 0, 0.9),
+    0 0 80px rgba(37, 99, 235, 0.25);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: astralLuxuryRise 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* THE CORE ORB: Multi-Layered Plasma */
+.portal-orb-ring.mid {
+  background: conic-gradient(
+    from 180deg,
+    transparent 0deg,
+    #38bdf8 120deg,
+    transparent 180deg,
+    #fb923c 300deg,
+    transparent 360deg
+  );
+  filter: blur(1px);
+  animation: hologramSpin 1.2s linear infinite; /* Increased velocity */
+}
+
+.portal-orb-core {
+  background: #fff; /* Pure Light Source */
+  box-shadow: 0 0 40px #fff, 0 0 80px #2563eb, 0 0 120px rgba(249, 115, 22, 0.4);
+}
+
+/* THE SUPERNOVA FLASH */
+.astral-supernova::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 15000;
+  animation: supernovaIn 0.8s ease-out forwards;
+}
+
+@keyframes supernovaIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cosmicDrift {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  to {
+    transform: rotate(10deg) scale(1.2);
+  }
+}
+
+@keyframes astralLuxuryRise {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(40px);
+    filter: blur(15px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
   }
 }

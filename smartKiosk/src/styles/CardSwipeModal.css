@@ -1,66 +1,151 @@
-/* ============================================================
-   "BILLION DOLLAR" OBSIDIAN MODAL + UTA CARD REPLICA
-   ============================================================ */
-
 /* 1. The Overlay */
+/* --- 1 TRILLION DOLLAR SUPER PREMIUM GLASS --- */
+
 .swipe-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(2, 6, 23, 0.416); /* Deep Void */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* Deep Obsidian Void */
+  background: radial-gradient(
+    circle at center,
+    rgba(2, 6, 23, 0.6) 0%,
+    rgba(0, 0, 8, 0.8) 100%
+  );
+  /* Intense Bokeh Blur */
+  backdrop-filter: blur(25px) brightness(0.5) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) brightness(0.5) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 7000 !important;
-  animation: fadeInOverlay 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 9000 !important;
 }
-
-/* 2. The Obsidian Modal */
 .swipe-modal {
   position: relative;
-  width: 460px;
-  padding: 40px 32px 48px;
-  border-radius: 32px;
+  width: 500px;
+  padding: 50px 40px;
+  border-radius: 48px;
   text-align: center;
   overflow: hidden;
 
-  /* Obsidian Gradient */
+  /* Layered Glass Depth */
   background: linear-gradient(
-    180deg,
-    rgba(30, 41, 59, 0.7) 0%,
-    rgba(15, 23, 42, 0.95) 100%
+    165deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.01) 50%,
+    rgba(0, 0, 0, 0.4) 100%
   );
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
 
-  /* Inner Lighting */
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
-    0 25px 60px -12px rgba(0, 0, 0, 0.8),
-    0 0 80px -20px rgba(59, 130, 246, 0.15);
+  /* Elite Optical Properties */
+  backdrop-filter: blur(50px) saturate(220%) contrast(115%);
+  -webkit-backdrop-filter: blur(50px) saturate(220%) contrast(115%);
 
-  z-index: 99 !important;
-  animation: modalScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  /* The "Prismatic" Border - Simulated Refraction */
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3),
+    /* Top Edge Reflection */ inset 0 -1px 20px rgba(0, 0, 0, 0.5),
+    /* Bottom Depth shadow */ 0 40px 100px rgba(0, 0, 0, 0.8),
+    /* Massive Soft Shadow */ 0 0 60px rgba(37, 99, 235, 0.1); /* Deep Brand Aura */
+
+  animation: modalLuxuryRise 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- NEW: THE "CAUSTIC" GLASS SHINE --- */
+.swipe-modal::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.03) 120deg,
+    transparent 180deg
+  );
+  animation: glassRotate 12s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes glassRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes modalLuxuryRise {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(40px);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Glass Reflection Layer (Add a div with this class inside the modal for extra shine) */
+.glass-surface-glare {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes glassDrift {
+  0%,
+  100% {
+    transform: translateY(0) rotateX(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotateX(1.5deg);
+  }
+}
+
+@keyframes modalGlassPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .swipe-modal .close-btn {
   position: absolute;
-  top: 24px;
-  right: 24px;
+  top: 20px;
+  right: 20px;
+
   width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border-radius: 50%; /* use 50%, not 100% */
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: rgba(255, 255, 255, 0.785);
+  display: grid;
+  place-items: center;
   font-size: 1.1rem;
-  transition: all 0.2s ease;
+  line-height: 1;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
+
 .swipe-modal .close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
@@ -82,7 +167,7 @@
 /* 4. The UTA Card Graphic */
 .card-graphic.uta-card {
   position: absolute;
-  width: 260px; /* Real card ratio approx */
+  width: 325px; /* Real card ratio approx */
   height: 164px;
   border-radius: 12px;
   background: #fff;
@@ -146,11 +231,10 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* ✅ UPDATED: Horse Logo from Media Folder */
+/* Horse Logo from Media Folder */
 .uta-horse-logo {
   width: 55px;
   height: 55px;
-  /* Assumed filename - Verify if it is uta_horse.png or similar */
   background-image: url('/media/ui_assets/uta_horse.jpg');
   background-size: contain;
   background-repeat: no-repeat;
@@ -166,14 +250,25 @@
   position: relative;
 }
 
+/* ✅ UPDATED: Photo Box Container */
 .uta-photo-box {
   width: 65px;
   height: 80px;
-  background: #e2e8f0;
+  /* Removed gray background so image shows */
+  /* background: #e2e8f0; */
   border-radius: 4px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); /* Stronger shadow for depth */
   overflow: hidden;
   position: relative;
+  flex-shrink: 0; /* ensure it doesn't squish */
+}
+
+/* ✅ NEW: The Image Itself */
+.uta-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .photo-shimmer {
@@ -187,6 +282,7 @@
   );
   transform: translateX(-100%);
   animation: photoFlash 3.5s ease-in-out infinite;
+  z-index: 2; /* Ensure it's on top of the image */
 }
 
 .uta-info {
@@ -207,7 +303,7 @@
 }
 
 .uta-id-bar {
-  width: 80%;
+  width: 60%;
   height: 8px;
   background: rgba(255, 255, 255, 0.3);
   border-radius: 2px;
@@ -240,7 +336,7 @@
   background: rgba(0, 0, 0, 0.5);
   border-radius: 100px;
   position: absolute;
-  bottom: 30px;
+  bottom: 40px;
   z-index: 1;
 
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
@@ -251,7 +347,7 @@
 /* The Laser Beam */
 .laser-beam {
   position: absolute;
-  bottom: 34px; /* Aligned with slot */
+  bottom: 44px; /* Aligned with slot */
   left: 50%;
   transform: translateX(-50%);
   width: 300px;
@@ -278,7 +374,7 @@
 .swipe-subtitle {
   margin-top: 12px;
   font-size: 1rem;
-  color: #94a3b8;
+  color: #bbcee9;
   line-height: 1.6;
 }
 
@@ -289,14 +385,61 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: #3b82f6;
-
+  color: #5596ff;
   padding: 8px 16px;
   border-radius: 20px;
   background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-
+  border: 1px solid rgba(59, 131, 246, 0.838);
   animation: pulseBadge 2s ease-in-out infinite;
+}
+/* src/styles/CardSwipeModal.css */
+
+.uta-info {
+  position: relative !important; /* Context for the emblem anchor */
+  overflow: hidden;
+}
+
+/* THE PREMIUM LOGO ANCHOR */
+.uta-premium-emblem {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* THE OPTICAL GLASS LOGO */
+.uta-emblem-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+
+  /* 1. CRYSTAL WATERMARK EFFECT */
+  opacity: 0.65;
+  filter: brightness(1.2) contrast(1.1)
+    drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+
+  /* 2. CHROME REFRACTION */
+  mix-blend-mode: screen;
+
+  /* 3. BREATHING GLOW ANIMATION */
+  animation: emblemPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes emblemPulse {
+  0% {
+    transform: scale(0.95);
+    filter: brightness(1) drop-shadow(0 0 5px rgba(59, 130, 246, 0.2));
+  }
+  100% {
+    transform: scale(1.05);
+    filter: brightness(1.4) drop-shadow(0 0 15px rgba(59, 130, 246, 0.6));
+  }
 }
 
 /* --- Animations --- */
@@ -376,5 +519,229 @@
   } /* Flash across */
   100% {
     transform: translateX(100%);
+  }
+}
+
+.swipe-hint.reading {
+  color: #60a5fa; /* Blue pulse */
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+.swipe-hint.processing {
+  color: #34d399; /* Green pulse */
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+.swipe-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: spin 0.6s linear infinite;
+}
+/* src/styles/CardSwipeModal.css */
+
+.uta-card {
+  position: relative !important; /* Establishes the coordinate system for the footer */
+  padding-bottom: 30px !important; /* Reserves space so body text doesn't hide behind footer */
+}
+
+.uta-footer {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  /* 1 Trillion Dollar Optical Glass Footer */
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(5px) !important;
+
+  /* Typography */
+  color: rgb(255, 111, 0) !important;
+  font-size: 0.62rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  z-index: 10 !important; /* Ensures it stays above the holo-sheen */
+}
+.uta-body {
+  height: calc(
+    100% - 70px
+  ) !important; /* Adjust based on your header + footer height */
+  display: flex !important;
+  padding: 12px !important;
+  gap: 15px !important;
+  overflow: hidden !important;
+}
+/* src/styles/App.css */
+
+/* --- GALACTIC START OVERLAY --- */
+.start-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 1. THE VIGNETTE (Atmospheric Shadow) */
+.start-vignette-layer {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    transparent 20%,
+    rgba(0, 0, 0, 0.4) 60%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* 2. THE TEXT STAGE (Obsidian Glass Cloud) */
+.start-text-stage {
+  position: absolute;
+  z-index: 10;
+  padding: 1.5rem 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 100px;
+
+  /* 1 Trillion Dollar Obsidian Glass */
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+
+  /* Inner lighting & Rim light */
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+
+  transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Dynamic Positioning */
+.at-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.at-bottom {
+  top: auto;
+  bottom: 5vh;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1rem 3rem; /* Slightly more compact at bottom */
+}
+
+/* 3. TYPOGRAPHY (MavID Orange) */
+.premium-tap-text {
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #f97316; /* UTA Orange */
+
+  /* The "Cinematic Bloom" */
+  text-shadow: 0 0 20px rgba(249, 115, 22, 0.4);
+  animation: tapGlimmer 3s ease-in-out infinite;
+}
+
+/* 4. GLASS REFLECTION EFFECT */
+.glass-reflection {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.1) 55%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: reflectionSlide 5s linear infinite;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+@keyframes reflectionSlide {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes tapGlimmer {
+  0%,
+  100% {
+    filter: brightness(1) drop-shadow(0 0 5px rgba(37, 99, 235, 0.2));
+  }
+  50% {
+    filter: brightness(1.3) drop-shadow(0 0 15px rgba(249, 115, 22, 0.6));
+  }
+}
+
+/* 5. QR GLASS PLATE */
+.start-qr-glass-plate {
+  position: absolute;
+  bottom: 2.5rem;
+  right: 2.5rem;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  padding: 1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-etched-image {
+  width: 110px;
+  height: 110px;
+  border-radius: 8px;
+  mix-blend-mode: overlay; /* Makes it look etched into glass */
+  filter: brightness(1.5);
+}
+.scanner-mini-loader {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-left: -7px;
+  margin-top: -7px;
+}
+@keyframes photoScan {
+  0% {
+    background-position: 0% -100%;
+  }
+  100% {
+    background-position: 0% 100%;
   }
 }

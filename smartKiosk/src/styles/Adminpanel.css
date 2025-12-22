@@ -34,31 +34,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
-  /* PERFORMANCE-SAFE BACKGROUND */
-  background: radial-gradient(
-      circle at 12% -10%,
-      rgba(59, 130, 246, 0.22),
-      transparent 55%
-    ),
-    radial-gradient(
-      circle at 88% 110%,
-      rgba(249, 115, 22, 0.24),
-      transparent 60%
-    ),
-    radial-gradient(
-      circle at 60% 50%,
-      rgba(15, 23, 42, 0.85),
-      rgba(15, 23, 42, 0.98)
-    );
-
-  /* 🚫 REMOVE LIVE BLUR (THIS FIXES FLASHING) */
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-
+  background: rgba(0, 0, 57, 0.267);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 30px 65px rgba(0, 0, 0, 0.85), 0 0 45px rgba(37, 99, 235, 0.4),
+    0 0 40px rgba(249, 115, 22, 0.2);
+  backdrop-filter: blur(15px) saturate(180%);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
   animation: adminFadeIn 0.45s ease-out forwards;
-  opacity: 0;
-
   /* GPU HINT */
   will-change: opacity;
 }
@@ -75,8 +57,8 @@
 
 .admin-shell {
   position: relative;
-  width: min(1350px, 94vw);
-  height: min(760px, 88vh);
+  width: min(90%, 94vw);
+  height: min(65%, 88vh);
 
   padding: 1.8rem 2rem;
   border-radius: 26px;
@@ -105,10 +87,6 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 30px 65px rgba(0, 0, 0, 0.85), 0 0 45px rgba(37, 99, 235, 0.4),
     0 0 40px rgba(249, 115, 22, 0.2);
-
-  backdrop-filter: blur(26px) saturate(220%);
-  -webkit-backdrop-filter: blur(26px) saturate(220%);
-
   transform: translateY(30px) scale(0.96);
   opacity: 0;
 
@@ -1208,46 +1186,40 @@
 }
 /* ===== PREMIUM MODAL (scrolling content ONLY inside) ===== */
 .premium-modal {
-  width: 720px;
-  max-width: 92vw;
-
-  max-height: 70vh; /* modal scrolls, not the page */
+  width: 900px !important; /* Significant size increase for Supply Items */
+  max-width: 95vw !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-
+  contain: layout;
   padding: 2.5rem;
   border-radius: 26px;
-
-  background: radial-gradient(
-      circle at 12% -10%,
-      rgba(59, 130, 246, 0.25),
-      transparent 55%
-    ),
-    radial-gradient(
-      circle at 88% 110%,
-      rgba(249, 116, 22, 0.149),
-      transparent 60%
-    ),
-    radial-gradient(
-      circle at 60% 50%,
-      rgba(15, 23, 42, 0.7),
-      rgba(15, 23, 42, 0.95)
-    );
-  backdrop-filter: blur(26px);
-  -webkit-backdrop-filter: blur(26px);
-
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55);
-
   display: flex;
   flex-direction: column;
   gap: 1.6rem;
-
   position: relative;
   text-align: center;
-  z-index: 9999999;
+  z-index: 99999;
 }
-
+.premium-modal-large {
+  width: 900px !important; /* Significant size increase for Supply Items */
+  max-width: 95vw !important;
+  min-height: 500px;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  contain: layout;
+  padding: 2.5rem;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  position: relative;
+  text-align: center;
+  z-index: 99999;
+}
 /* TITLE */
 .premium-modal-title {
   font-size: 1.8rem;
@@ -1993,4 +1965,644 @@
     white-space: nowrap;
     padding: 0.55rem 1rem;
   }
+}
+
+/* =====================================================================
+   SMART BUTTON SYSTEM & ANIMATIONS (ADD TO BOTTOM)
+   ===================================================================== */
+
+/* 1. LAYOUT FOR TEXT LAYERS 
+   This allows the "Idle", "Loading", and "Success" text to stack 
+   perfectly on top of each other for smooth fading. */
+.admin-pill-button,
+.premium-btn,
+.smart-submit-btn {
+  display: grid !important;
+  place-items: center;
+  /* Use grid stack trick */
+  grid-template-areas: 'stack';
+  position: relative;
+  isolation: isolate;
+}
+/* src/styles/Adminpanel.css */
+
+/* --- PILL BUTTONS (Lists) --- */
+.admin-pill-button {
+  /* Let width grow automatically */
+  width: auto !important;
+  min-width: 100px;
+
+  /* More breathing room on sides */
+  padding: 0.65rem 1.5rem !important;
+
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700; /* Bolder text looks better */
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap; /* Prevent wrapping */
+
+  /* Flexbox centering ensures icons/text align */
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- MODAL BUTTONS (Cancel Reservation, etc) --- */
+.premium-btn {
+  /* Let width grow automatically */
+  width: auto !important;
+  min-width: 140px;
+
+  /* Generous horizontal padding */
+  padding: 0 2rem !important;
+
+  height: 48px;
+  border-radius: 14px;
+
+  /* Flex centering */
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* All layers sit in the same cell */
+.btn-text-layer {
+  grid-area: stack;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+  pointer-events: none; /* Let clicks pass through to button */
+  white-space: nowrap;
+}
+
+/* The active layer becomes visible */
+.btn-text-layer.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* =====================================================================
+   PILL BUTTON STATES (For Lists/Rows)
+   ===================================================================== */
+
+/* SUCCESS STATE (Green Glass) */
+.admin-pill-success {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  color: #6ee7b7 !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.25) !important;
+  cursor: default;
+}
+
+/* LOADING STATE (Neutral Glass) */
+.admin-pill-loading {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  cursor: wait;
+}
+
+/* src/styles/Adminpanel.css */
+
+/* Add this with your other pill buttons */
+
+/* Warning State (Remove Admin) - Premium Amber Glass */
+.admin-pill-warning {
+  background: rgba(245, 158, 11, 0.08); /* Subtle amber tint */
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24; /* Amber text */
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.05);
+}
+
+.admin-pill-warning:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.6);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2),
+    inset 0 0 0 1px rgba(245, 158, 11, 0.1);
+}
+
+/* =====================================================================
+   PREMIUM MODAL BUTTONS (For Create/Delete Modals)
+   ===================================================================== */
+
+.premium-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 0 1.5rem; /* Horizontal padding */
+  height: 48px; /* Fixed height for consistency */
+  min-width: 140px;
+
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Primary (Save/Create) */
+.premium-btn.primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.premium-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Danger (Delete) */
+.premium-btn.delete,
+.premium-btn.danger {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.premium-btn.delete:hover,
+.premium-btn.danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Cancel (Ghost) */
+.premium-btn.cancel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+.premium-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+/* --- Smart States for Premium Buttons --- */
+
+/* Success override for Modal Buttons */
+.premium-btn.success {
+  background: linear-gradient(135deg, #059669, #047857) !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
+  color: white !important;
+  pointer-events: none;
+}
+
+/* Loading override for Modal Buttons */
+.premium-btn.loading {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  cursor: wait;
+}
+
+/* =====================================================================
+   ICONS & SPINNERS
+   ===================================================================== */
+
+/* Spinner Loader */
+.spinner-loader {
+  width: 18px;
+  height: 18px;
+  padding-right: 5px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Checkmark Icon Animation */
+.checkmark-icon {
+  width: 18px;
+  height: 18px;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: drawCheck 0.4s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  animation-delay: 0.1s; /* Wait for text to slide in slightly */
+}
+
+@keyframes drawCheck {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ============================================================
+   "REMOVE ADMIN" PADDING FIX
+   ============================================================ */
+
+/* ============================================================
+   FIX REMOVE ADMIN (Solid Amber + Wide Padding)
+   ============================================================ */
+
+.admin-pill-warning {
+  /* 1. Force Solid Gradient Background */
+  background: linear-gradient(135deg, #f59e0b, #b45309) !important;
+  border: none !important;
+
+  /* 2. Force White Text */
+  color: #ffffff !important;
+  opacity: 1 !important;
+
+  /* 3. Keep the Premium Wide Padding */
+  padding-left: 2.25rem !important;
+  padding-right: 2.25rem !important;
+  min-width: 160px !important;
+
+  /* 4. Restore the Glow */
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4) !important;
+}
+
+.admin-pill-warning:hover {
+  background: linear-gradient(135deg, #fbbf24, #d97706) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6) !important;
+}
+
+/* 2. DANGER (Cancel Reservation / Delete) - SOLID RUBY FUSION */
+/* Transforms the faint red outline into a solid destructive action */
+.admin-pill-danger,
+.premium-btn.delete,
+.premium-btn.danger {
+  background: linear-gradient(
+    135deg,
+    #ef4444,
+    #991b1b
+  ) !important; /* Red-500 to Red-800 */
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  font-weight: 700 !important;
+}
+
+.admin-pill-danger:hover,
+.premium-btn.delete:hover,
+.premium-btn.danger:hover {
+  background: linear-gradient(
+    135deg,
+    #f87171,
+    #b91c1c
+  ) !important; /* Lighter/Hotter */
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+/* 3. PRIMARY (Make Admin / Add Item) - SOLID SAPPHIRE CORE */
+.admin-pill-primary,
+.premium-btn.primary {
+  background: linear-gradient(
+    135deg,
+    #3b82f6,
+    #1e40af
+  ) !important; /* Blue-500 to Blue-800 */
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  font-weight: 700 !important;
+}
+
+.admin-pill-primary:hover,
+.premium-btn.primary:hover {
+  background: linear-gradient(135deg, #60a5fa, #1d4ed8) !important;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 4. SUCCESS (Checkmarks / Confirmed) - SOLID EMERALD */
+.admin-pill-success,
+.premium-btn.success {
+  background: linear-gradient(
+    135deg,
+    #10b981,
+    #047857
+  ) !important; /* Emerald-500 to Emerald-700 */
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
+  cursor: default !important;
+}
+/* ============================================================
+   THE "CANCEL RESERVATION" BUTTON PERFECTER
+   ============================================================ */
+
+/* Target strictly the delete button inside the premium modal */
+.premium-modal .premium-btn.delete {
+  /* 1. Force Width Logic: "Be exactly as wide as your text + padding" */
+  width: max-content !important;
+  min-width: 220px !important; /* Force a wide, luxurious minimum base */
+  flex: 0 0 auto !important; /* Forbidden to shrink */
+
+  /* 2. Lux Padding */
+  padding-left: 2.5rem !important;
+  padding-right: 2.5rem !important;
+
+  /* 3. Visuals */
+  white-space: nowrap !important; /* Never wrap */
+  text-overflow: clip !important; /* Never add ellipses */
+
+  /* 4. Alignment Safety */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  /* 5. Ensure it stands tall */
+  height: 50px !important;
+  font-size: 1rem !important; /* Slightly larger, more confident text */
+  letter-spacing: 0.02em !important;
+}
+
+/* Ensure the container lets it breathe */
+.premium-modal-actions {
+  gap: 20px !important; /* More space between "Keep" and "Cancel" */
+}
+/* ============================================================
+   BANNER CARD BUTTON FIX (Perfect Alignment)
+   ============================================================ */
+
+/* 1. Target the Footer inside Banner Cards */
+.banner-card-footer {
+  margin-top: auto;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-wrap: wrap; /* Safety wrap for tiny screens */
+  justify-content: center;
+  gap: 0.75rem; /* Consistent gap */
+}
+
+/* 2. Force Equality for the Buttons */
+.banner-card-footer .admin-pill-button {
+  flex: 1; /* Both buttons grow equally */
+  min-width: 100px; /* Never shrink too small */
+  max-width: 140px; /* Never get too wide */
+  height: 40px !important; /* Force identical height */
+
+  padding: 0 0.5rem !important; /* Reset padding for flex centering */
+  margin: 0 !important;
+
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 0.75rem !important;
+  letter-spacing: 0.05em !important;
+  white-space: nowrap !important; /* Prevent text wrapping */
+}
+
+/* 3. Specific Tweaks for "Set Active" vs "Edit" visual balance */
+/* Ensure the "Active" button (Primary/Blue) dominates slightly but fits */
+.banner-card-footer .admin-pill-primary,
+.banner-card-footer .admin-pill-success {
+  font-weight: 700 !important;
+}
+
+/* Ensure the "Edit" button (Subtle) matches height perfectly */
+.banner-card-footer .admin-pill-subtle {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+/* ============================================================
+   GRID CARD BUTTON CONTAINMENT FIELD (Fix Overflow)
+   ============================================================ */
+
+/* 1. Target Footers inside Grid Cards specifically */
+.admin-grid .admin-card-footer,
+.admin-grid .admin-item-card-footer,
+.admin-grid .banner-card-footer {
+  display: flex !important;
+  flex-wrap: wrap !important; /* Allow wrapping if needed */
+  gap: 8px !important; /* Tighter gap */
+  width: 100% !important;
+  padding: 0 !important; /* Remove extra padding from container */
+  margin-top: 1rem !important;
+  box-sizing: border-box !important;
+}
+
+/* 2. FORCE buttons to shrink and fit */
+.admin-grid .admin-pill-button,
+.admin-grid .premium-btn {
+  /* RESET GLOBAL SIZING */
+  min-width: 0 !important; /* Allow shrinking below 140px */
+  width: auto !important; /* Reset fixed widths */
+  flex: 1 1 0px !important; /* Grow equally, shrink if needed */
+
+  /* REDUCE PADDING */
+  padding: 0.5rem 0.75rem !important;
+
+  /* PREVENT TEXT OVERFLOW */
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+
+  /* ENSURE HEIGHT IS COMPACT */
+  height: 38px !important;
+  font-size: 0.75rem !important;
+
+  /* ALIGNMENT */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 3. OPTIONAL: Specific tweaks for "Delete" vs "Edit" balance */
+/* Make "Delete" slightly more dominant but still fitting */
+.admin-grid .admin-pill-danger {
+  flex-grow: 2 !important;
+}
+/* ============================================================
+   UNIVERSAL 1 TRILLION DOLLAR MODAL SYSTEM
+   Controls: AdminPanel, Rooms, Items, Banners, and Dashboard
+   ============================================================ */
+
+/* 1. THE OVERLAY: Unified Blur & Depth */
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important; /* Stacked above everything */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2rem !important;
+
+  /* VisionOS Glass Signature */
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+
+  animation: modalFadeInUniversal 0.3s ease-out forwards;
+}
+
+/* 2. THE MODAL BOX: Unified Background & Constraints */
+.premium-modal,
+.modal-box.reserve-box {
+  position: relative !important;
+  z-index: 1000000 !important;
+
+  width: 100% !important;
+  max-width: 720px !important;
+  /* Standardized Height logic to prevent button overflow */
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+
+  padding: 2.5rem !important;
+  border-radius: 28px !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+
+  /* Deep Blue/Amber Aurora Background */
+  background: radial-gradient(
+      circle at top left,
+      rgba(59, 130, 246, 0.15),
+      transparent
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(249, 115, 22, 0.1),
+      transparent
+    ),
+    rgba(15, 23, 42, 0.95) !important;
+
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 3. SCROLL PROTECTION: Ensures buttons stay inside */
+.premium-modal form,
+.premium-modal .modal-content-wrapper {
+  flex: 1 !important;
+  overflow-y: auto !important; /* Content scrolls, box stays static */
+  padding-right: 8px !important;
+  margin-bottom: 1.5rem !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 4. UNIFIED ACTIONS: Bottom-docked and centered */
+.premium-modal-actions,
+.cancel-confirm-actions {
+  flex-shrink: 0 !important; /* Never let buttons leave the view */
+  display: flex !important;
+  justify-content: center !important;
+  gap: 1.5rem !important;
+  margin-top: auto !important;
+  padding-top: 1rem !important;
+}
+
+@keyframes modalFadeInUniversal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- UNIVERSAL PREMIUM ACTION BUTTONS --- */
+.premium-btn,
+.admin-pill-button {
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
+  text-transform: uppercase !important;
+}
+
+/* Primary Action: Sapphire Glow */
+.premium-btn.primary,
+.admin-pill-primary {
+  background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Neutral/Cancel: Frosted Glass */
+.premium-btn.cancel,
+.admin-pill-subtle {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* Danger Action: Ruby Plasma */
+.premium-btn.delete,
+.admin-pill-danger {
+  background: linear-gradient(135deg, #ef4444, #991b1b) !important;
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Hover Physics for ALL */
+.premium-btn:hover:not(:disabled),
+.admin-pill-button:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02) !important;
+  filter: brightness(1.1);
+}
+
+/* --- UNIVERSAL PREMIUM ACTION BUTTONS --- */
+.premium-btn,
+.admin-pill-button {
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
+  text-transform: uppercase !important;
+}
+
+/* Primary Action: Sapphire Glow */
+.premium-btn.primary,
+.admin-pill-primary {
+  background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Neutral/Cancel: Frosted Glass */
+.premium-btn.cancel,
+.admin-pill-subtle {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* Danger Action: Ruby Plasma */
+.premium-btn.delete,
+.admin-pill-danger {
+  background: linear-gradient(135deg, #ef4444, #991b1b) !important;
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Hover Physics for ALL */
+.premium-btn:hover:not(:disabled),
+.admin-pill-button:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02) !important;
+  filter: brightness(1.1);
 }

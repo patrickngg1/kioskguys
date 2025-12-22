@@ -34,14 +34,14 @@ class UserProfile(models.Model):
 # ---------------------------------------------------------
 # USER CARD MODEL — STORES UTA ID FROM CARD SWIPE
 # ---------------------------------------------------------
+# accounts/models.py
+
+# accounts/models.py
 class UserCard(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="card")
-
-    # The ONLY field required for card access
     uta_id = models.CharField(max_length=20, null=True, blank=True)
-    
-    # ✅ ADD THIS LINE BELOW:
-    raw_swipe = models.TextField(null=True, blank=True)
+    # ✅ EXACT CODE: CharField(max_length=255) supports unique indexing
+    raw_swipe = models.CharField(max_length=255, unique=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} — UTA ID: {self.uta_id or 'None'}"
