@@ -1,6 +1,6 @@
 // src/components/RequestSupply.jsx
 import React, { useState, useEffect } from 'react';
-import '../styles/dashboard.css';
+import '../styles/Dashboard.css';
 
 function RequestSupply({
   isOpen,
