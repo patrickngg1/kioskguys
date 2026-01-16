@@ -8,7 +8,7 @@
   background: radial-gradient(
     circle at center,
     rgba(2, 6, 23, 0.6) 0%,
-    rgba(0, 0, 8, 0.8) 100%
+    rgba(0, 0, 8, 0) 100%
   );
   /* Intense Bokeh Blur */
   backdrop-filter: blur(25px) brightness(0.5) saturate(180%);

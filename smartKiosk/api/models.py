@@ -11,6 +11,7 @@ class BannerImage(models.Model):
     image = models.ImageField(upload_to=banner_upload_path)
     label = models.CharField(max_length=128, blank=True)
     # ✅ NEW: Link field for QR codes
+    repeat_yearly = models.BooleanField(default=False)
     link = models.URLField(max_length=500, blank=True, null=True) 
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -56,10 +56,15 @@
   z-index: 1;
 }
 
+/* ============================================================
+   GRID SYSTEM — PERFECT SYNC FOR ALL RESOLUTIONS
+   ============================================================ */
 .dashboard-view .dashboard-grid {
   display: grid;
+  /* Left column fixed, right column takes remaining space */
   grid-template-columns: 340px 1fr;
-  grid-template-rows: auto 1fr 1fr;
+  /* Rows: 1. Banner (auto), 2. Content (Takes all available space), 3. Admin (auto) */
+  grid-template-rows: auto 1fr auto;
   grid-template-areas:
     'user banner'
     'reserve map'
@@ -69,27 +74,62 @@
   width: min(1400px, 95vw);
   margin: 0 auto;
   padding: 1rem 0rem;
+
+  /* ✅ FORCE vertical alignment so columns match height exactly */
+  align-items: stretch;
 }
 
-/* Make the map fill the full height of its grid area on desktop */
+/* ============================================================
+   MAP CONTAINER — DYNAMIC HEIGHT FILL
+   ============================================================ */
 .dashboard-view .map-container {
-  height: 100%;
-  align-self: stretch;
+  grid-area: map;
+  /* Ensure it takes exactly 100% of the grid area height */
+  height: 100% !important;
+  min-height: 0; /* Prevents overflow in flex/grid containers */
   display: flex;
   flex-direction: column;
   background: none !important;
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  align-self: stretch !important;
 }
 
-/* Make the KioskMap inside stretch too */
+/* Force the KioskMap inside to be responsive */
 .dashboard-view .map-container > * {
   flex: 1 1 auto;
   height: 100% !important;
   width: 100% !important;
-  min-height: 0;
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+/* ============================================================
+   SMALL SCREEN QUERIES (Mobile/Tablet)
+   ============================================================ */
+@media (max-width: 1100px) {
+  .dashboard-view .dashboard-grid {
+    display: flex; /* Switch to stack for small screens */
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 1rem;
+  }
+
+  /* Reset widths for mobile compatibility */
+  .dashboard-view .user-card,
+  .dashboard-view .card.action-card,
+  .dashboard-view .banner-block,
+  .dashboard-view .map-container {
+    width: 100%;
+    max-width: 720px;
+    height: auto !important; /* Allow natural height on stack */
+  }
+
+  /* Define a generous mobile height for the map so it's usable */
+  .dashboard-view .map-container {
+    min-height: 450px;
+  }
 }
 
 /* User + Action cards — same premium shell */
@@ -1878,7 +1918,7 @@ select option {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: ringSweep 1.6s linear infinite;
+  animation: ringSweep 0.6s linear infinite;
   box-shadow: 0 0 22px rgba(59, 130, 246, 0.35);
 }
 
@@ -1888,7 +1928,7 @@ select option {
     transform: rotate(0deg);
   }
   100% {
-    filter: hue-rotate(25deg);
+    filter: hue-rotate(90deg);
     transform: rotate(360deg);
   }
 }
@@ -2017,7 +2057,7 @@ select option {
 .astral-logout-overlay {
   position: fixed;
   inset: 0;
-  z-index: 999999 !important;
+  z-index: 99999999 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2095,8 +2135,8 @@ select option {
 /* Floating glass card that houses the portal */
 .astral-portal-card {
   position: relative;
-  width: 340px;
-  height: 360px;
+  width: 380px;
+  height: 400px;
   border-radius: 1.9rem;
   background: rgba(15, 23, 42, 0.78);
   backdrop-filter: blur(28px) saturate(220%);
@@ -2225,7 +2265,7 @@ select option {
   mix-blend-mode: screen;
   opacity: 0.95;
   mask-image: radial-gradient(circle, transparent 45%, black 60%);
-  animation: hologramSpin 4s linear infinite;
+  animation: hologramSpin 0.4s linear infinite;
 }
 
 @keyframes hologramSpin {
@@ -2495,7 +2535,7 @@ select option {
 
 /* Astral logout animation (absolute top) */
 .astral-logout-overlay {
-  z-index: 999999 !important;
+  z-index: 999999999 !important;
 }
 
 /* ============================================================
@@ -3018,32 +3058,6 @@ select option {
   animation: cosmicDrift 20s linear infinite alternate;
 }
 
-/* THE PORTAL CARD: Upgraded with Prismatic Glass Refraction */
-.astral-portal-card {
-  position: relative;
-  width: 380px; /* Slightly larger for presence */
-  height: 400px;
-  border-radius: 40px;
-  background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(0, 0, 0, 0.6) 100%
-  );
-  backdrop-filter: blur(60px) saturate(250%) contrast(110%);
-  -webkit-backdrop-filter: blur(60px) saturate(250%) contrast(110%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
-    inset 0 1px 3px rgba(255, 255, 255, 0.4),
-    /* Sharp top rim light */ 0 50px 100px rgba(0, 0, 0, 0.9),
-    0 0 80px rgba(37, 99, 235, 0.25);
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  animation: astralLuxuryRise 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
 /* THE CORE ORB: Multi-Layered Plasma */
 .portal-orb-ring.mid {
   background: conic-gradient(
@@ -3102,4 +3116,24 @@ select option {
     transform: scale(1) translateY(0);
     filter: blur(0);
   }
+}
+/* Styling for items deactivated for the day */
+.supply-item.deactivated {
+  border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.supply-item.deactivated:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.locked-label {
+  position: absolute;
+  bottom: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 6px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
 }

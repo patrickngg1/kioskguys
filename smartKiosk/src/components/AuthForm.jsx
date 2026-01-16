@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CardSwipeModal from './CardSwipeModal';
 import { createPortal } from 'react-dom';
 
@@ -7,7 +7,6 @@ import {
   registerWithSession,
   requestPasswordReset,
 } from '../api/authApi';
-import AuthToast from './AuthToast';
 
 // --- HELPERS ---
 function validateEmailDomain(email) {
@@ -56,15 +55,25 @@ function PasswordInput({
   onChange,
   onBlur,
   placeholder,
+  id,
   inputClass = 'input-field',
   autoComplete,
+  inputMode,
+  forceShow = false,
 }) {
-  const [show, setShow] = useState(false);
+  const [show, setShow] = useState(forceShow);
+
+  useEffect(() => {
+    if (forceShow) setShow(true);
+  }, [forceShow]);
+
   return (
     <div className='input-wrap'>
       <input
+        id={id}
         className={`${inputClass} with-eye`}
         type={show ? 'text' : 'password'}
+        inputMode={inputMode}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
@@ -86,9 +95,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
   const [resetMode, setResetMode] = useState(false);
   const [resetStatus, setResetStatus] = useState('idle');
 
-  const [toast, setToast] = useState(null);
-  const showToast = (type, message) => setToast({ type, message });
-
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [cardString, setCardString] = useState('');
 
@@ -101,6 +107,11 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
   const [loginStatus, setLoginStatus] = useState('idle');
   const [registerStatus, setRegisterStatus] = useState('idle');
   const [swipeBtnState, setSwipeBtnState] = useState('idle');
+
+  // NEW: Dynamic Error Messages for Buttons
+  const [loginErrorLabel, setLoginErrorLabel] = useState('DENIED');
+  const [registerErrorLabel, setRegisterErrorLabel] = useState('FAILED');
+  const [resetErrorLabel, setResetErrorLabel] = useState('FAILED');
 
   const [errors, setErrors] = useState({
     fullName: '',
@@ -115,7 +126,11 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
     level: 0,
   });
 
-  // 🔹 VALIDATION LOGIC
+  const triggerShake = () => {
+    setShake(true);
+    setTimeout(() => setShake(false), 400);
+  };
+
   const validateFullNameLive = (v) => {
     if (!v.trim()) return 'Full name is required.';
     if (v.trim().split(/\s+/).length < 2)
@@ -141,12 +156,45 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
     return '';
   };
 
-  const triggerShake = () => {
-    setShake(true);
-    setTimeout(() => setShake(false), 400);
-  };
+  // ✅ HANDLER: Reset Password Logic
+  async function handleResetRequest(e) {
+    e.preventDefault();
+    if (resetStatus !== 'idle') return;
 
-  // --- HANDLERS ---
+    const emailErr = validateEmailLive(email);
+    if (emailErr) {
+      setLoginEmailError(emailErr);
+      setResetErrorLabel('INVALID EMAIL');
+      setResetStatus('error');
+      triggerShake();
+      setTimeout(() => setResetStatus('idle'), 2000);
+      return;
+    }
+
+    setResetStatus('loading');
+    try {
+      await requestPasswordReset(email.trim().toLowerCase());
+      setResetStatus('success');
+      setTimeout(() => {
+        setResetMode(false);
+        setShowCodeInput(true);
+        setView('login');
+        setResetStatus('idle');
+        setPassword('');
+        setTimeout(
+          () => document.getElementById('login-password-input')?.focus(),
+          100
+        );
+      }, 1500);
+    } catch (err) {
+      setResetErrorLabel(err.message?.toUpperCase() || 'FAILED');
+      setResetStatus('error');
+      triggerShake();
+      setTimeout(() => setResetStatus('idle'), 2500);
+    }
+  }
+
+  // ✅ HANDLER: Login & Verification
   async function handleLogin(e) {
     e.preventDefault();
     if (loginStatus !== 'idle') return;
@@ -154,6 +202,7 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
     const emailErr = validateEmailLive(email);
     if (emailErr || !password) {
       setLoginEmailError(emailErr);
+      setLoginErrorLabel(emailErr ? 'INVALID EMAIL' : 'PASSWORD REQUIRED');
       setLoginStatus('error');
       triggerShake();
       setTimeout(() => setLoginStatus('idle'), 2000);
@@ -167,19 +216,30 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
         password.trim()
       );
       setLoginStatus('success');
-      setTimeout(() => onLoginSuccess?.(response), 1500);
+      setTimeout(() => {
+        onLoginSuccess?.({
+          id: response.id,
+          email: response.email,
+          fullName: response.fullName,
+          isAdmin: response.isAdmin,
+          mustSetPassword: !!response.mustSetPassword,
+        });
+      }, 1500);
     } catch (err) {
+      // DYNAMIC FEEDBACK: Detects if password or email is the culprit
+      const msg = err.message || 'DENIED';
+      setLoginErrorLabel(msg.toUpperCase());
       setLoginStatus('error');
       triggerShake();
       setTimeout(() => setLoginStatus('idle'), 2500);
     }
   }
 
+  // ✅ HANDLER: Registration
   async function handleRegister(e) {
     e.preventDefault();
     if (registerStatus !== 'idle') return;
 
-    // Force validation on all fields
     const fNameErr = validateFullNameLive(fullName);
     const mEmailErr = validateEmailLive(email);
     const pwdErr = validatePasswordLive(password);
@@ -193,6 +253,7 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
     });
 
     if (fNameErr || mEmailErr || pwdErr || confErr) {
+      setRegisterErrorLabel('FIX ERRORS');
       setRegisterStatus('error');
       triggerShake();
       setTimeout(() => setRegisterStatus('idle'), 2000);
@@ -201,19 +262,12 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
 
     setRegisterStatus('loading');
     try {
-      const result = await registerWithSession(
+      await registerWithSession(
         fullName,
         email.trim().toLowerCase(),
         password,
         cardString
       );
-      if (result && result.error) {
-        showToast('error', result.error);
-        setRegisterStatus('error');
-        triggerShake();
-        setTimeout(() => setRegisterStatus('idle'), 2500);
-        return;
-      }
       setRegisterStatus('success');
       setTimeout(() => {
         setView('login');
@@ -222,6 +276,9 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
         setConfirmPassword('');
       }, 2000);
     } catch (err) {
+      // DYNAMIC FEEDBACK: e.g., "EMAIL ALREADY REGISTERED"
+      const msg = err.message || 'FAILED';
+      setRegisterErrorLabel(msg.toUpperCase());
       setRegisterStatus('error');
       triggerShake();
       setTimeout(() => setRegisterStatus('idle'), 2500);
@@ -235,20 +292,7 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
 
   return (
     <div id='auth-container' className='form-container'>
-      {toast && (
-        <>
-          <div className='auth-blur-overlay' />
-          <div className='auth-toast-center'>
-            <AuthToast
-              type={toast.type}
-              message={toast.message}
-              onClose={() => setToast(null)}
-            />
-          </div>
-        </>
-      )}
-
-      <div className={toast ? 'blurred-card' : ''}>
+      <div className='auth-card-inner'>
         <h1 className='kiosk-title'>KIOSK ACCESS</h1>
 
         {!resetMode && (
@@ -256,14 +300,21 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
             <button
               type='button'
               className={`tab-button ${view === 'login' ? 'active' : ''}`}
-              onClick={() => setView('login')}
+              onClick={() => {
+                setView('login');
+                setResetMode(false);
+                setShowCodeInput(false);
+              }}
             >
               SIGN IN
             </button>
             <button
               type='button'
               className={`tab-button ${view === 'register' ? 'active' : ''}`}
-              onClick={() => setView('register')}
+              onClick={() => {
+                setView('register');
+                setResetMode(false);
+              }}
             >
               SIGN UP
             </button>
@@ -272,22 +323,40 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
 
         <div className={`form-body ${shake ? 'shake' : ''}`}>
           {resetMode ? (
-            <form onSubmit={handleLogin}>
+            <form onSubmit={handleResetRequest}>
               <div className='form-group'>
                 <label>UTA Email</label>
-                <input
-                  className='input-field'
-                  type='email'
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setLoginEmailError(validateEmailLive(e.target.value));
-                  }}
-                />
+                <div
+                  className={`input-check-wrap ${
+                    !loginEmailError && email.trim() ? 'valid-field' : ''
+                  }`}
+                >
+                  <input
+                    className='input-field'
+                    type='email'
+                    placeholder='email@uta.edu'
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setLoginEmailError(validateEmailLive(e.target.value));
+                    }}
+                    autoComplete='email'
+                  />
+                </div>
                 {loginEmailError && (
                   <div className='inline-error'>{loginEmailError}</div>
                 )}
               </div>
+              <p
+                style={{
+                  fontSize: '0.85rem',
+                  opacity: 0.8,
+                  marginBottom: '1.2rem',
+                }}
+              >
+                We will email you a 6-digit reset code to verify your identity.
+              </p>
+
               <button
                 className={`auth-button smart-kinetic-btn ${resetStatus}`}
                 style={{ minHeight: '60px' }}
@@ -299,13 +368,52 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                 >
                   SEND RESET CODE
                 </div>
+                <div
+                  className={`status-layer loading ${
+                    resetStatus === 'loading' ? 'active' : ''
+                  }`}
+                >
+                  <span className='galactic-spinner'></span>SENDING...
+                </div>
+                <div
+                  className={`status-layer success ${
+                    resetStatus === 'success' ? 'active' : ''
+                  }`}
+                >
+                  <span className='checkmark-kinetic'>✓</span>CODE SENT
+                </div>
+                <div
+                  className={`status-layer error ${
+                    resetStatus === 'error' ? 'active' : ''
+                  }`}
+                >
+                  <span className='error-cross'>✕</span>
+                  {resetErrorLabel}
+                </div>
+              </button>
+
+              <button
+                type='button'
+                className='forgot-password-link'
+                style={{
+                  marginTop: '1.2rem',
+                  width: '100%',
+                  textAlign: 'center',
+                }}
+                onClick={() => setResetMode(false)}
+              >
+                ← Back to Sign In
               </button>
             </form>
           ) : view === 'login' ? (
             <form onSubmit={handleLogin}>
               <div className='form-group'>
                 <label>Email</label>
-                <div className='input-check-wrap'>
+                <div
+                  className={`input-check-wrap ${
+                    !loginEmailError && email.trim() ? 'valid-field' : ''
+                  }`}
+                >
                   <input
                     className='input-field'
                     type='email'
@@ -317,8 +425,8 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                         setLoginEmailError(validateEmailLive(e.target.value));
                     }}
                     onBlur={() => setLoginEmailError(validateEmailLive(email))}
+                    autoComplete='username'
                   />
-                  {/* NO TICK ON LOGIN FORM AS REQUESTED */}
                 </div>
                 {loginEmailError && (
                   <div className='inline-error'>{loginEmailError}</div>
@@ -330,22 +438,45 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                   {showCodeInput ? 'Enter 6-Digit Code' : 'Password'}
                 </label>
                 <PasswordInput
+                  id='login-password-input'
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (showCodeInput && (!/^\d*$/.test(val) || val.length > 6))
+                      return;
+                    setPassword(val);
+                  }}
+                  inputMode={showCodeInput ? 'numeric' : 'text'}
                   placeholder={showCodeInput ? '123456' : 'Enter your password'}
+                  autoComplete={
+                    showCodeInput ? 'one-time-code' : 'current-password'
+                  }
+                  forceShow={showCodeInput}
                 />
+
+                {!showCodeInput && (
+                  <div style={{ textAlign: 'right', marginTop: '6px' }}>
+                    <button
+                      type='button'
+                      onClick={() => setResetMode(true)}
+                      className='forgot-password-link'
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
               </div>
 
               <button
                 className={`auth-button smart-kinetic-btn ${loginStatus}`}
-                style={{ position: 'relative', minHeight: '60px' }}
+                style={{ minHeight: '60px' }}
               >
                 <div
                   className={`status-layer idle ${
                     loginStatus === 'idle' ? 'active' : ''
                   }`}
                 >
-                  {showCodeInput ? 'VERIFY CODE' : 'SIGN IN'}
+                  {showCodeInput ? 'VERIFY IDENTITY' : 'SIGN IN'}
                 </div>
                 <div
                   className={`status-layer loading ${
@@ -366,7 +497,8 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                     loginStatus === 'error' ? 'active' : ''
                   }`}
                 >
-                  <span className='error-cross'>✕</span>DENIED
+                  <span className='error-cross'>✕</span>
+                  {loginErrorLabel}
                 </div>
               </button>
 
@@ -471,6 +603,7 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                 >
                   <PasswordInput
                     value={password}
+                    placeholder='Create a password'
                     onChange={(e) => {
                       setPassword(e.target.value);
                       setPasswordStrength(getPasswordStrength(e.target.value));
@@ -480,9 +613,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                       }));
                     }}
                   />
-                  {!validatePasswordLive(password) && password && (
-                    <span className='checkmark'>✔</span>
-                  )}
                 </div>
                 {errors.password && (
                   <div className='inline-error'>{errors.password}</div>
@@ -521,7 +651,10 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                         ),
                       }));
                     }}
+                    placeholder='Confirm your password'
+                    autoComplete='new-password'
                   />
+
                   {!validateConfirmPasswordLive(confirmPassword, password) &&
                     confirmPassword && <span className='checkmark'>✔</span>}
                 </div>
@@ -585,7 +718,8 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                     registerStatus === 'error' ? 'active' : ''
                   }`}
                 >
-                  <span className='error-cross'>✕</span>FAILED
+                  <span className='error-cross'>✕</span>
+                  {registerErrorLabel}
                 </div>
               </button>
             </form>

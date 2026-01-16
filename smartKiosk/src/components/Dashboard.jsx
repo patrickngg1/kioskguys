@@ -8,8 +8,7 @@ import '../styles/App.css';
 import '../styles/CardSwipeModal.css';
 import '../styles/PremiumModal.css';
 import '../styles/PremiumInput.css';
-import '../styles/AdminPanel.css'; // ✅ Imported to get Premium Button Styles
-import DashboardToast from './DashboardToast';
+import '../styles/AdminPanel.css';
 import AdminPanel from './AdminPanel';
 import RequestSupply from './RequestSupply';
 import ReserveConferenceRoom from './ReserveConferenceRoom';
@@ -104,7 +103,7 @@ export default function Dashboard() {
   const [countdown, setCountdown] = useState(30);
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 30 * 1000;
+  const INACTIVITY_LIMIT = 10 * 60 * 1000;
   const WARNING_TIME = 30;
   const inactivityTimer = useRef(null);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
@@ -311,23 +310,11 @@ export default function Dashboard() {
     setShowEditNameModal(true);
   };
 
-  // ✅ SUPER PREMIUM SAVE: Updates button instead of Toast
   const handleSaveName = async (e) => {
     e.preventDefault(); // Ensure form doesn't reload
 
     // 1. Clean up extra spaces
     const cleanName = editNameValue.trim().replace(/\s+/g, ' ');
-
-    // 2. Check for empty
-    if (!cleanName) {
-      return showToast('Name cannot be empty', 'error');
-    }
-
-    // 3. Check for at least two words (First & Last)
-    const nameParts = cleanName.split(' ');
-    if (nameParts.length < 2) {
-      return showToast('Please enter your full name (First & Last).', 'error');
-    }
 
     setEditNameBtnState('loading'); // Start Loading Spinner
 
@@ -346,7 +333,6 @@ export default function Dashboard() {
         setUser((prev) => ({ ...prev, fullName: newName }));
         setProfile((prev) => ({ ...prev, fullName: newName }));
 
-        // ✅ Success Animation (No Toast)
         setEditNameBtnState('success');
 
         setTimeout(() => {
@@ -354,11 +340,9 @@ export default function Dashboard() {
           setEditNameBtnState('idle');
         }, 1500);
       } else {
-        showToast(data.error || 'Failed to update name', 'error');
         setEditNameBtnState('idle');
       }
     } catch (err) {
-      showToast('Network error', 'error');
       setEditNameBtnState('idle');
     }
   };
@@ -378,13 +362,6 @@ export default function Dashboard() {
   const [showSuppliesModal, setShowSuppliesModal] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showSwipeModal, setShowSwipeModal] = useState(false);
-
-  const [toast, setToast] = useState(null);
-  const [toastShake, setToastShake] = useState(false);
-  const showToast = (message, type = 'success') => {
-    setToast(message || '');
-    setToastShake(type === 'error');
-  };
 
   const [reservations, setReservations] = useState([]);
   const [reservationData, setReservationData] = useState({
@@ -539,12 +516,6 @@ export default function Dashboard() {
       </section>
     );
   };
-
-  let toastType = 'success';
-  if (toastShake) toastType = 'error';
-  else if (toast?.toLowerCase().includes('submitting')) toastType = 'loading';
-  else if (toast?.toLowerCase().includes('error')) toastType = 'error';
-
   // src/components/Dashboard.jsx
 
   const handleCardRegister = async ({ raw, uta_id }) => {
@@ -760,12 +731,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* MAP */}
-          <div
-            className='map-container'
-            // ✅ FIX: Removed 'gridRow' constraint, added 'height: 100%' so it fills entire column
-            style={{ gridArea: 'map', height: '100%', minHeight: '100%' }}
-          >
+          <div className='map-container'>
             <KioskMap />
           </div>
 
@@ -852,7 +818,6 @@ export default function Dashboard() {
           itemsByCategory={itemsByCategory}
           rooms={[]}
           users={[]}
-          showToast={showToast}
           loadReservations={loadReservations}
         />
       )}
@@ -866,8 +831,6 @@ export default function Dashboard() {
             loadReservations();
           }}
           user={user}
-          setToast={setToast}
-          setToastShake={setToastShake}
           existingReservations={reservations}
           onReservationCreated={() => loadReservations()}
         />
@@ -1042,16 +1005,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      <DashboardToast
-        type={toastType}
-        message={toast}
-        onClose={() => {
-          setToast(null);
-          setToastShake(false);
-        }}
-        visible={!!toast}
-      />
 
       <SetPasswordOverlay
         isOpen={mustSetPassword}

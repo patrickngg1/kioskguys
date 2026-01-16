@@ -159,76 +159,136 @@ const timeToMinutes = (timeStr) => {
   return h * 60 + m;
 };
 
-// --- AVAILABILITY GRID COMPONENT (Unchanged) ---
+// --- PRECISE EXPIRATION HELPER ---
+const isPastReservation = (dateStr, endTimeStr) => {
+  const now = new Date();
+  const expirationTime = new Date(`${dateStr}T${endTimeStr}`);
+  return now > expirationTime;
+};
+
+// src/components/ReserveConferenceRoom.jsx
+
 function RoomDayAvailability({ rooms, reservations, selectedRoomId, date }) {
   if (!date || !rooms || rooms.length === 0) return null;
 
-  const DAY_START_HOUR = 0;
-  const DAY_END_HOUR = 24;
   const SLOT_MINUTES = 30;
-  const slots = [];
+  const DAY_MINUTES = 1440;
 
-  for (let hour = DAY_START_HOUR; hour < DAY_END_HOUR; hour += 1) {
+  // -----------------------------
+  // Local helpers (safe)
+  // -----------------------------
+  const pad2 = (n) => String(n).padStart(2, '0');
+
+  const toMin = (t) => {
+    if (!t || typeof t !== 'string') return null;
+    const [h, m] = t.split(':').map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+  };
+
+  const minToHHMM = (mins) => {
+    const m = ((mins % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+    const hh = Math.floor(m / 60);
+    const mm = m % 60;
+    return `${pad2(hh)}:${pad2(mm)}`;
+  };
+
+  const dateCmp = (a, b) => {
+    // YYYY-MM-DD lexicographic compare works
+    if (a === b) return 0;
+    return a < b ? -1 : 1;
+  };
+
+  // -----------------------------
+  // 1) Build 24h grid (48 slots)
+  // -----------------------------
+  const slots = [];
+  for (let hour = 0; hour < 24; hour++) {
     for (let minute = 0; minute < 60; minute += SLOT_MINUTES) {
-      const label24 = `${String(hour).padStart(2, '0')}:${String(
-        minute
-      ).padStart(2, '0')}`;
-      const suffix = hour >= 12 ? 'PM' : 'AM';
-      const hour12 = ((hour + 11) % 12) + 1;
-      const displayHour = `${hour12}${
-        minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`
-      } ${suffix}`;
-      slots.push({ key: label24, label24, displayHour, hour, minute });
+      const label24 = `${pad2(hour)}:${pad2(minute)}`;
+      slots.push({ key: label24, hour, minute });
     }
   }
-
   const totalSlots = slots.length;
-  const dayStartMinutes = DAY_START_HOUR * 60;
-  const dayEndMinutes = DAY_END_HOUR * 60;
+
+  // -----------------------------
+  // 2) Init per-room structures
+  // -----------------------------
   const slotsByRoom = {};
-  rooms.forEach((r) => {
-    slotsByRoom[r.id] = new Array(totalSlots).fill(null);
+  const labelAnchorsByRoom = {};
+
+  rooms.forEach((room) => {
+    slotsByRoom[room.id] = new Array(totalSlots).fill(null);
+    labelAnchorsByRoom[room.id] = new Set();
   });
 
+  // -----------------------------
+  // 3) Map reservations to THIS DAY ONLY
+  //    - Start day: start → min(end, 24:00)
+  //    - Next day (carryover): 00:00 → end
+  //    - Single anchor per visible segment
+  // -----------------------------
   (reservations || []).forEach((res) => {
     const roomSlots = slotsByRoom[res.roomId];
-    if (!roomSlots) return;
+    const anchors = labelAnchorsByRoom[res.roomId];
+    if (!roomSlots || !anchors) return;
 
-    let startMin = timeToMinutes(res.startTime);
-    let endMin = timeToMinutes(res.endTime);
-    if (startMin == null || endMin == null) return;
+    const startMin = toMin(res.startTime);
+    const endMinRaw = toMin(res.endTime);
+    if (startMin == null || endMinRaw == null) return;
 
-    const gridDateObj = new Date(`${date}T00:00:00`);
-    const resDateObj = new Date(`${res.date}T00:00:00`);
-    const diffDays = Math.round((gridDateObj - resDateObj) / 86400000);
-    const isOvernight = endMin <= startMin;
+    const isOvernight = endMinRaw <= startMin;
 
-    if (diffDays === 0) {
-      if (isOvernight) endMin += 1440;
-    } else if (diffDays === 1 && isOvernight) {
-      startMin = 0;
+    // Use reservation's own start date if present
+    const resDate = res.date || date;
+    const rel = dateCmp(resDate, date);
+
+    let visibleStartMin = null;
+    let visibleEndMin = null;
+
+    if (rel === 0) {
+      // Reservation starts on selected date
+      const trueEndMin = isOvernight ? endMinRaw + DAY_MINUTES : endMinRaw;
+      visibleStartMin = Math.max(0, startMin);
+      visibleEndMin = Math.min(DAY_MINUTES, trueEndMin);
+    } else if (rel < 0) {
+      // Reservation starts before selected date -> only carryover if overnight
+      if (!isOvernight) return;
+      visibleStartMin = 0;
+      visibleEndMin = Math.min(DAY_MINUTES, endMinRaw);
     } else {
+      // Reservation starts after selected date
       return;
     }
 
-    const clampedStart = Math.max(startMin, dayStartMinutes);
-    const clampedEnd = Math.min(endMin, dayEndMinutes);
-    if (clampedEnd <= clampedStart) return;
+    if (visibleEndMin <= visibleStartMin) return;
 
-    const firstSlot = Math.floor(
-      (clampedStart - dayStartMinutes) / SLOT_MINUTES
+    const startSlot = Math.floor(visibleStartMin / SLOT_MINUTES);
+    const endSlot = Math.ceil(visibleEndMin / SLOT_MINUTES);
+    if (endSlot <= startSlot) return;
+
+    // Premium, day-accurate label (for THIS day's visible segment)
+    // If end is exactly 24:00, show it as 12:00 AM for the clamp edge.
+    const labelStartHHMM = minToHHMM(visibleStartMin);
+    const labelEndHHMM = minToHHMM(
+      visibleEndMin === DAY_MINUTES ? 0 : visibleEndMin
     );
-    const lastSlot = Math.ceil((clampedEnd - dayStartMinutes) / SLOT_MINUTES);
-    const label = `${to12HourDisplay(res.startTime)} – ${to12HourDisplay(
-      res.endTime
-    )} Reserved`;
+    const label = `${to12HourDisplay(labelStartHHMM)} – ${to12HourDisplay(
+      labelEndHHMM
+    )}`;
 
-    for (let i = firstSlot; i < lastSlot; i++) {
-      if (i < 0 || i >= totalSlots) continue;
-      roomSlots[i] = label;
+    // Single anchor per visible segment to avoid duplicates
+    anchors.add(startSlot);
+
+    // Fill slots for blocking + grouped capsule rendering
+    for (let i = startSlot; i < endSlot; i++) {
+      if (i >= 0 && i < totalSlots) roomSlots[i] = label;
     }
   });
 
+  // -----------------------------
+  // 4) Pretty date
+  // -----------------------------
   const prettyDate = (() => {
     try {
       const d = new Date(`${date}T00:00:00`);
@@ -242,8 +302,9 @@ function RoomDayAvailability({ rooms, reservations, selectedRoomId, date }) {
     }
   })();
 
-  const anyReservations = (reservations || []).length > 0;
-
+  // -----------------------------
+  // 5) Render (keeps your premium grouped blocks)
+  // -----------------------------
   return (
     <div className='day-availability-shell'>
       <div className='day-availability-header'>
@@ -256,7 +317,7 @@ function RoomDayAvailability({ rooms, reservations, selectedRoomId, date }) {
             <span className='legend-dot free' /> Free
           </span>
           <span className='legend-item'>
-            <span className='legend-dot partial' /> Partially booked
+            <span className='legend-dot partial' /> Partial
           </span>
           <span className='legend-item'>
             <span className='legend-dot full' /> Booked
@@ -264,91 +325,149 @@ function RoomDayAvailability({ rooms, reservations, selectedRoomId, date }) {
         </div>
       </div>
 
-      {!anyReservations && (
-        <p className='day-grid-empty'>
-          All rooms are currently available for this day. 🟢
-        </p>
-      )}
-
       <div className='day-availability-grid'>
         <div className='hour-label-row'>
-          {Array.from({ length: 24 }).map((_, hour) => {
-            const hour12 = ((hour + 11) % 12) + 1;
-            return (
-              <span key={hour} className='hour-label'>
-                {hour12}
-              </span>
-            );
-          })}
+          {Array.from({ length: 24 }).map((_, h) => (
+            <span key={h} className='hour-label'>
+              {((h + 11) % 12) + 1}
+            </span>
+          ))}
         </div>
+
         <div className='ampm-section-row'>
           <span className='ampm-section am'>AM</span>
           <span className='ampm-section pm'>PM</span>
         </div>
+
         {rooms.map((room) => {
           const roomSlots = slotsByRoom[room.id] || [];
-          const busyCount = roomSlots.filter(Boolean).length;
-          const totalRoomSlots = roomSlots.length;
-          let statusLabel = 'Partially booked';
-          let statusClass = 'partial';
-          if (busyCount === 0) {
-            statusLabel = 'Free all day';
-            statusClass = 'free';
-          } else if (busyCount === totalRoomSlots) {
-            statusLabel = 'Fully booked';
-            statusClass = 'full';
-          }
+          const anchors = labelAnchorsByRoom[room.id] || new Set();
+
+          const bookedCount = roomSlots.filter(Boolean).length;
+          const hasReservations = bookedCount > 0;
+          const isFullyBooked = bookedCount === roomSlots.length;
+
           const isSelected =
             selectedRoomId && String(selectedRoomId) === String(room.id);
 
           return (
             <div
               key={room.id}
-              className={`day-grid-row ${isSelected ? 'selected' : ''}`}
+              className={`day-grid-row-v4 ${isSelected ? 'selected' : ''}`}
             >
+              {/* Room meta */}
               <div className='day-grid-roomMeta'>
                 <div className='day-grid-roomName'>{room.name}</div>
-                <div className={`day-grid-status ${statusClass}`}>
+
+                <div
+                  className={`day-grid-status ${
+                    isFullyBooked
+                      ? 'full'
+                      : hasReservations
+                      ? 'partial'
+                      : 'free'
+                  }`}
+                >
                   <span className='status-dot' />
-                  <span>{statusLabel}</span>
+                  <span>
+                    {isFullyBooked
+                      ? 'Booked'
+                      : hasReservations
+                      ? 'Partially booked'
+                      : 'Free all day'}
+                  </span>
                 </div>
               </div>
-              <div
-                className={`day-grid-track ${isSelected ? 'selected' : ''}`}
-                style={{ '--day-grid-slot-count': slots.length }}
-              >
-                {(() => {
-                  const cells = [];
-                  let i = 0;
-                  while (i < slots.length) {
-                    const label = roomSlots[i];
-                    if (!label) {
-                      cells.push(
+
+              {/* Track + tags */}
+              <div className='day-grid-content-stack'>
+                {/* Track (GROUPED CAPSULES - premium) */}
+                <div
+                  className='day-grid-track'
+                  style={{ '--day-grid-slot-count': slots.length }}
+                >
+                  {(() => {
+                    const trackCells = [];
+                    let i = 0;
+
+                    while (i < slots.length) {
+                      const label = roomSlots[i];
+
+                      if (!label) {
+                        trackCells.push(
+                          <div
+                            key={`f-${i}`}
+                            className='day-grid-cell capsule free'
+                          />
+                        );
+                        i++;
+                        continue;
+                      }
+
+                      let j = i + 1;
+                      while (j < slots.length && roomSlots[j] === label) j++;
+
+                      trackCells.push(
                         <div
-                          key={`${room.id}-${slots[i].key}`}
-                          className='day-grid-cell capsule free'
-                          data-time={slots[i].displayHour}
-                          title={`${room.name}\nAvailable`}
-                        />
+                          key={`b-${i}`}
+                          className='day-grid-cell capsule booked grouped'
+                          style={{ gridColumn: `span ${j - i}` }}
+                        >
+                          <div className='capsule-shimmer' />
+                        </div>
                       );
-                      i++;
-                      continue;
+
+                      i = j;
                     }
-                    let j = i + 1;
-                    while (j < slots.length && roomSlots[j] === label) j++;
-                    const span = j - i;
-                    cells.push(
-                      <div
-                        key={`${room.id}-${slots[i].key}-group`}
-                        className='day-grid-cell capsule booked grouped'
-                        style={{ gridColumn: `span ${span}` }}
-                        data-time={label}
-                      />
-                    );
-                    i = j;
-                  }
-                  return cells;
-                })()}
+
+                    return trackCells;
+                  })()}
+                </div>
+
+                {/* Tag lane (ONLY at anchors — no duplicates) */}
+                {hasReservations && (
+                  <div
+                    className='day-grid-tag-lane-v4'
+                    style={{ '--day-grid-slot-count': slots.length }}
+                  >
+                    {(() => {
+                      const tags = [];
+                      let i = 0;
+
+                      while (i < slots.length) {
+                        const label = roomSlots[i];
+
+                        if (!label || !anchors.has(i)) {
+                          tags.push(<div key={`empty-${i}`} />);
+                          i++;
+                          continue;
+                        }
+
+                        let j = i + 1;
+                        while (j < slots.length && roomSlots[j] === label) j++;
+
+                        tags.push(
+                          <div
+                            key={`tag-${i}`}
+                            className={`tag-flow-anchor ${
+                              j - i <= 2 ? 'short' : ''
+                            }`}
+                            style={{ gridColumn: `span ${j - i}` }}
+                          >
+                            <div className='tag-flow-stack'>
+                              <div className='tag-flow-connector' />
+                              <div className='tag-flow-box'>{label}</div>
+                            </div>
+                          </div>
+                        );
+
+                        i = j;
+                      }
+
+                      return tags;
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -363,7 +482,7 @@ function ReserveConferenceRoom({
   isOpen,
   onClose,
   user,
-  onReservationCreated, // Note: Removed setToast props as we don't use them anymore
+  onReservationCreated,
   existingReservations = [],
 }) {
   const [rooms, setRooms] = useState([]);
@@ -410,7 +529,6 @@ function ReserveConferenceRoom({
   const [cardsVisible, setCardsVisible] = useState(false);
 
   // --- PREMIUM ERROR TRIGGER ---
-  // Replaces cheap toasts with button-based feedback
   const triggerError = (msg, isWarning = false) => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     setErrorMsg(msg);
@@ -530,6 +648,19 @@ function ReserveConferenceRoom({
     });
     return arr;
   }, [myReservations]);
+
+  // --- CATEGORIZED RESERVATIONS ---
+  const { upcoming, history } = useMemo(() => {
+    const categories = { upcoming: [], history: [] };
+    sortedMyReservations.forEach((res) => {
+      if (isPastReservation(res.date, res.endTime)) {
+        categories.history.push(res);
+      } else {
+        categories.upcoming.push(res);
+      }
+    });
+    return categories;
+  }, [sortedMyReservations]);
 
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
@@ -778,7 +909,12 @@ function ReserveConferenceRoom({
                       : ''
                   }`}
                   onClick={() =>
-                    setReservationData((d) => ({ ...d, roomId: room.id }))
+                    setReservationData((d) => ({
+                      ...d,
+                      // Toggle logic: If clicking the same ID, set to empty string to deselect
+                      roomId:
+                        String(d.roomId) === String(room.id) ? '' : room.id,
+                    }))
                   }
                 >
                   <div className='room-name'>{room.name}</div>
@@ -817,36 +953,94 @@ function ReserveConferenceRoom({
                 <p className='myres-empty'>No upcoming reservations.</p>
               ) : (
                 <div className='myres-list'>
-                  {sortedMyReservations.map((res) => {
-                    const isSelected = selectedIds.includes(res.id);
-                    return (
-                      <div
-                        key={res.id}
-                        className={`myres-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => toggleSelect(res.id)}
-                      >
-                        <div className='myres-card-left'>
-                          <div className='myres-room'>{res.roomName}</div>
-                          <div className='myres-time'>
-                            {res.date} · {to12HourDisplay(res.startTime)} –{' '}
-                            {to12HourDisplay(res.endTime)}
+                  {/* 1. RENDER UPCOMING RESERVATIONS */}
+                  {upcoming.length > 0
+                    ? upcoming.map((res) => {
+                        const isSelected = selectedIds.includes(res.id);
+                        return (
+                          <div
+                            key={res.id}
+                            className={`myres-card ${
+                              isSelected ? 'selected' : ''
+                            }`}
+                            onClick={() => toggleSelect(res.id)}
+                          >
+                            <div className='myres-card-left'>
+                              <div className='myres-room'>{res.roomName}</div>
+                              <div className='myres-time'>
+                                {res.date} · {to12HourDisplay(res.startTime)} –{' '}
+                                {to12HourDisplay(res.endTime)}
+                              </div>
+                            </div>
+                            <button
+                              type='button'
+                              className={`vision-toggle small ${
+                                isSelected ? 'on' : 'off'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelect(res.id);
+                              }}
+                            >
+                              <span className='vision-toggle-knob' />
+                            </button>
                           </div>
+                        );
+                      })
+                    : history.length === 0 && (
+                        <p className='myres-empty'>No upcoming reservations.</p>
+                      )}
+
+                  {/* 2. RENDER HISTORY DIVIDER */}
+                  {history.length > 0 && (
+                    <div
+                      className='myres-history-divider'
+                      style={{
+                        margin: '1.5rem 0 1rem',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.1em',
+                        opacity: 0.5,
+                        textAlign: 'center',
+                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                        lineHeight: '0.1em',
+                      }}
+                    >
+                      <span
+                        style={{ background: '#0f172a', padding: '0 10px' }}
+                      >
+                        Past Activity
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 3. RENDER HISTORY (READ-ONLY) */}
+                  {history.map((res) => (
+                    <div
+                      key={res.id}
+                      className='myres-card'
+                      style={{
+                        opacity: 0.5,
+                        cursor: 'default',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <div className='myres-card-left'>
+                        <div className='myres-room'>{res.roomName}</div>
+                        <div className='myres-time'>
+                          {res.date} · {to12HourDisplay(res.startTime)}
                         </div>
-                        <button
-                          type='button'
-                          className={`vision-toggle small ${
-                            isSelected ? 'on' : 'off'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSelect(res.id);
-                          }}
-                        >
-                          <span className='vision-toggle-knob' />
-                        </button>
                       </div>
-                    );
-                  })}
+                      <span
+                        className='admin-chip-mini'
+                        style={{ marginRight: '10px' }}
+                      >
+                        Completed
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Action Buttons for Selection */}
                   {!confirmingCancel && selectedIds.length > 0 && (
                     <div className='myres-actions'>
                       <button

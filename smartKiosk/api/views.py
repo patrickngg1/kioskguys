@@ -40,16 +40,6 @@ from .models import (
 from datetime import datetime, timedelta, time
 from django.utils import timezone
 import random
-def auto_update_banner_state():
-    today = timezone.localdate()
-
-    for b in BannerImage.objects.all():
-        if b.start_date and b.end_date:
-            if b.start_date <= today <= b.end_date:
-                b.is_active = True
-            else:
-                b.is_active = False
-            b.save(update_fields=["is_active"])
 
 
 # ---------------------------
@@ -70,10 +60,11 @@ def list_banners(request):
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
+            "repeat_yearly": b.repeat_yearly, # ✅ ADD THIS LINE
             "start_date": b.start_date.isoformat() if b.start_date else None,
             "end_date": b.end_date.isoformat() if b.end_date else None,
+            
         })
-
     return JsonResponse({"ok": True, "banners": banners}, status=200)
 
 
@@ -149,23 +140,23 @@ def schedule_banner(request, banner_id):
 # ---------------------------
 #  ACTIVATE BANNER (ADMIN)
 # ---------------------------
-# ---------------------------
-#  ACTIVATE BANNER (ADMIN)
-# ---------------------------
 @csrf_exempt
 @require_POST
 def activate_banner(request, banner_id):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
 
-    banner = BannerImage.objects.get(id=banner_id)
+    try:
+        banner = BannerImage.objects.get(id=banner_id)
+        banner.is_active = True
+        # Note: We NO LONGER clear start/end dates here so schedules remain intact
+        banner.save()
+        return JsonResponse({"ok": True})
+    except BannerImage.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Not found"}, status=404)
+    
 
-    banner.is_active = True
-    banner.start_date = None
-    banner.end_date = None
-    banner.save()
 
-    return JsonResponse({"ok": True})
 
 @csrf_exempt
 @require_POST
@@ -249,9 +240,48 @@ def get_active_banners(request):
         ],
     })
 
-# ---------------------------
-#  UPDATE BANNER (ADMIN)
-# ---------------------------
+
+
+def auto_update_banner_state():
+    today = timezone.localdate()
+    today_iso = today.isoformat()
+
+    for b in BannerImage.objects.all():
+        # If no schedule is set, do nothing and let manual control take over
+        if not b.start_date and not b.end_date:
+            continue
+
+        # FIX: If the admin has ALREADY manually set it to Active, 
+        # do not let the auto-updater turn it off just because it's "Off Season".
+        if b.is_active:
+            # We only auto-deactivate if it's strictly EXPIRED (past the end date)
+            # and NOT set to repeat yearly.
+            if not b.repeat_yearly and b.end_date and today > b.end_date:
+                b.is_active = False
+                b.save(update_fields=["is_active"])
+            continue
+
+        # If it's currently inactive, check if it's time to auto-activate based on schedule
+        if b.repeat_yearly:
+            today_md = today.strftime("%m-%d")
+            s_md = b.start_date.strftime("%m-%d")
+            e_md = b.end_date.strftime("%m-%d")
+            
+            if s_md <= e_md:
+                in_range = (s_md <= today_md <= e_md)
+            else:
+                in_range = (today_md >= s_md or today_md <= e_md)
+            
+            if in_range:
+                b.is_active = True
+                b.save(update_fields=["is_active"])
+        else:
+            # Normal one-time schedule auto-activation
+            if b.start_date <= today <= b.end_date:
+                b.is_active = True
+                b.save(update_fields=["is_active"])
+
+
 @csrf_exempt
 @require_POST
 def update_banner(request, banner_id):
@@ -263,42 +293,40 @@ def update_banner(request, banner_id):
     except BannerImage.DoesNotExist:
         return JsonResponse({"ok": False, "error": "Banner not found"}, status=404)
 
-    # Update text fields
+    # 1. Update Text Fields
     label = request.POST.get("label")
     link = request.POST.get("link")
-    
-    if label is not None:
-        banner.label = label
-    
-    if link is not None:
-        banner.link = link.strip()
+    if label is not None: banner.label = label.strip()
+    banner.link = link.strip() if link else None
 
-    # Update image if a new file is provided
+    # Update Schedule & Repeat Yearly
+    start_raw = request.POST.get("start_date")
+    end_raw = request.POST.get("end_date")
+    repeat_raw = request.POST.get("repeat_yearly")
+    
+    banner.start_date = parse_date(start_raw) if (start_raw and start_raw not in ['null', '']) else None
+    banner.end_date = parse_date(end_raw) if (end_raw and end_raw not in ['null', '']) else None
+    
+    # FIX: Check for 'true', '1', or 'on' to handle various frontend formats
+    banner.repeat_yearly = str(repeat_raw).lower() in ["true", "1", "on"]
+
+    # 3. Handle File Upload
     file = request.FILES.get("file")
     if file:
-        # Optional: Delete old image file to save space
-        if banner.image and os.path.isfile(banner.image.path):
-            try:
-                os.remove(banner.image.path)
-            except OSError:
-                pass
         banner.image = file
 
+    # 4. Save and Recalculate
     banner.save()
+    auto_update_banner_state() 
 
     return JsonResponse({
         "ok": True,
         "banner": {
             "id": banner.id,
-            "image_url": request.build_absolute_uri(banner.image.url),
-            "label": banner.label,
-            "link": banner.link,
             "is_active": banner.is_active,
-            "start_date": banner.start_date.isoformat() if banner.start_date else None,
-            "end_date": banner.end_date.isoformat() if banner.end_date else None,
+            "repeat_yearly": banner.repeat_yearly,
         }
     })
-
 # ============================================================
 # GET /api/users/
 # List all users (TiDB-backed via UserProfile)
@@ -698,6 +726,7 @@ def admin_delete_item(request, item_id):
 # ---------------------------------------------------------
 # POST /api/supplies/request/
 # Creates a supply request, updates popularity, sends email (PREMIUM)
+# ADDED: Daily Item Deactivation Logic
 # ---------------------------------------------------------
 @csrf_exempt
 @require_POST
@@ -772,6 +801,19 @@ def create_supply_request(request):
         ItemPopularity.objects.filter(pk=pop.pk).update(count=F("count") + 1)
 
     # ---------------------------------------------------------
+    # FETCH ALL ITEMS REQUESTED TODAY TO SYNC FRONTEND LOCKING
+    # This allows the frontend to deactivate buttons for these items.
+    # ---------------------------------------------------------
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    todays_requests = SupplyRequest.objects.filter(requested_at__gte=today_start).values_list('items', flat=True)
+    
+    # Flatten the list of lists into a unique set of requested item names
+    locked_item_names = set()
+    for req_list in todays_requests:
+        for name in req_list:
+            locked_item_names.add(name)
+
+    # ---------------------------------------------------------
     # Send PREMIUM email notification via SendGrid (FINAL)
     # ---------------------------------------------------------
     email_sent = False
@@ -817,10 +859,10 @@ def create_supply_request(request):
             "requestId": supply_request.id,
             "emailSent": email_sent,
             "emailError": email_error,
+            "lockedItems": list(locked_item_names), # Return list to deactivate UI items
         },
         status=201,
     )
-
 # ---------------------------------------------------------
 # GET /api/supplies/popular/?limit=3
 # Grouped by category display name

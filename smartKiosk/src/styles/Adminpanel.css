@@ -850,18 +850,23 @@
     0 0 18px rgba(96, 165, 250, 0.35), 0 22px 45px rgba(0, 0, 0, 0.45);
 }
 
-/* 🔵 ACTIVE — strongest glow */
-.banner-card.active {
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.55),
-    0 0 22px rgba(59, 130, 246, 0.55);
+/* Ensure Expired only shows if the banner is actually past its date */
+.banner-card.expired .banner-status-chip {
+  background: linear-gradient(135deg, #ef4444, #991b1b) !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important;
 }
 
-/* ⛔ EXPIRED — subtle fade */
-.banner-card.expired {
-  opacity: 0.55;
-  filter: grayscale(0.35);
+/* Force Active to look like the Sapphire blue you liked */
+.banner-card.active .banner-status-chip {
+  background: linear-gradient(135deg, #3b82f6, #1e40af) !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5) !important;
+  color: white !important;
 }
 
+/* Fix for the Repeat Yearly Tip Box */
+.banner-repeat-tip {
+  background: rgba(59, 130, 246, 0.1) !important;
+}
 /* ===============================
    PREMIUM CHECKBOX (NO NATIVE UI)
 ================================ */
@@ -2605,4 +2610,242 @@
 .admin-pill-button:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.02) !important;
   filter: brightness(1.1);
+}
+/* ============================================================
+   🔘 ADMIN PANEL — FINAL PREMIUM PILL BUTTON SYSTEM
+   Includes: Edit (Premium Violet), Delete, Save, Remove Admin
+   ============================================================ */
+
+/* =========================
+   1️⃣ SHARED GEOMETRY & PHYSICS
+   ========================= */
+.admin-pill-button {
+  border-radius: 999px !important;
+  padding: 0.65rem 1.6rem !important;
+  min-height: 38px;
+
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.25s ease, filter 0.25s ease !important;
+}
+
+.admin-pill-button:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02) !important;
+  filter: brightness(1.08);
+}
+
+/* =========================
+   2️⃣ PRIMARY — SAVE / ACTIVATE (BLUE)
+   ========================= */
+.admin-pill-primary {
+  background: linear-gradient(135deg, #3b82f6, #1e40af) !important;
+  color: #ffffff !important;
+  border: none !important;
+
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.admin-pill-primary:hover {
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* =========================
+   3️⃣ EDIT — EMERALD OBSIDIAN (💎 UPMOST PREMIUM)
+   ========================= */
+.admin-pill-subtle {
+  /* A deep, cinematic teal-to-emerald gradient */
+  background: linear-gradient(
+    135deg,
+    #0d9488 0%,
+    /* Teal 600 */ #065f46 100% /* Emerald 800 */
+  ) !important;
+
+  color: #ffffff !important;
+  border: none !important;
+
+  /* Multi-layered shadow: 1. Deep glow, 2. Subtle top-rim highlight */
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.admin-pill-subtle:hover {
+  /* Brightens slightly to an "electric" emerald on hover */
+  background: linear-gradient(135deg, #14b8a6 0%, #047857 100%) !important;
+
+  box-shadow: 0 8px 25px rgba(20, 184, 166, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+/* =========================
+   4️⃣ DANGER — DELETE (REFERENCE STANDARD)
+   ========================= */
+.admin-pill-danger {
+  background: linear-gradient(135deg, #ef4444, #991b1b) !important;
+  color: #ffffff !important;
+  border: none !important;
+
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+.admin-pill-danger:hover {
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+/* =========================
+   5️⃣ WARNING — REMOVE ADMIN (AMBER + WIDE)
+   ========================= */
+.admin-pill-warning {
+  background: linear-gradient(135deg, #f59e0b, #b45309) !important;
+  color: #ffffff !important;
+  border: none !important;
+
+  padding-left: 2.4rem !important;
+  padding-right: 2.4rem !important;
+  min-width: 170px !important;
+
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4) !important;
+}
+
+.admin-pill-warning:hover {
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6) !important;
+}
+/* ===============================
+   Banner Repeat – Centered Tip
+=============================== */
+
+.banner-repeat-center {
+  margin-top: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  text-align: center;
+}
+
+.banner-repeat-tip {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  max-width: 420px;
+  margin-top: 1rem;
+  color: rgba(226, 232, 240, 0.75);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+
+  padding: 0.45rem 0.7rem;
+  backdrop-filter: blur(8px);
+}
+/* Specific override for the Upload Banner Modal button */
+.premium-modal-actions .smart-submit-btn.primary {
+  /* 1. Remove fixed width constraints */
+  width: max-content !important;
+  min-width: 180px !important; /* Minimum base for luxury */
+  flex: 0 0 auto !important; /* Prevent it from being squashed by other buttons */
+
+  /* 2. Dynamic Padding */
+  padding-left: 3rem !important;
+  padding-right: 3rem !important;
+
+  /* 3. Text Handling */
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  /* 4. Increase height slightly for the "Trillion Dollar" feel */
+  height: 52px !important;
+}
+
+/* Ensure the container doesn't restrict the growing button */
+.premium-modal-actions {
+  display: flex !important;
+  flex-wrap: wrap !important; /* Wrap on small screens instead of squishing */
+  justify-content: center !important;
+  gap: 1.5rem !important;
+  width: 100% !important;
+}
+
+/* Styling for the past state */
+.admin-list-row.expired-row {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.admin-pill-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
+  padding: 0.5rem 1rem;
+}
+
+.admin-chip-mini {
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+/* Sub-Tab Styling */
+.admin-tab-group {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-tab-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-tab-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Expired State Visuals */
+.admin-list-row.expired-row {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-pill-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  padding: 8px 16px;
+}
+
+.admin-chip-mini {
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 10px;
+  text-transform: uppercase;
 }

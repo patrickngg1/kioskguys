@@ -13,7 +13,7 @@ function RequestSupply({
 }) {
   // 'idle' | 'loading' | 'success' | 'error'
   const [btnState, setBtnState] = useState('idle');
-
+  const [lockedItems, setLockedItems] = useState([]);
   // Reset button when modal opens
   useEffect(() => {
     if (isOpen) setBtnState('idle');

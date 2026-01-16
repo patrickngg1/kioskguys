@@ -766,45 +766,6 @@
 }
 
 /* -----------------------------------------------------------
-   FLOATING HOUR LABEL ABOVE CAPSULE (Apple-style time bubble)
-   ----------------------------------------------------------- */
-.day-grid-cell.capsule:hover::after {
-  content: attr(data-time);
-  position: absolute;
-  top: -32px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 10px;
-  border-radius: 12px;
-
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
-  white-space: nowrap;
-
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35),
-    inset 0 0 8px rgba(255, 255, 255, 0.12);
-  pointer-events: none;
-
-  animation: timeBubbleFade 160ms ease forwards;
-}
-
-@keyframes timeBubbleFade {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(4px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0px) scale(1);
-  }
-}
-
-/* -----------------------------------------------------------
    OPTION C — LONG BOOKED CAPSULES (Merged Blocks)
    ----------------------------------------------------------- */
 
@@ -1165,4 +1126,174 @@
 }
 .modal-header-fixed {
   background-color: transparent;
+}
+/* --- PREMIUM VERTICAL CALLOUT ENGINE --- */
+
+.day-grid-cell.booked {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(
+    90deg,
+    #2563eb,
+    #fb923c
+  ) !important; /* Blue to Orange Sweep */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: visible; /* Required for the vertical tag to stick out */
+}
+
+/* Base style for the time tag */
+.premium-time-tag {
+  position: absolute;
+  bottom: 100%; /* Sits exactly on top of the track */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+  padding-bottom: 8px;
+}
+
+.tag-text {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* 🔹 THE VERTICAL FIX: Rotate the text for tiny blocks */
+.vertical-callout .premium-time-tag {
+  bottom: 105%;
+}
+
+.vertical-callout .tag-text {
+  writing-mode: vertical-rl; /* Rotates the text 90 degrees */
+  transform: rotate(180deg); /* Aligns it exactly like your sketch */
+  padding: 10px 4px;
+  letter-spacing: 1px;
+}
+
+/* Visual Connector Line */
+.premium-time-tag::after {
+  content: '';
+  width: 2px;
+  height: 8px;
+  background: linear-gradient(to bottom, #fb923c, transparent);
+  box-shadow: 0 0 8px rgba(251, 146, 60, 0.6);
+}
+
+/* Luxury Sweep Shimmer */
+.capsule-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+}
+/* =========================================================
+   V4 ULTIMATE FLOW ENGINE — ZERO OVERLAP GUARANTEED
+   ========================================================= */
+
+.day-grid-row-v4 {
+  display: grid;
+  grid-template-columns: 200px 1fr; /* Matches the layout in your screenshot */
+  column-gap: 1.5rem;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+
+.day-grid-content-stack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.day-grid-tag-lane-v4 {
+  display: grid;
+  grid-template-columns: repeat(var(--day-grid-slot-count), minmax(0, 1fr));
+  column-gap: 3px;
+  padding: 0 0.75rem;
+
+  /* ⬆️ Pull labels up to hug the block */
+  margin-top: -6px;
+
+  position: relative;
+  z-index: 5;
+}
+
+.tag-flow-anchor {
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.tag-flow-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  /* ✅ unified vertical position */
+  margin-top: 0;
+  padding-bottom: 0;
+}
+
+.tag-flow-connector {
+  width: 1px;
+  height: 8px;
+
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.65),
+    transparent
+  );
+
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+}
+
+.tag-flow-box {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.95);
+
+  padding: 7px 6px;
+  border-radius: 8px;
+
+  /* Glass surface */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.06)
+  );
+
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+
+  /* Subtle premium outline instead of color spine */
+  border: 1px solid rgba(255, 255, 255, 0.22);
+
+  /* Soft depth, no harsh glow */
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+  white-space: nowrap;
+}
+
+/* Polishing the grid container to allow the tags to breathe */
+.day-availability-grid {
+  overflow: visible !important;
 }
