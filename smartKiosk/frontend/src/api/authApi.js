@@ -17,6 +17,13 @@ export function registerWithSession(fullName, email, password) {
   });
 }
 
+export async function requestPasswordReset(email) {
+  return apiFetch("/api/password-reset/request/", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
 // CURRENT USER
 export function getSessionUser() {
   return apiFetch("/api/me/");
