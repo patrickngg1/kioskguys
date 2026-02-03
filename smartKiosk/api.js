@@ -1,11 +1,14 @@
-const API_BASE = import.meta.env.VITE_API_URL;
+export const API_BASE = import.meta.env.VITE_API_URL;
 
 export async function apiFetch(path, options = {}) {
-  return fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    credentials: "include", // keep if you use cookies
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
-    ...options,
   });
+
+  return res;
 }
