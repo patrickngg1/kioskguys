@@ -4,7 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.tokens import RefreshToken
 import json
 
-from smartKiosk.kiosks import settings
+from django.conf import settings
 
 # ----------------------------------------------------
 # Helper: Create JWT tokens
