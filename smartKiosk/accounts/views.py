@@ -4,6 +4,8 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.tokens import RefreshToken
 import json
 
+from smartKiosk.kiosks import settings
+
 # ----------------------------------------------------
 # Helper: Create JWT tokens
 # ----------------------------------------------------
@@ -64,7 +66,7 @@ def login_api(request):
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
+        secure=not settings.DEBUG,
         samesite="None",
         path="/api/auth/",
     )

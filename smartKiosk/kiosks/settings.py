@@ -91,6 +91,8 @@ CORS_ALLOW_CREDENTIALS = True   # allow cookies with cross-origin fetch
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://ersakiosk.netlify.app",
+    "https://ersakiosk.netlify.app",
 ]
 
 CORS_ALLOW_HEADERS = [
