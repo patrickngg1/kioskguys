@@ -11,7 +11,7 @@ from kiosks.ui_assets import get_ui_assets;
 from django.conf import settings
 from django.conf.urls.static import static
 
-from smartKiosk.backend.kiosks.views import health_check
+from .views import health_check
 
 urlpatterns = [
     # Admin
