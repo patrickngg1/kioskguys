@@ -88,7 +88,7 @@ export default function App() {
   
   // 🟧 Fetch UI assets ONCE from Django
   useEffect(() => {
-    const API = import.meta.env.VITE_API_URL;
+    const API = import.meta.env.VITE_API_URL.replace(/\/$/, "");
     fetch(`${API}/api/ui-assets/`)
       .then((res) => res.json())
       .then((data) => setUIAssets(data.assets))
