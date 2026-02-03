@@ -11,7 +11,7 @@ from base64 import b64encode
 
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, GET
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import F, Q
 from django.conf import settings
