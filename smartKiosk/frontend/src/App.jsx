@@ -85,12 +85,15 @@ function AppContent({ uiAssets }) {
 export default function App() {
   const [uiAssets, setUIAssets] = useState(null);
 
+  
   // 🟧 Fetch UI assets ONCE from Django
   useEffect(() => {
-    fetch('/api/ui-assets/')
+    const API = import.meta.env.VITE_API_URL;
+    fetch(`${API}/api/ui-assets/`)
       .then((res) => res.json())
       .then((data) => setUIAssets(data.assets))
       .catch((e) => console.error('Failed to load UI assets', e));
+      
   }, []);
 
   // 🟧 Update favicon dynamically when assets load
