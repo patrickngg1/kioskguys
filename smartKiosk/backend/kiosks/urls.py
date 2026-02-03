@@ -16,7 +16,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # App pages
-    path('', include('main.urls')),
+    path('', include('api.urls')),
 
     # Auth endpoints
     path('api/auth/', include('accounts.urls')),
