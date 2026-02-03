@@ -8,9 +8,21 @@ import ssl  # Import needed for SMTP_UNVERIFIED_CONTEXT
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-!uu)_)22cl-rk2f2wv!k(5%0shlio@%xqw!^(a%b$3d1pn9rwv'
-DEBUG = True
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+#SECRET_KEY = 'django-insecure-!uu)_)22cl-rk2f2wv!k(5%0shlio@%xqw!^(a%b$3d1pn9rwv'
+#DEBUG = True
+#ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-secret")
+
+DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
+
+ALLOWED_HOSTS = (
+    os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if not DEBUG
+    else ["*"]
+)
+
 SENDGRID_VERIFIED_SENDER = "ersaatuta@gmail.com"
 
 # ---------------------------------------------------------
@@ -45,6 +57,7 @@ SITE_ID = 1
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',   # MUST BE FIRST
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
 
@@ -55,6 +68,21 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# ---------------------------------------------------------
+# STATIC FILES
+# ---------------------------------------------------------
+
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# ---------------------------------------------------------
+# SECURITY / PROXY
+# ---------------------------------------------------------
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
 
 # ---------------------------------------------------------
 # CORS SETTINGS
