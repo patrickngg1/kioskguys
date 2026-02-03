@@ -1,5 +1,5 @@
 [build]
-  base = "smartKiosk"
+  base = "frontend"
   command = "npm install && npm run build"
   publish = "dist"
 
