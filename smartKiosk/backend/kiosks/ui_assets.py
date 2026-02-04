@@ -1,19 +1,20 @@
-import os
-from django.conf import settings
 from django.http import JsonResponse
+from django.templatetags.static import static
+from django.views.decorators.http import require_GET
+from django.conf import settings
+from pathlib import Path
 
+@require_GET
 def get_ui_assets(request):
-    folder = os.path.join(settings.MEDIA_ROOT, "ui_assets")
-    files = os.listdir(folder)
+    folder = Path(settings.BASE_DIR) / "static" / "ui_assets"
 
-    # Build a dictionary mapping filenames -> full URLs
     assets = {}
+    if folder.exists():
+        for p in folder.iterdir():
+            if p.is_file():
+                key = p.stem  # "favicon-32x32"
+                assets[key] = request.build_absolute_uri(
+                    static(f"ui_assets/{p.name}")
+                )
 
-    for f in files:
-        name = os.path.splitext(f)[0]  # "logo" from logo.png
-        url = request.build_absolute_uri(
-            settings.MEDIA_URL + "ui_assets/" + f
-        )
-        assets[name] = url
-
-    return JsonResponse({"ui_assets": assets})
+    return JsonResponse({"ok": True, "assets": assets}, status=200)
