@@ -26,6 +26,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth import update_session_auth_hash
 from accounts.models import UserProfile
 from django.utils.dateparse import parse_date
+from pathlib import Path
+from django.templatetags.static import static
 
 from .models import (
     Category,
@@ -1931,12 +1933,14 @@ def password_reset_request(request):
 # ---------------------------------------------------------
 @require_GET
 def get_ui_assets(request):
-    from .models import UIAsset
-
+    folder = Path(settings.BASE_DIR) / "static" / "ui_assets"
     assets = {}
 
-    for asset in UIAsset.objects.all():
-        assets[asset.name] = request.build_absolute_uri(asset.image.url)
+    if folder.exists():
+        for p in folder.iterdir():
+            if p.is_file():
+                key = p.stem
+                assets[key] = request.build_absolute_uri(static(f"ui_assets/{p.name}"))
 
     return JsonResponse({"ok": True, "assets": assets}, status=200)
 
