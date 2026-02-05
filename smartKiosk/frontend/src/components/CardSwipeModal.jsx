@@ -197,7 +197,7 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
                 {/* 1 TRILLION DOLLAR PREMIUM LOGO EMBLEM */}
                 <div className='uta-premium-emblem'>
                   <img
-                    src={uiAssets?.["apple-touch-icon"]}
+                    src="https://kioskguys.onrender.com/static/ui_assets/apple-touch-icon.png"
                     alt='UTA Emblem'
                     className='uta-emblem-img'
                   />
