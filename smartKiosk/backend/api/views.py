@@ -576,7 +576,8 @@ def get_items(request):
 
         # If an image was uploaded in Django admin, build an absolute URL
         if item.image:
-            image_url = request.build_absolute_uri(item.image.url)
+            #image_url = request.build_absolute_uri(item.image.url)
+            image_url = request.build_absolute_uri(static(f"items/{item.image_name}"))
         else:
             image_url = None  # frontend can show a placeholder if it wants
 
@@ -922,7 +923,8 @@ def get_all_items(request):
     data = []
     for item in items:
         if item.image:
-            image_url = request.build_absolute_uri(item.image.url)
+            #image_url = request.build_absolute_uri(item.image.url)
+            image_url = request.build_absolute_uri(static(f"items/{item.image_name}"))
         else:
             image_url = None
 

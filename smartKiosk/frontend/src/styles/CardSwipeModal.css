@@ -235,7 +235,7 @@
 .uta-horse-logo {
   width: 55px;
   height: 55px;
-  background-image: url('/media/ui_assets/uta_horse.jpg');
+  background-image: url('/backend/static/ui_assets/uta_horse.jpg');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
