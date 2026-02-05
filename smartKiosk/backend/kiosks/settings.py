@@ -97,6 +97,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://ersakiosk.netlify.app",
     "http://ersakioskuta.netlify.app",
     "https://ersakioskuta.netlify.app",
+    "http://utakiosk.netlify.app",
+    "https://utakiosk.netlify.app",
 ]
 
 CORS_ALLOW_HEADERS = [
