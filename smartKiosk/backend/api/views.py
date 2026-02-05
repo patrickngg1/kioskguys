@@ -1,3 +1,4 @@
+from email.utils import quote
 import json
 import re
 import smtplib
@@ -559,6 +560,27 @@ def register_user(request):
     return JsonResponse({"ok": True, "message": "Account created successfully"}, status=201)
 
 
+def _image_url(request, image_name: str | None):
+    if not image_name:
+        return None
+
+    s = str(image_name).strip()
+
+    # If stored as full URL already, keep it
+    if s.startswith("http://") or s.startswith("https://"):
+        return s
+
+    # Normalize common bad prefixes and slashes
+    s = s.replace("\\", "/").lstrip("/")
+    if s.startswith("static/"):
+        s = s[len("static/"):]
+    if s.startswith("items/"):
+        s = s[len("items/"):]  # we'll add items/ ourselves
+
+    # URL-encode (keep / for folders)
+    s = quote(s, safe="/._-")
+
+    return request.build_absolute_uri(static(f"items/{s}"))
 
 # ---------------------------------------------------------
 # GET /api/items/
@@ -568,31 +590,24 @@ def register_user(request):
 @require_GET
 def get_items(request):
     items = Item.objects.select_related("category").all()
-
     categories = {}
 
     for item in items:
-        category_name = item.category.name  # e.g. "Storage Closet"
+        cat = getattr(item, "category", None)
 
-        # If an image was uploaded in Django admin, build an absolute URL
-        if item.image_name:
-            #image_url = request.build_absolute_uri(item.image.url)
-            image_url = request.build_absolute_uri(static(f"items/{item.image_name}"))
-        else:
-            image_url = None  # frontend can show a placeholder if it wants
+        # ✅ Prevent 500 if category is missing
+        category_name = getattr(cat, "name", None) or "Uncategorized"
+        category_key = getattr(cat, "key", None)
 
-        if category_name not in categories:
-            categories[category_name] = []
+        image_url = _image_url(request, getattr(item, "image_name", None))
 
-        categories[category_name].append(
-            {
-                "id": item.id,
-                "name": item.name,
-                "image": image_url,  # media URL or null
-                "category_key": item.category.key,
-                "category_name": item.category.name,
-            }
-        )
+        categories.setdefault(category_name, []).append({
+            "id": item.id,
+            "name": item.name,
+            "image": image_url,
+            "category_key": category_key,
+            "category_name": category_name,
+        })
 
     return JsonResponse({"ok": True, "categories": categories}, status=200)
 
