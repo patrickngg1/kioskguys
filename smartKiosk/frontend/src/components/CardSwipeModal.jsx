@@ -53,8 +53,7 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
       if (timerRef.current) clearTimeout(timerRef.current);
 
       if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
+
         const rawSwipe = bufferRef.current.trim();
         if (rawSwipe.length > 5) {
           // 2. SET PROCESSING FIRST
