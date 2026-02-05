@@ -95,6 +95,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://ersakiosk.netlify.app",
     "https://ersakiosk.netlify.app",
+    "http://ersakioskuta.netlify.app",
+    "https://ersakioskuta.netlify.app",
 ]
 
 CORS_ALLOW_HEADERS = [
