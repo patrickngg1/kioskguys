@@ -37,6 +37,8 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
   useEffect(() => {
     if (!isOpen) {
       setStatus('idle');
+      bufferRef.current = '';
+      if (timerRef.current) clearTimeout(timerRef.current);
       return;
     }
 
@@ -58,44 +60,42 @@ export default function CardSwipeModal({ isOpen, onClose, onCapture }) {
         if (rawSwipe.length > 5) {
           // 2. SET PROCESSING FIRST
           setStatus('processing');
-
-          // 3. AWAIT the registration result from Dashboard
-          const success = await onCapture({ raw: rawSwipe, uta_id: null });
-
-          if (success) {
-            setStatus('saved'); // Triggers "Identity Secured"
-            bufferRef.current = '';
-            setTimeout(() => onClose(), 2200);
-          } else {
-            // 4. NEW: Handle invalid card type/error visually
+          try {
+            const success = await onCapture?.({ raw: rawSwipe, uta_id: null });
+            if (success) {
+              setStatus('saved');
+              setTimeout(() => onClose?.(), 2200);
+            } else {
+              setStatus('error');
+              setTimeout(() => setStatus('idle'), 2000);
+            }
+          } catch (err) {
+            console.error('onCapture failed:', err);
             setStatus('error');
-            setTimeout(() => {
-              setStatus('idle');
-              bufferRef.current = '';
-            }, 2000);
+            setTimeout(() => setStatus('idle'), 2000);
           }
+        } else {
+          setStatus('error');
+          setTimeout(() => setStatus('idle'), 1000);
         }
         return;
       }
 
-      bufferRef.current += e.key;
-      if (status !== 'reading') setStatus('reading');
+      if (e.key.length === 1) {
+        bufferRef.current += e.key;
+        if (statusRef.current !== 'reading') setStatus('reading');
+      }
 
       timerRef.current = setTimeout(() => {
-        if (
-          status !== 'processing' &&
-          status !== 'saved' &&
-          status !== 'error'
-        ) {
+        if (!['processing','saved','error'].includes(statusRef.current)) {
           bufferRef.current = '';
           setStatus('idle');
         }
       }, 200);
     };
-
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [isOpen, status, onCapture, onClose]);
+  }, [isOpen, onCapture, onClose]);
 
   if (!isOpen) return null;
 
