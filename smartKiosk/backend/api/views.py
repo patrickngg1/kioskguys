@@ -828,7 +828,7 @@ def create_supply_request(request):
         # GitHub-hosted logo (Outlook/Gmail safe)
         logo_url = (
             "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
-            "smartKiosk/backend/static/ui_assets/apple-touch-icon.png"
+            "smartKiosk/media/ui_assets/apple-touch-icon.png"
         )
 
         # Build premium HTML
@@ -1305,7 +1305,7 @@ def create_room_reservation(request):
         backend_base = request.build_absolute_uri("/").rstrip("/")
         frontend_base = backend_base
 
-        logo_url = "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/smartKiosk/backend/static/ui_assets/apple-touch-icon.png"
+        logo_url = "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/smartKiosk/media/ui_assets/apple-touch-icon.png"
 
 
         calendar_links = build_calendar_links(
@@ -1571,7 +1571,7 @@ def cancel_room_reservations_bulk(request):
 
         logo_url = (
             "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
-            "smartKiosk/backend/static/ui_assets/apple-touch-icon.png"
+            "smartKiosk/media/ui_assets/apple-touch-icon.png"
         )
 
         html = render_bulk_cancellation_email(
@@ -1700,7 +1700,7 @@ def send_cancellation_email(reservation, reason, cancelled_by="System"):
 
         logo_url = (
             "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
-            "smartKiosk/backend/static/ui_assets/apple-touch-icon.png"
+            "smartKiosk/media/ui_assets/apple-touch-icon.png"
         )
 
         html = render_cancellation_email(
@@ -1897,7 +1897,7 @@ def password_reset_request(request):
     # Same logo used everywhere in your app
     logo_url = (
         "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
-        "smartKiosk/backend/static/ui_assets/apple-touch-icon.png"
+        "smartKiosk/media/ui_assets/apple-touch-icon.png"
     )
 
     subject = "Your Smart Kiosk Reset Code"
