@@ -14,7 +14,7 @@ async function parseJsonSafe(res) {
   }
 
   return JSON.parse(text);
-}
+} 
 
 export async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {

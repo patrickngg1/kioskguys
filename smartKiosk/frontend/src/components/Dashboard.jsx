@@ -376,42 +376,50 @@ export default function Dashboard() {
     endPeriod: 'AM',
   });
 
+
   const loadReservations = async () => {
     try {
-      const res = await fetch('/api/rooms/reservations/my/', {
-        credentials: 'include',
-      });
-      const data = await res.json();
+      const data = await apiFetch("/api/rooms/reservations/my/");
       if (data.ok && Array.isArray(data.reservations)) {
         setReservations(data.reservations);
       }
     } catch (err) {
-      console.error('Failed to load reservations:', err);
+      console.error("Failed to load reservations:", err);
     }
   };
 
   const [itemsByCategory, setItemsByCategory] = useState({});
+
   useEffect(() => {
     async function loadItems() {
       try {
-        const res = await apiFetch('/api/items/');
-        const data = await res.json();
+        // apiFetch already returns JSON
+        const data = await apiFetch('/api/items/');
+
         let categoriesOut = {};
 
-        if (data.categories) {
+        if (data?.categories && typeof data.categories === "object") {
           categoriesOut = data.categories;
-        } else if (Array.isArray(data.items)) {
+        } else if (Array.isArray(data?.items)) {
           data.items.forEach((item) => {
-            const cat = item.category_name || item.category || 'Misc';
-            if (!categoriesOut[cat]) categoriesOut[cat] = [];
+            const cat =
+              item.category_name ||
+              item.category ||
+              "Misc";
+
+            if (!categoriesOut[cat]) {
+              categoriesOut[cat] = [];
+            }
             categoriesOut[cat].push(item);
           });
         }
+
         setItemsByCategory(categoriesOut);
       } catch (err) {
-        console.error('Failed to load items', err);
+        console.error("Failed to load items:", err?.message || err);
       }
     }
+
     loadItems();
   }, []);
 
