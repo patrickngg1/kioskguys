@@ -16,6 +16,7 @@ import { getSessionUser, logoutSession } from '../api/authApi';
 import SetPasswordOverlay from './SetPasswordOverlay';
 import CardSwipeModal from './CardSwipeModal';
 import PremiumInput from './PremiumInput';
+import { apiFetch } from '../api/api';
 
 // --- HELPER: Smart Button Inner Content ---
 // (Identical to AdminPanel to ensure premium animations)
@@ -393,7 +394,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadItems() {
       try {
-        const res = await fetch('/api/items/');
+        const res = await apiFetch('/api/items/');
         const data = await res.json();
         let categoriesOut = {};
 
@@ -417,7 +418,7 @@ export default function Dashboard() {
   const [popularByCategory, setPopularByCategory] = useState({});
   const loadPopular = async () => {
     try {
-      const res = await fetch('/api/supplies/popular/?limit=3');
+      const res = await apiFetch('/api/supplies/popular/?limit=3');
       const data = await res.json();
       const popular = data?.popular || {};
       const mapped = {};
@@ -427,6 +428,7 @@ export default function Dashboard() {
       setPopularByCategory(mapped);
     } catch (err) {
       console.error('Failed to load popular items', err);
+      console.log("items status", res.status, text.slice(0, 200));
     }
   };
 
