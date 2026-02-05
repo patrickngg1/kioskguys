@@ -575,7 +575,7 @@ def get_items(request):
         category_name = item.category.name  # e.g. "Storage Closet"
 
         # If an image was uploaded in Django admin, build an absolute URL
-        if item.image:
+        if item.image_name:
             #image_url = request.build_absolute_uri(item.image.url)
             image_url = request.build_absolute_uri(static(f"items/{item.image_name}"))
         else:
@@ -922,7 +922,7 @@ def get_all_items(request):
 
     data = []
     for item in items:
-        if item.image:
+        if item.image_name:
             #image_url = request.build_absolute_uri(item.image.url)
             image_url = request.build_absolute_uri(static(f"items/{item.image_name}"))
         else:
