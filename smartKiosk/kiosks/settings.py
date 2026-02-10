@@ -4,14 +4,12 @@ Django settings for kiosks project.
 import os
 from pathlib import Path
 from datetime import timedelta
-import ssl  # Import needed for SMTP_UNVERIFIED_CONTEXT
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-!uu)_)22cl-rk2f2wv!k(5%0shlio@%xqw!^(a%b$3d1pn9rwv'
 DEBUG = True
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-SENDGRID_VERIFIED_SENDER = "ersaatuta@gmail.com"
 
 # ---------------------------------------------------------
 # INSTALLED APPS
@@ -165,19 +163,24 @@ SIMPLE_JWT = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ----------------------------------------------------
-# EMAIL CONFIGURATION (SENDGRID SMTP)
+# EMAIL CONFIGURATION (AMAZON SES SMTP)
 # ----------------------------------------------------
+import os
 from dotenv import load_dotenv
 load_dotenv()
 
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
-DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <no-reply@smartkiosk.uta.edu>"
+EMAIL_HOST = "email-smtp.us-east-1.amazonaws.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = os.environ.get("SES_SMTP_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("SES_SMTP_PASS")
+
+DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <ersaauta@gmail.com>"
 
 EMAIL_TIMEOUT = 30
-
-# Disable SMTP SSL certificate verification (dev only)
-SMTP_UNVERIFIED_CONTEXT = ssl._create_unverified_context()
 
 # ---------------------------------------------------------
 # SESSION / CSRF COOKIE SETTINGS (LOCAL DEV)
@@ -211,5 +214,3 @@ CSRF_IGNORE_PATHS = [
 # ---------------------------------------------------------
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-print("DEBUG SENDGRID KEY:", os.environ.get("SENDGRID_API_KEY"))
