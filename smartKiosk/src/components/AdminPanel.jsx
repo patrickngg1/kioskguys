@@ -160,7 +160,7 @@ export default function AdminPanel({
 
   // --- ITEMS STATE ---
   const [adminItemsByCategory, setAdminItemsByCategory] = useState(
-    itemsByCategory || {}
+    itemsByCategory || {},
   );
   const [loadingItems, setLoadingItems] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
@@ -279,7 +279,7 @@ export default function AdminPanel({
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ reason: 'Cancelled by administrator' }),
-        }
+        },
       );
       const data = await res.json();
       if (data.ok) {
@@ -439,9 +439,7 @@ export default function AdminPanel({
                 setActiveTab={setReservationTab} // Pass Setter
               />
             )}
-            {activeSection === 'rooms' && (
-              <RoomsSection rooms={rooms} />
-            )}
+            {activeSection === 'rooms' && <RoomsSection rooms={rooms} />}
             {activeSection === 'items' && (
               <ItemsSection
                 itemsByCategory={adminItemsByCategory}
@@ -451,9 +449,7 @@ export default function AdminPanel({
                 onDeleteItem={handleDeleteItem}
               />
             )}
-            {activeSection === 'banners' && (
-              <BannersSection />
-            )}
+            {activeSection === 'banners' && <BannersSection />}
             {activeSection === 'users' && (
               <UsersSection
                 users={adminUsers}
@@ -509,7 +505,7 @@ export default function AdminPanel({
                 </div>
               </div>
             </div>,
-            document.body /* This is the secret for the full-page blur */
+            document.body /* This is the secret for the full-page blur */,
           )}
 
         {/* --- GLOBAL DELETE USER MODAL --- */}
@@ -557,7 +553,7 @@ export default function AdminPanel({
                 </div>
               </div>
             </div>,
-            document.body
+            document.body,
           )}
         {/* --- GLOBAL CANCEL RESERVATION MODAL --- */}
         {/* --- GLOBAL CANCEL RESERVATION MODAL --- */}
@@ -601,7 +597,7 @@ export default function AdminPanel({
                 </div>
               </div>
             </div>,
-            document.body
+            document.body,
           )}
 
         {showItemModal && (
@@ -1159,7 +1155,7 @@ function RoomsSection({ rooms }) {
               </form>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* DELETE CONFIRM */}
@@ -1200,7 +1196,7 @@ function RoomsSection({ rooms }) {
               </div>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );
@@ -1233,7 +1229,7 @@ function ItemsSection({
       parts.push(
         <span key={matchIndex} className='highlight-text'>
           {text.slice(matchIndex, matchIndex + query.length)}
-        </span>
+        </span>,
       );
       i = matchIndex + query.length;
     }
@@ -1243,7 +1239,7 @@ function ItemsSection({
   const entries = Object.entries(itemsByCategory || {})
     .map(([category, items]) => {
       const filteredItems = items.filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
       return [category, filteredItems];
     })
@@ -1361,7 +1357,7 @@ function ItemsSection({
   );
 }
 
-function BannersSection({ }) {
+function BannersSection({}) {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -1634,10 +1630,10 @@ function BannersSection({ }) {
                       toggleState === 'success'
                         ? 'admin-pill-success'
                         : toggleState === 'loading'
-                        ? 'admin-pill-loading'
-                        : isActive
-                        ? 'admin-pill-subtle'
-                        : 'admin-pill-primary'
+                          ? 'admin-pill-loading'
+                          : isActive
+                            ? 'admin-pill-subtle'
+                            : 'admin-pill-primary'
                     }`}
                     onClick={() => setBannerActiveState(b.id, !b.is_active)}
                     disabled={toggleState !== 'idle'}
@@ -1762,7 +1758,7 @@ function BannersSection({ }) {
               </div>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {editingBanner && (
@@ -1816,7 +1812,7 @@ function BannersSection({ }) {
               </div>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {previewBanner && (
@@ -2091,17 +2087,23 @@ function BannerEditModal({
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
-function UsersSection({
-  users,
-  loading,
-  setAdminUsers,
-  setConfirmDeleteUser,
-}) {
+function UsersSection({ users, loading, setAdminUsers, setConfirmDeleteUser }) {
   const [togglingUsers, setTogglingUsers] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredUsers = useMemo(() => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (!q) return users || [];
+    return (users || []).filter((u) => {
+      const name = (u.fullName || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [users, searchQuery]);
 
   const toggleUserAdmin = async (userId) => {
     setTogglingUsers((prev) => ({ ...prev, [userId]: 'loading' }));
@@ -2125,8 +2127,8 @@ function UsersSection({
       setTimeout(() => {
         setAdminUsers((prev) =>
           prev.map((u) =>
-            u.id === userId ? { ...u, isAdmin: data.isAdmin } : u
-          )
+            u.id === userId ? { ...u, isAdmin: data.isAdmin } : u,
+          ),
         );
         setTogglingUsers((prev) => {
           const next = { ...prev };
@@ -2144,6 +2146,38 @@ function UsersSection({
     }
   };
 
+  const highlightMatch = (text = '') => {
+    if (!searchQuery.trim()) return text;
+
+    const query = searchQuery.trim().toLowerCase();
+    const lower = text.toLowerCase();
+    const parts = [];
+    let i = 0;
+
+    while (i < text.length) {
+      const matchIndex = lower.indexOf(query, i);
+
+      if (matchIndex === -1) {
+        parts.push(text.slice(i));
+        break;
+      }
+
+      if (matchIndex > i) {
+        parts.push(text.slice(i, matchIndex));
+      }
+
+      parts.push(
+        <span key={`${matchIndex}-${i}`} className='highlight-text'>
+          {text.slice(matchIndex, matchIndex + query.length)}
+        </span>,
+      );
+
+      i = matchIndex + query.length;
+    }
+
+    return parts;
+  };
+
   return (
     <div className='admin-section'>
       <div className='admin-section-header'>
@@ -2153,6 +2187,17 @@ function UsersSection({
         </p>
       </div>
 
+      {/* EXACT SAME LOOKING SEARCH BAR AS ITEMS */}
+      <div className='admin-filter-bar' style={{ marginTop: '0.5rem' }}>
+        <input
+          type='text'
+          className='admin-filter-input'
+          placeholder='Search users…'
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
       {loading ? (
         <div className='admin-loading'>
           <div className='admin-spinner'></div>
@@ -2160,9 +2205,15 @@ function UsersSection({
         </div>
       ) : !users || users.length === 0 ? (
         <p className='admin-empty'>No users found.</p>
+      ) : filteredUsers.length === 0 ? (
+        searchQuery.trim().length > 0 ? (
+          <p className='admin-empty'>No matching users found.</p>
+        ) : (
+          <p className='admin-empty'>No users found.</p>
+        )
       ) : (
         <div className='admin-list'>
-          {users.map((u) => {
+          {filteredUsers.map((u) => {
             const toggleState = togglingUsers[u.id] || 'idle';
             const actionClass = u.isAdmin
               ? 'admin-pill-warning'
@@ -2172,10 +2223,11 @@ function UsersSection({
               <div key={u.id} className='admin-list-row'>
                 <div className='admin-list-main'>
                   <div className='admin-item-title'>
-                    {u.fullName || u.email}
+                    {highlightMatch(u.fullName || u.email)}
                   </div>
+
                   <div className='admin-list-meta admin-list-meta-secondary'>
-                    {u.email}
+                    {highlightMatch(u.email || '')}
                   </div>
                 </div>
 
@@ -2194,8 +2246,8 @@ function UsersSection({
                       toggleState === 'success'
                         ? 'admin-pill-success'
                         : toggleState === 'loading'
-                        ? 'admin-pill-loading'
-                        : actionClass
+                          ? 'admin-pill-loading'
+                          : actionClass
                     }`}
                     onClick={() => toggleUserAdmin(u.id)}
                     disabled={toggleState !== 'idle'}
@@ -2225,7 +2277,6 @@ function UsersSection({
   );
 }
 
-// --- TRILLION DOLLAR ITEM EDIT MODAL (Dirty Check + On-Button Error) ---
 function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
   const isEdit = !!item;
   const [name, setName] = useState(item?.name || '');
@@ -2503,6 +2554,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
         </form>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
