@@ -75,33 +75,31 @@ npm install --legacy-peer-deps
 
 ## Running the App
 
-The app currently is split between the backend and the frontend. You can run the frontend on it's own, but without the backend running at the same time, you won't be able to register/login. Make sure that you run each in **seperate** terminals.
+The app currently is split between the backend and the frontend. You can run the frontend on it's own, but without the backend running at the same time, you won't be able to register/login. There is a start script included that is able to concurrently run both the frontend and backend in one terminal.
 
-
-
-### Running the Backend
-Once you installed the requirements using the pip command, run:
+### 1. Grant Permissions to Start Script [Only Needed For First Time]
+Once you installed the requirements using the pip command, you need to grant permission to the start script to be able to run properly. You only need to do this for the first time and then you can skip this step. Run the following in the terminal:
 
 ```bash
-python manage.py runserver
+chmod +x start.sh
 ```
 
-### Running the Frontend
-Once everything is installed and Node is at `v24.11.0`, run:
+### 2. Run The Start Script
+After granting permission to the script just run the following command to run both the frontend and backend simultaneously:
 
 ```bash
-npm run dev
+./start.sh
 ```
 
 ---
 
 ## Navigation
-After running both the backend and frontend in seperate terminals, you can navigate to http://localhost:5173/. Then you can sign up or sign in.
+After running the start script, it should also auto open the browser and connect to the website. If for some reason it does not, simply navigate to http://localhost:5173/
 
 ---
 
 ## Database Connection
-We are currently using TiDB for our database connection where we will store our tables. Performing queries will access that data. I currently have it connected to the /kiosk backend app as opposed to the frontend app Prakash has made. It utilizes a certificate to verify the connection called [isrgrootx1.pem](https://github.com/patrickngg1/kioskguys/blob/main/kiosks/isrgrootx1.pem). Lastly, it has all the settings needed to utilize the database under [settings.py](https://github.com/patrickngg1/kioskguys/blob/main/kiosks/kiosks/settings.py) under the `DATABASES = {}` clause. 
+We are currently using TiDB for our database connection where we will store our tables. Performing queries will access that data. I currently have it connected to the /kiosk backend app as opposed to the frontend app Prakash has made. It utilizes a certificate to verify the connection called [isrgrootx1.pem](https://github.com/patrickngg1/kioskguys/blob/main/smartKiosk/isrgrootx1.pem). Lastly, it has all the settings needed to utilize the database under [settings.py](https://github.com/patrickngg1/kioskguys/blob/main/smartKiosk/kiosks/settings.py) under the `DATABASES = {}` clause. 
 
 ### Verifying Connection
 You can verify database connection by running the following:
