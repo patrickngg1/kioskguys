@@ -99,6 +99,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://ersakioskuta.netlify.app",
     "http://utakiosk.netlify.app",
     "https://utakiosk.netlify.app",
+    "https://kioskguys-front.onrender.com/",
 ]
 
 CORS_ALLOW_HEADERS = [
