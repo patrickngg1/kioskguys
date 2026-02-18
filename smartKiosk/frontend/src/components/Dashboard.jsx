@@ -113,10 +113,6 @@ export default function Dashboard() {
   const [banners, setBanners] = useState([]);
   const [bannerIdx, setBannerIdx] = useState(0);
 
-  useEffect(() => {
-    chimeRef.current = new Audio('/soft-chime.wav');
-  }, []);
-
   // src/components/Dashboard.jsx
 
   function startLogoutSplash() {
@@ -211,84 +207,6 @@ export default function Dashboard() {
 
     loadBanners();
   }, [uiAssets]);
-
-  // ------------------------ Inactivity Detection ------------------------
-  useEffect(() => {
-    if (!user) return;
-
-    const startWarningCountdown = () => {
-      setShowInactivityModal(true);
-    };
-
-    const resetInactivityTimer = () => {
-      if (showInactivityModal) return;
-      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-      inactivityTimer.current = setTimeout(
-        startWarningCountdown,
-        INACTIVITY_LIMIT
-      );
-    };
-
-    const events = [
-      'mousemove',
-      'mousedown',
-      'keydown',
-      'scroll',
-      'touchstart',
-      'touchmove',
-    ];
-    events.forEach((ev) => window.addEventListener(ev, resetInactivityTimer));
-
-    resetInactivityTimer();
-
-    return () => {
-      events.forEach((ev) =>
-        window.removeEventListener(ev, resetInactivityTimer)
-      );
-      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-    };
-  }, [user, showInactivityModal]);
-
-  // ------------------------ Countdown Timer Logic ------------------------
-  useEffect(() => {
-    if (!showInactivityModal) return;
-
-    setCountdown(WARNING_TIME);
-    setRingProgress(0);
-
-    if (chimeRef.current) {
-      chimeRef.current.volume = 0.35;
-      chimeRef.current.currentTime = 0;
-      chimeRef.current.play().catch(() => {});
-    }
-
-    countdownRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        const next = prev - 1;
-        const pct = ((WARNING_TIME - next) / WARNING_TIME) * 360;
-        setRingProgress(pct);
-
-        if (prev === 0) {
-          clearInterval(countdownRef.current);
-
-          // 1. Immediately hide the countdown modal
-          setShowInactivityModal(false);
-
-          // 2. IMMEDIATELY start the animation (don't wait for the server)
-          startLogoutSplash();
-
-          // 3. Fire the logout request in the background
-          logoutSession();
-        }
-
-        return next;
-      });
-    }, 1000);
-
-    return () => {
-      clearInterval(countdownRef.current);
-    };
-  }, [showInactivityModal]);
 
   const handleLogout = async () => {
     if (isSigningOut) return;
