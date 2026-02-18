@@ -453,6 +453,7 @@ export default function Dashboard() {
       >
         <div className='dashboard-grid'>
           {/* USER CARD (CENTERED) */}
+          {/* USER CARD (CENTERED) */}
           <div
             className='card user-card action-card'
             style={{
@@ -531,6 +532,16 @@ export default function Dashboard() {
               }}
             >
               {display.email}
+            </div>
+
+            <div className='luxury-action-group'>
+              <button
+                onClick={handleLogout}
+                className='luxury-signout-btn'
+                disabled={isSigningOut}
+              >
+                {isSigningOut ? 'Signing Out…' : 'Sign Out'}
+              </button>
             </div>
           </div>
 
