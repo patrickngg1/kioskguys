@@ -26,7 +26,7 @@ export default function AuthScreen() {
   
   return (
     <div id='auth-section'>
-      <AuthForm onLoginSuccess={handleLoginSuccess} swipeState={swipeState} />
+      <AuthForm onLoginSuccess={handleLoginSuccess} />
     </div>
   );
 }
