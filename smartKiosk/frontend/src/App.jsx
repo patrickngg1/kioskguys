@@ -38,45 +38,14 @@ function PageLayout() {
 }
 
 function AppContent({ uiAssets }) {
-  const [started, setStarted] = useState(false);
-  const inactivityTimer = useRef(null);
   const location = useLocation();
-
-  const onDashboard = location.pathname.includes('dashboard');
-  const allowContent = started || onDashboard;
-
-  // Inactivity overlay logic (unchanged)
-  useEffect(() => {
-    if (onDashboard) return;
-    if (!started) return;
-
-    const resetTimer = () => {
-      clearTimeout(inactivityTimer.current);
-      inactivityTimer.current = setTimeout(() => {
-        setStarted(false);
-      }, 60000);
-    };
-
-    const events = ['click', 'mousemove', 'keydown', 'touchstart'];
-    events.forEach((ev) => window.addEventListener(ev, resetTimer));
-    resetTimer();
-
-    return () => {
-      clearTimeout(inactivityTimer.current);
-      events.forEach((ev) => window.removeEventListener(ev, resetTimer));
-    };
-  }, [started, onDashboard]);
 
   return (
     <>
-      {!started && !onDashboard && (
-        <StartOverlay onStart={() => setStarted(true)} />
-      )}
-      
       {/* 🟦 Provide UI assets to the entire app */}
       <UIAssetsContext.Provider value={uiAssets}>
-        {allowContent && <Header />}
-        {allowContent && <PageLayout />}
+        {<Header />}
+        {<PageLayout />}
       </UIAssetsContext.Provider>
     </>
   );
