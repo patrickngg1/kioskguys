@@ -9,7 +9,6 @@ import {
 
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
-import Header from './components/Header';
 import './styles/App.css';
 import './styles/Glass.css';
 
@@ -43,7 +42,6 @@ function AppContent({ uiAssets }) {
     <>
       {/* 🟦 Provide UI assets to the entire app */}
       <UIAssetsContext.Provider value={uiAssets}>
-        {<Header />}
         {<PageLayout />}
       </UIAssetsContext.Provider>
     </>

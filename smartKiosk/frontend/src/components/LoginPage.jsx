@@ -10,7 +10,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className='app-layout'
+      className='app-layout remote-login-layout'
       style={{
         backgroundImage: uiAssets?.['bg-campus']
           ? `url(${uiAssets['bg-campus']})`
@@ -20,7 +20,11 @@ export default function LoginPage() {
         backgroundRepeat: 'no-repeat',
       }}
     >
-      <div id='auth-section'>
+      {/* New Title with tracking animation */}
+      <h1 className="remote-title">Smart Kiosk Remote Login</h1>
+      
+      {/* Auth section with the slide-in animation applied */}
+      <div id='auth-section' className="slide-in-card">
         <AuthScreen />
       </div>
     </div>

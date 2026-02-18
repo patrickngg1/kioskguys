@@ -293,7 +293,7 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
   return (
     <div id='auth-container' className='form-container'>
       <div className='auth-card-inner'>
-        <h1 className='kiosk-title'>KIOSK ACCESS</h1>
+        <h1 className='kiosk-title'>LOGIN</h1>
 
         {!resetMode && (
           <div className='tab-bar'>

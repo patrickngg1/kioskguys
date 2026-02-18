@@ -1,53 +1,3 @@
-#map-container {
-  /* Layout Engine */
-  flex: 1.2 1 0%; /* Map slightly larger, responsive */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Dynamic Spacing */
-  padding: clamp(1rem, 2vw, 2.5rem);
-  box-sizing: border-box;
-  overflow: hidden;
-
-  /* Correction from original file */
-  margin-left: 0;
-  border-radius: 1.5rem;
-  /* Smooth transition for resizing */
-  transition: all 0.4s ease;
-}
-
-#map-frame {
-  width: 100%;
-  height: 100%;
-
-  /* DYNAMIC HEIGHT LOGIC: 
-     Ensures map is never too small on laptops or too tall on 4K. 
-  */
-  min-height: 50vh;
-  max-height: 85vh;
-  aspect-ratio: 16 / 10; /* Keeps the map rectangular and nice */
-
-  /* Original Styles Preserved */
-  border-radius: 1.5rem;
-  overflow: hidden;
-  object-fit: cover;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 0 22px rgba(37, 99, 235, 0.25);
-  transition: box-shadow 0.4s ease, transform 0.4s ease;
-}
-
-#map-frame:hover {
-  /* Original Hover Effect */
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.3), 0 0 28px rgba(37, 99, 235, 0.35);
-  transform: scale(1.005); /* Added slight lift */
-}
-
-.auth-view #map-container .map-container {
-  border-radius: 1.5rem;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 0 22px rgba(37, 99, 235, 0.25);
-  transition: box-shadow 0.4s ease;
-}
 
 /* DYNAMIC WIDTH FIX: We allow the auth section to flex while keeping content nice. */
 #auth-section {
@@ -69,31 +19,78 @@
   min-width: 360px;
 }
 
+
+/* =================================
+   REMOTE LOGIN LAYOUT & ANIMATIONS
+   ==================================*/
+
+.remote-login-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Add a dark overlay if your background image makes text hard to read */
+  background-color: rgba(0, 0, 0, 0.4); 
+  background-blend-mode: overlay;
+}
+
+/* 1. Title pops in immediately */
+.remote-title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  margin-bottom: 2rem;
+  text-align: center;
+  text-transform: uppercase;
+  /* The tracking animation you requested */
+  animation: tracking-in-expand-fwd 0.8s cubic-bezier(0.215, 0.610, 0.355, 1.000) both;
+}
+
+/* 2. Card waits 1s, then slides up */
+.slide-in-card {
+  /* The 'both' fill mode keeps it invisible until the 1s delay is over */
+  animation: slide-in-bottom 0.6s cubic-bezier(0.250, 0.460, 0.450, 0.940) 1s both;
+  width: auto;
+  display: flex;
+  justify-content: center;
+}
+
 /* =================================
    2. AUTH FORM (Glass Card)
    ==================================*/
 .form-container {
-  /* DYNAMIC WIDTH FIX:
-     Replaced fixed width with clamp for perfect scaling on all devices.
-  */
+  /* Keep your original sizing/glass styling here, but delete the animation property */
   width: clamp(380px, 30vw, 480px);
-  /* Original Transform/Position logic */
-  transform: translateY(-2%); /* Subtle shift up */
-  /* Original Glass Styles */
-  background: linear-gradient(180deg, #e6e7e9, #d1d3d6);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.65), 0 12px 28px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
   border-radius: 1.5rem;
   padding: clamp(1.5rem, 2.8vw, 2.5rem);
-  color: #111827;
-  transition: width 0.25s ease, padding 0.25s ease, background-color 0.2s ease,
-    all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  /* Animations */
-  animation: fadeUp 0.8s ease-out forwards,
-    utaBorderGlow 6s ease-in-out infinite alternate;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  /* animation: fadeUp ... <--- DELETE THIS IN YOUR CSS */ 
+}
+
+/* --- KEYFRAMES --- */
+
+@-webkit-keyframes tracking-in-expand-fwd {
+  0% { letter-spacing: -0.5em; -webkit-transform: translateZ(-700px); transform: translateZ(-700px); opacity: 0; }
+  40% { opacity: 0.6; }
+  100% { -webkit-transform: translateZ(0); transform: translateZ(0); opacity: 1; }
+}
+@keyframes tracking-in-expand-fwd {
+  0% { letter-spacing: -0.5em; -webkit-transform: translateZ(-700px); transform: translateZ(-700px); opacity: 0; }
+  40% { opacity: 0.6; }
+  100% { -webkit-transform: translateZ(0); transform: translateZ(0); opacity: 1; }
+}
+
+@-webkit-keyframes slide-in-bottom {
+  0% { -webkit-transform: translateY(1000px); transform: translateY(1000px); opacity: 0; }
+  100% { -webkit-transform: translateY(0); transform: translateY(0); opacity: 1; }
+}
+@keyframes slide-in-bottom {
+  0% { -webkit-transform: translateY(1000px); transform: translateY(1000px); opacity: 0; }
+  100% { -webkit-transform: translateY(0); transform: translateY(0); opacity: 1; }
 }
 
 .form-container:hover {
@@ -117,27 +114,7 @@
   border-radius: 50%;
 }
 
-@keyframes fadeUp {
-  0% {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(-2%);
-    opacity: 1;
-  }
-}
-@keyframes utaBorderGlow {
-  0%,
-  100% {
-    box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.25),
-      0 18px 36px rgba(0, 0, 0, 0.16), 0 0 15px rgba(249, 115, 22, 0.25);
-  }
-  50% {
-    box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.25),
-      0 18px 36px rgba(0, 0, 0, 0.16), 0 0 18px rgba(37, 99, 235, 0.25);
-  }
-}
+
 
 /* Glass Reflection Animation */
 .form-container::before {
@@ -155,30 +132,9 @@
   );
   transform: rotate(8deg);
   opacity: 0;
-  animation: shimmerSweep 10s ease-in-out infinite;
   pointer-events: none;
   z-index: 2;
   mix-blend-mode: screen;
-}
-@keyframes shimmerSweep {
-  0% {
-    opacity: 0;
-    transform: translateX(-120%) translateY(-80%) rotate(8deg);
-  }
-  15% {
-    opacity: 0.5;
-  }
-  30% {
-    opacity: 0.7;
-  }
-  45% {
-    opacity: 0;
-    transform: translateX(120%) translateY(80%) rotate(8deg);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(120%) translateY(80%) rotate(8deg);
-  }
 }
 
 .form-body {
@@ -953,11 +909,6 @@ input.input-field:-webkit-autofill {
    PREMIUM SWIPE INDICATOR v2.0 (Glass + Light Beam)
    ======================================================================= */
 
-.swipe-section-premium {
-  margin-top: 1.8rem;
-  width: 100%;
-  animation: fadeUp 0.8s ease-out 0.2s backwards;
-}
 
 /* --- Elegant Divider --- */
 .premium-divider {

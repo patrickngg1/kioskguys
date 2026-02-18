@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { UIAssetsContext } from '../App';
 import '../styles/Dashboard.css';
 import '../styles/App.css';
-import '../styles/CardSwipeModal.css';
 import '../styles/PremiumModal.css';
 import '../styles/PremiumInput.css';
 import '../styles/AdminPanel.css';
@@ -13,7 +12,6 @@ import RequestSupply from './RequestSupply';
 import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
 import SetPasswordOverlay from './SetPasswordOverlay';
-import CardSwipeModal from './CardSwipeModal';
 import PremiumInput from './PremiumInput';
 import { apiFetch } from '../api/api';
 
@@ -361,7 +359,6 @@ export default function Dashboard() {
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [showSuppliesModal, setShowSuppliesModal] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [showSwipeModal, setShowSwipeModal] = useState(false);
 
   const [reservations, setReservations] = useState([]);
   const [reservationData, setReservationData] = useState({
@@ -527,29 +524,7 @@ export default function Dashboard() {
   };
   // src/components/Dashboard.jsx
 
-  const handleCardRegister = async ({ raw, uta_id }) => {
-    try {
-      if (!raw && !uta_id) return false;
-
-      const res = await fetch('/api/card/register/', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ raw_swipe: raw, uta_id: uta_id }),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.ok) {
-        setUser((prev) => ({ ...prev, hasCard: true }));
-        return true; // Modal will show "Identity Secured"
-      } else {
-        // If the card is wrong type or invalid, return false
-        return false; // Modal will show "Access Denied"
-      }
-    } catch (err) {
-      return false;
-    }
-  };
+  
   return (
     <>
       {/* MAIN DASHBOARD */}
@@ -638,47 +613,6 @@ export default function Dashboard() {
               }}
             >
               {display.email}
-            </div>
-
-            <div className='luxury-action-group'>
-              <button
-                onClick={() => setShowSwipeModal(true)}
-                className='luxury-card-btn'
-              >
-                <div className='card-content-left'>
-                  <div className='card-chip-icon' />
-                  <div className='card-text-group'>
-                    <span className='card-label-main'>
-                      {user?.hasCard ? 'UTA Swipe Access' : 'Activate Swipe'}
-                    </span>
-                    <span className='card-label-sub'>
-                      {user?.hasCard ? '•••• Linked' : 'Tap to configure'}
-                    </span>
-                  </div>
-                </div>
-                <div className='card-arrow-icon'>
-                  <svg
-                    width='24'
-                    height='24'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  >
-                    <path d='M5 12h14M12 5l7 7-7 7' />
-                  </svg>
-                </div>
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className='luxury-signout-btn'
-                disabled={isSigningOut}
-              >
-                {isSigningOut ? 'Signing Out…' : 'Sign Out'}
-              </button>
             </div>
           </div>
 
@@ -1029,12 +963,6 @@ export default function Dashboard() {
                 setIsSetPasswordOpen(false);
               }
         }
-      />
-
-      <CardSwipeModal
-        isOpen={showSwipeModal}
-        onClose={() => setShowSwipeModal(false)}
-        onCapture={handleCardRegister}
       />
     </>
   );
