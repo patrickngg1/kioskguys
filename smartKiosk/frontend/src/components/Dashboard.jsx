@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useRef, useContext, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UIAssetsContext } from '../App';
-import KioskMap from './KioskMap';
 import '../styles/Dashboard.css';
 import '../styles/App.css';
 import '../styles/CardSwipeModal.css';
@@ -740,10 +739,6 @@ export default function Dashboard() {
               </button>
             </div>
           )}
-
-          <div className='map-container'>
-            <KioskMap />
-          </div>
 
           {/* RESERVE CARD */}
           <div
