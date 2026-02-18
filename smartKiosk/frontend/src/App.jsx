@@ -69,10 +69,6 @@ function AppContent({ uiAssets }) {
 
   return (
     <>
-      {!started && !onDashboard && (
-        <StartOverlay onStart={() => setStarted(true)} />
-      )}
-
       {/* 🟦 Provide UI assets to the entire app */}
       <UIAssetsContext.Provider value={uiAssets}>
         {allowContent && <Header />}
