@@ -88,7 +88,7 @@ function PasswordInput({
   );
 }
 
-export default function AuthForm({ onLoginSuccess, swipeState }) {
+export default function AuthForm({ onLoginSuccess }) {
   const [view, setView] = useState('login');
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [resetMode, setResetMode] = useState(false);
@@ -102,7 +102,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
   const [loginEmailError, setLoginEmailError] = useState('');
   const [loginStatus, setLoginStatus] = useState('idle');
   const [registerStatus, setRegisterStatus] = useState('idle');
-  const [swipeBtnState, setSwipeBtnState] = useState('idle');
 
   // NEW: Dynamic Error Messages for Buttons
   const [loginErrorLabel, setLoginErrorLabel] = useState('DENIED');
@@ -280,11 +279,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
       setTimeout(() => setRegisterStatus('idle'), 2500);
     }
   }
-
-  const getScannerClass = () => {
-    if (!swipeState) return '';
-    return `scanner-${swipeState.status}`;
-  };
 
   return (
     <div id='auth-container' className='form-container'>
@@ -497,31 +491,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                   {loginErrorLabel}
                 </div>
               </button>
-
-              <div className='swipe-section-premium'>
-                <div className='premium-divider'>
-                  <span className='divider-line'></span>
-                  <span className='divider-text'>ALTERNATIVE LOGIN</span>
-                  <span className='divider-line'></span>
-                </div>
-                <div className={`glass-scanner-card ${getScannerClass()}`}>
-                  <div className='scanner-beam'></div>
-                  <div className='scanner-content'>
-                    <div className='scanner-icon'>
-                      <div className='card-shape'>
-                        <div className='mag-strip'></div>
-                        <div className='scan-line'></div>
-                      </div>
-                    </div>
-                    <div className='scanner-text-group'>
-                      <span className='scanner-label'>Swipe Access</span>
-                      <span className='scanner-status'>
-                        {swipeState ? swipeState.message : 'Reader Ready...'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </form>
           ) : (
             <form onSubmit={handleRegister}>
