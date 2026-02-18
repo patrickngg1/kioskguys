@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import CardSwipeModal from './CardSwipeModal';
 import { createPortal } from 'react-dom';
 
 import {
@@ -94,9 +93,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [resetMode, setResetMode] = useState(false);
   const [resetStatus, setResetStatus] = useState('idle');
-
-  const [cardModalOpen, setCardModalOpen] = useState(false);
-  const [cardString, setCardString] = useState('');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -663,31 +659,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
                 )}
               </div>
 
-              <div className='form-group' style={{ marginTop: '1.5rem' }}>
-                <label>MavID Card (optional)</label>
-                <button
-                  type='button'
-                  className={`auth-button smart-kinetic-btn ${swipeBtnState}`}
-                  style={{ minHeight: '56px' }}
-                  onClick={() => setCardModalOpen(true)}
-                >
-                  <div
-                    className={`status-layer idle ${
-                      swipeBtnState === 'idle' ? 'active' : ''
-                    }`}
-                  >
-                    {cardString ? 'CARD SCANNED' : 'CAPTURE MavID SWIPE'}
-                  </div>
-                  <div
-                    className={`status-layer success ${
-                      swipeBtnState === 'success' ? 'active' : ''
-                    }`}
-                  >
-                    <span className='checkmark-kinetic'>✓</span>MavID LINKED
-                  </div>
-                </button>
-              </div>
-
               <button
                 className={`auth-button smart-kinetic-btn ${registerStatus}`}
                 style={{ minHeight: '60px', marginTop: '1.5rem' }}
@@ -724,24 +695,6 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
               </button>
             </form>
           )}
-
-          {cardModalOpen &&
-            createPortal(
-              <CardSwipeModal
-                isOpen={cardModalOpen}
-                onClose={() => setCardModalOpen(false)}
-                onCapture={async (s) => {
-                  setSwipeBtnState('loading');
-                  setCardString(s);
-                  setTimeout(() => {
-                    setSwipeBtnState('success');
-                    setCardModalOpen(false);
-                  }, 800);
-                  return true;
-                }}
-              />,
-              document.body
-            )}
         </div>
       </div>
     </div>
