@@ -57,26 +57,34 @@
 }
 
 /* ============================================================
-   GRID SYSTEM — PERFECT SYNC FOR ALL RESOLUTIONS
+   MOBILE / KIOSK FLEX LAYOUT
    ============================================================ */
 .dashboard-view .dashboard-grid {
-  display: grid;
-  /* Left column fixed, right column takes remaining space */
-  grid-template-columns: 340px 1fr;
-  /* Rows: 1. Banner (auto), 2. Content (Takes all available space), 3. Admin (auto) */
-  grid-template-rows: auto 1fr auto;
-  grid-template-areas:
-    'user banner'
-    'reserve map'
-    'supplies map'
-    'adminFull adminFull';
-  gap: 2rem;
-  width: min(1400px, 95vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 550px; /* Keeps the mobile app feel */
   margin: 0 auto;
-  padding: 1rem 0rem;
+  padding: 1.5rem;
+  gap: 1.5rem;
+  min-height: calc(100vh - 40px); /* Takes full screen height */
+}
 
-  /* ✅ FORCE vertical alignment so columns match height exactly */
-  align-items: stretch;
+/* Pushes the admin panel to the absolute bottom */
+.admin-bottom-wrapper {
+  margin-top: auto; 
+  width: 100%;
+}
+
+/* Premium styling for the Welcome text */
+.welcome-heading {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
 /* ============================================================
