@@ -468,46 +468,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* BANNER (DYNAMIC) */}
-          <div className='banner-block'>
-            {banners.map((b, i) => (
-              <img
-                key={i}
-                src={b.image}
-                alt={b.alt}
-                className={`banner-img ${i === bannerIdx ? 'active' : ''}`}
-              />
-            ))}
-
-            {banners.length > 0 && banners[bannerIdx]?.cta ? (
-              <button
-                className='banner-cta btn btn-primary'
-                onClick={() => {
-                  const href = banners[bannerIdx].cta.href;
-                  if (href === '#reserve') setShowReserveModal(true);
-                  if (href === '#supplies') {
-                    setSelectedSupplies([]);
-                    setShowSuppliesModal(true);
-                  }
-                }}
-              >
-                {banners[bannerIdx].cta.label}
-              </button>
-            ) : banners.length > 0 && banners[bannerIdx]?.link ? (
-              <div className='start-qr-glass-plate dashboard-qr-adjust'>
-                <div className='qr-glass-glow'></div>
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
-                    banners[bannerIdx].link
-                  )}`}
-                  alt='Scan'
-                  className='qr-etched-image'
-                />
-                <span className='qr-glass-label'>SCAN FOR INFO</span>
-              </div>
-            ) : null}
-          </div>
-
           {/* ADMIN CARDS */}
           {user?.isAdmin && (
             <div className='card action-card' style={{ gridArea: 'adminFull' }}>
