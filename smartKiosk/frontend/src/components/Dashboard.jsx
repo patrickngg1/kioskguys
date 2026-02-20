@@ -373,126 +373,50 @@ export default function Dashboard() {
         className={`dashboard-view dashboard-fade-in ${
           showLogoutSplash ? 'dashboard-freeze' : ''
         }`}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          width: '100%',
+          padding: '20px',
+          maxWidth: '600px',
+          margin: '0 auto',
+        }}
       >
-        <div className='dashboard-grid'>
-          {/* USER CARD (CENTERED) */}
-          {/* USER CARD (CENTERED) */}
-          <div
-            className='card user-card action-card'
-            style={{
-              gridArea: 'user',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center',
-            }}
+        {/* TOP HEADER - SIGN OUT */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', marginBottom: '20px' }}>
+          <button
+            onClick={handleLogout}
+            className='luxury-signout-btn'
+            disabled={isSigningOut}
+            style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #d1d5db' }}
           >
-            {/* Avatar Centered */}
-            <img className='user-avatar' src={display.avatar} alt='' />
+            {isSigningOut ? 'Signing Out…' : 'Sign Out'}
+          </button>
+        </div>
 
-            {/* Name + Black Pen Icon Row */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                width: '100%',
-              }}
-            >
-              <div
-                className='user-name'
-                style={{ fontWeight: '800', fontSize: '1.2rem' }}
-              >
-                {display.name}
-              </div>
-
-              <button
-                className='edit-name-btn'
-                onClick={openEditName}
-                title='Edit Name'
-                type='button'
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#000000',
-                }}
-              >
-                <svg
-                  viewBox='0 0 24 24'
-                  fill='currentColor'
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    display: 'block',
-                  }}
-                >
-                  <path d='M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z' />
-                </svg>
-              </button>
-            </div>
-
-            <div
-              className='user-meta'
-              style={{
-                color: '#ea580c',
-                fontWeight: '700',
-                fontSize: '0.9rem',
-              }}
-            >
-              Role: {display.role}
-            </div>
-            <div
-              className='user-email'
-              style={{
-                color: '#64748b',
-                fontSize: '0.9rem',
-              }}
-            >
-              {display.email}
-            </div>
-
-            <div className='luxury-action-group'>
-              <button
-                onClick={handleLogout}
-                className='luxury-signout-btn'
-                disabled={isSigningOut}
-              >
-                {isSigningOut ? 'Signing Out…' : 'Sign Out'}
-              </button>
-            </div>
-          </div>
-
-          {/* ADMIN CARDS */}
-          {user?.isAdmin && (
-            <div className='card action-card' style={{ gridArea: 'adminFull' }}>
-              <div className='action-head'>
-                <div className='action-title'>Admin Dashboard</div>
-              </div>
-              <p className='action-copy'>
-                Manage rooms, reservations, items & users.
-              </p>
-              <button
-                onClick={() => setShowAdminPanel(true)}
-                className='btn-uta-admin'
-              >
-                Open Admin Panel
-              </button>
-            </div>
-          )}
+        {/* CENTER CONTENT - GREETING & RESERVE CARD */}
+        <div
+          style={{
+            flexGrow: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+          }}
+        >
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '24px', textAlign: 'center' }}>
+            Welcome, {display.name}!
+          </h1>
 
           {/* RESERVE CARD */}
           <div
             className='card action-card premium-card'
-            style={{ gridArea: 'reserve' }}
+            style={{ width: '100%', textAlign: 'center' }}
           >
             <div className='premium-card-content'>
-              <div className='action-head'>
+              <div className='action-head' style={{ justifyContent: 'center' }}>
                 <div className='action-title'>Reserve Conference Room</div>
               </div>
               <p className='action-copy'>
@@ -503,6 +427,7 @@ export default function Dashboard() {
                   src={uiAssets.banner1}
                   alt='Reserve Preview'
                   className='card-preview-img'
+                  style={{ width: '100%', borderRadius: '12px', marginBottom: '20px' }}
                 />
               )}
               <button
@@ -520,13 +445,39 @@ export default function Dashboard() {
                   setShowReserveModal(true);
                 }}
                 className='btn-uta-blue'
+                style={{ width: '100%' }}
               >
                 Open Scheduler
               </button>
             </div>
           </div>
         </div>
+
+        {/* BOTTOM FOOTER - ADMIN DASHBOARD */}
+        {user?.isAdmin && (
+          <div style={{ marginTop: 'auto', width: '100%', paddingTop: '30px' }}>
+            <div className='card action-card' style={{ width: '100%', textAlign: 'center' }}>
+              <div className='action-head' style={{ justifyContent: 'center' }}>
+                <div className='action-title'>Admin Dashboard</div>
+              </div>
+              <p className='action-copy'>
+                Manage rooms, reservations, items & users.
+              </p>
+              <button
+                onClick={() => setShowAdminPanel(true)}
+                className='btn-uta-admin'
+                style={{ width: '100%' }}
+              >
+                Open Admin Panel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ========================================= */}
+      {/* MODALS & OVERLAYS (Kept exactly as they were) */}
+      {/* ========================================= */}
 
       {/* ADMIN PANEL */}
       {showAdminPanel && (
@@ -556,7 +507,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* EDIT NAME MODAL (Updated Input & Smart Button) */}
+      {/* EDIT NAME MODAL */}
       {showEditNameModal && (
         <div className='modal-overlay'>
           <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
@@ -721,8 +672,6 @@ export default function Dashboard() {
         onSuccess={(success) => {
           setMustSetPassword(false);
           setIsSetPasswordOpen(false);
-
-          // Sync the local user state to reflect the password update
           setUser((prev) =>
             prev ? { ...prev, mustSetPassword: false } : prev
           );
