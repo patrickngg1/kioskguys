@@ -29,15 +29,22 @@ echo "🚀 Starting Django backend..."
 python3 manage.py runserver &
 BACKEND_PID=$!
 
+echo "⏳ Waiting for Django to be ready..."
+
+# Wait until port 8000 responds
+until curl -s http://127.0.0.1:8000 > /dev/null; do
+  sleep 1
+done
+
+echo "✅ Django is ready!"
+
 echo "🚀 Starting frontend (Vite)..."
 npm run dev &
 FRONTEND_PID=$!
 
 echo ""
-echo "✅ Servers running"
 echo "Backend  → http://127.0.0.1:8000"
 echo "Frontend → http://127.0.0.1:5173"
-echo ""
 echo "Press Ctrl+C to stop everything"
 
 wait
