@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 set -e
 
+PORT_BACKEND=8000
+PORT_FRONTEND=5173
+
+echo "🧹 Cleaning up old processes..."
+
+# Kill anything using backend port
+if lsof -ti :$PORT_BACKEND > /dev/null ; then
+  lsof -ti :$PORT_BACKEND | xargs kill -9
+  echo "Killed process on port $PORT_BACKEND"
+fi
+
+# Kill anything using frontend port
+if lsof -ti :$PORT_FRONTEND > /dev/null ; then
+  lsof -ti :$PORT_FRONTEND | xargs kill -9
+  echo "Killed process on port $PORT_FRONTEND"
+fi
+
 # Load nvm
 export NVM_DIR="$HOME/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
