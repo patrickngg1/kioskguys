@@ -8,7 +8,6 @@ import '../styles/PremiumModal.css';
 import '../styles/PremiumInput.css';
 import '../styles/AdminPanel.css';
 import AdminPanel from './AdminPanel';
-import RequestSupply from './RequestSupply';
 import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
 import SetPasswordOverlay from './SetPasswordOverlay';
@@ -176,11 +175,6 @@ export default function Dashboard() {
           alt: 'UTA Campus Entrance',
           cta: { href: '#reserve', label: 'Reserve a Room' },
         },
-        {
-          image: uiAssets?.banner2,
-          alt: 'Need markers or adapters?',
-          cta: { href: '#supplies', label: 'Request Supplies' },
-        },
       ].filter((b) => b.image); // Only keep if image loaded
 
       try {
@@ -275,7 +269,6 @@ export default function Dashboard() {
   };
 
   const [showReserveModal, setShowReserveModal] = useState(false);
-  const [showSuppliesModal, setShowSuppliesModal] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const [reservations, setReservations] = useState([]);
@@ -362,84 +355,14 @@ export default function Dashboard() {
 
   // Banner Slideshow Logic
   useEffect(() => {
-    if (showReserveModal || showSuppliesModal || banners.length <= 1) return;
+    if (showReserveModal || banners.length <= 1) return;
     const id = setInterval(
       () => setBannerIdx((i) => (i + 1) % banners.length),
       7000
     );
     return () => clearInterval(id);
-  }, [showReserveModal, showSuppliesModal, banners.length]);
+  }, [showReserveModal, banners.length]);
 
-  const toggleSupply = (id) =>
-    setSelectedSupplies((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-
-  const submitSupplies = async () => {
-    if (selectedSupplies.length === 0) {
-      return false;
-    }
-    try {
-      const res = await fetch('/api/supplies/request/', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: selectedSupplies }),
-      });
-      const data = await res.json();
-
-      if (!res.ok || (!data.ok && !data.requestId)) {
-        console.error(data.error || 'Request failed.');
-        return false;
-      }
-      return true;
-    } catch (err) {
-      console.error('Network error', err);
-      return false;
-    }
-  };
-
-  const supplyCard = (item) => {
-    if (!item) return null;
-    const imgSrc = item.image || null;
-    return (
-      <div
-        key={item.id}
-        className={`supply-item ${
-          selectedSupplies.includes(item.id) ? 'selected' : ''
-        }`}
-        onClick={() => toggleSupply(item.id)}
-        role='button'
-      >
-        {imgSrc ? (
-          <img src={imgSrc} alt={item.name} />
-        ) : (
-          <div className='supply-placeholder supply-letter-bubble'>
-            {(item.name || '?').charAt(0).toUpperCase()}
-          </div>
-        )}
-        <span>{item.name}</span>
-      </div>
-    );
-  };
-
-  const renderSection = (title, items) => {
-    const popularSet = popularByCategory[title] || new Set();
-    const popular = items.filter((item) => popularSet.has(item.name));
-    const rest = items.filter((item) => !popularSet.has(item.name));
-    return (
-      <section className='supply-section' key={title}>
-        <h3 className='supply-title'>{title}</h3>
-        {popular.length > 0 && (
-          <>
-            <div className='supply-subtitle'>Frequently Requested</div>
-            <div className='supply-grid'>{popular.map(supplyCard)}</div>
-          </>
-        )}
-        <div className='supply-grid'>{rest.map(supplyCard)}</div>
-      </section>
-    );
-  };
   // src/components/Dashboard.jsx
 
   
@@ -642,37 +565,6 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-
-          {/* SUPPLIES CARD */}
-          <div
-            className='card action-card premium-card'
-            style={{ gridArea: 'supplies' }}
-          >
-            <div className='premium-card-content'>
-              <div className='action-head'>
-                <div className='action-title'>Request Supplies</div>
-              </div>
-              <p className='action-copy'>
-                Tap pictures to select items you need.
-              </p>
-              {uiAssets?.banner2 && (
-                <img
-                  src={uiAssets.banner2}
-                  alt='Supplies Preview'
-                  className='card-preview-img'
-                />
-              )}
-              <button
-                onClick={() => {
-                  setSelectedSupplies([]);
-                  setShowSuppliesModal(true);
-                }}
-                className='btn-uta-orange'
-              >
-                Open Request Form
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -703,16 +595,6 @@ export default function Dashboard() {
           onReservationCreated={() => loadReservations()}
         />
       )}
-
-      {/* SUPPLIES MODAL */}
-      <RequestSupply
-        isOpen={showSuppliesModal}
-        onClose={() => setShowSuppliesModal(false)}
-        itemsByCategory={itemsByCategory}
-        selectedSupplies={selectedSupplies}
-        submitSupplies={submitSupplies}
-        renderSection={renderSection}
-      />
 
       {/* EDIT NAME MODAL (Updated Input & Smart Button) */}
       {showEditNameModal && (
