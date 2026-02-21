@@ -219,23 +219,27 @@ EMAIL_TIMEOUT = 30
 SMTP_UNVERIFIED_CONTEXT = ssl._create_unverified_context()
 
 # ---------------------------------------------------------
-# SESSION / CSRF COOKIE SETTINGS (LOCAL DEV)
+# SESSION / CSRF COOKIE SETTINGS (PRODUCTION / LIVE SITE)
 # ---------------------------------------------------------
-# NOTE: we intentionally DO NOT set *_COOKIE_DOMAIN so that the cookies
-# are bound to whatever host you’re actually using (localhost).
-SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_HTTPONLY = True
+# SET SAME SITE COOKIES TO NONE TO PREVENT API RESTRICTIONS
+# SET HTTPONLY TO FALSE
+# ADD FRONTEND DOMAINS TO TRUSTED ORIGINS
 
-CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_HTTPONLY = False
+
+CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://kioskguys-front.onrender.com/dashboard",
+    "https://kioskguys-front.onrender.com/",
 ]
 
 # Optional: custom list you mentioned (Django will ignore unknown settings)
