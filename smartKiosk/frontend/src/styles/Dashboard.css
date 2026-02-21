@@ -3145,3 +3145,37 @@ select option {
   border-radius: 4px;
   backdrop-filter: blur(4px);
 }
+
+
+/* ============================================================
+   ABSOLUTE TOP RIGHT SIGN OUT BUTTON
+   ============================================================ */
+.corner-signout-wrapper {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 100;
+}
+
+.btn-red-signout {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: 1px solid #b91c1c;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-red-signout:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+  filter: brightness(1.1);
+}
+
+.btn-red-signout:active {
+  transform: scale(0.95);
+}

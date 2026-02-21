@@ -361,20 +361,20 @@ export default function Dashboard() {
           showLogoutSplash ? 'dashboard-freeze' : ''
         }`}
       >
+        {/* 1. ABSOLUTE TOP RIGHT LOGOUT BUTTON */}
+        <div className="corner-signout-wrapper">
+          <button
+            onClick={handleLogout}
+            className="btn-red-signout"
+            disabled={isSigningOut}
+          >
+            {isSigningOut ? 'Signing Out…' : 'Sign Out'}
+          </button>
+        </div>
+
+        {/* CENTERED CONTENT GRID */}
         <div className='dashboard-grid'>
           
-          {/* 1. TOP RIGHT LOGOUT */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-            <button
-              onClick={handleLogout}
-              className='luxury-signout-btn'
-              disabled={isSigningOut}
-              style={{ width: 'auto', padding: '10px 24px', margin: 0 }}
-            >
-              {isSigningOut ? 'Signing Out…' : 'Sign Out'}
-            </button>
-          </div>
-
           {/* 2. CENTERED WELCOME TEXT */}
           <h1 className='welcome-heading'>
             Welcome, {display.name}!
@@ -439,9 +439,10 @@ export default function Dashboard() {
 
         </div>
       </div>
-      
+
+
       {/* ========================================= */}
-      {/* MODALS & OVERLAYS (Kept exactly as they were) */}
+      {/*             MODALS & OVERLAYS             */}
       {/* ========================================= */}
 
       {/* ADMIN PANEL */}
