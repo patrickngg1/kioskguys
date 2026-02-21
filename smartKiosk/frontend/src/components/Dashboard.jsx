@@ -65,13 +65,6 @@ const SmartButtonContent = ({
   </>
 );
 
-function extractUTAID(raw) {
-  if (!raw) return null;
-  const t3 = raw.match(/\+(\d{8,10})\?/);
-  if (t3) return t3[1];
-  return null;
-}
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -212,12 +205,6 @@ export default function Dashboard() {
     } finally {
       startLogoutSplash();
     }
-  };
-
-  const openEditName = () => {
-    setEditNameValue(profile?.fullName || user?.fullName || '');
-    setEditNameBtnState('idle'); // Reset button
-    setShowEditNameModal(true);
   };
 
   const handleSaveName = async (e) => {
@@ -373,50 +360,30 @@ export default function Dashboard() {
         className={`dashboard-view dashboard-fade-in ${
           showLogoutSplash ? 'dashboard-freeze' : ''
         }`}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: '100vh',
-          width: '100%',
-          padding: '20px',
-          maxWidth: '600px',
-          margin: '0 auto',
-        }}
       >
-        {/* TOP HEADER - SIGN OUT */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', marginBottom: '20px' }}>
-          <button
-            onClick={handleLogout}
-            className='luxury-signout-btn'
-            disabled={isSigningOut}
-            style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #d1d5db' }}
-          >
-            {isSigningOut ? 'Signing Out…' : 'Sign Out'}
-          </button>
-        </div>
+        <div className='dashboard-grid'>
+          
+          {/* 1. TOP RIGHT LOGOUT */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+            <button
+              onClick={handleLogout}
+              className='luxury-signout-btn'
+              disabled={isSigningOut}
+              style={{ width: 'auto', padding: '10px 24px', margin: 0 }}
+            >
+              {isSigningOut ? 'Signing Out…' : 'Sign Out'}
+            </button>
+          </div>
 
-        {/* CENTER CONTENT - GREETING & RESERVE CARD */}
-        <div
-          style={{
-            flexGrow: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-          }}
-        >
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '24px', textAlign: 'center' }}>
+          {/* 2. CENTERED WELCOME TEXT */}
+          <h1 className='welcome-heading'>
             Welcome, {display.name}!
           </h1>
 
-          {/* RESERVE CARD */}
-          <div
-            className='card action-card premium-card'
-            style={{ width: '100%', textAlign: 'center' }}
-          >
+          {/* 3. RESERVE CARD */}
+          <div className='card action-card premium-card' style={{ width: '100%' }}>
             <div className='premium-card-content'>
-              <div className='action-head' style={{ justifyContent: 'center' }}>
+              <div className='action-head'>
                 <div className='action-title'>Reserve Conference Room</div>
               </div>
               <p className='action-copy'>
@@ -427,7 +394,6 @@ export default function Dashboard() {
                   src={uiAssets.banner1}
                   alt='Reserve Preview'
                   className='card-preview-img'
-                  style={{ width: '100%', borderRadius: '12px', marginBottom: '20px' }}
                 />
               )}
               <button
@@ -445,36 +411,35 @@ export default function Dashboard() {
                   setShowReserveModal(true);
                 }}
                 className='btn-uta-blue'
-                style={{ width: '100%' }}
               >
                 Open Scheduler
               </button>
             </div>
           </div>
-        </div>
 
-        {/* BOTTOM FOOTER - ADMIN DASHBOARD */}
-        {user?.isAdmin && (
-          <div style={{ marginTop: 'auto', width: '100%', paddingTop: '30px' }}>
-            <div className='card action-card' style={{ width: '100%', textAlign: 'center' }}>
-              <div className='action-head' style={{ justifyContent: 'center' }}>
-                <div className='action-title'>Admin Dashboard</div>
+          {/* 4. BOTTOM FOOTER - ADMIN DASHBOARD */}
+          {user?.isAdmin && (
+            <div className='admin-bottom-wrapper'>
+              <div className='card action-card'>
+                <div className='action-head'>
+                  <div className='action-title'>Admin Dashboard</div>
+                </div>
+                <p className='action-copy'>
+                  Manage rooms, reservations, items & users.
+                </p>
+                <button
+                  onClick={() => setShowAdminPanel(true)}
+                  className='btn-uta-admin'
+                >
+                  Open Admin Panel
+                </button>
               </div>
-              <p className='action-copy'>
-                Manage rooms, reservations, items & users.
-              </p>
-              <button
-                onClick={() => setShowAdminPanel(true)}
-                className='btn-uta-admin'
-                style={{ width: '100%' }}
-              >
-                Open Admin Panel
-              </button>
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
+        </div>
+      </div>
+      
       {/* ========================================= */}
       {/* MODALS & OVERLAYS (Kept exactly as they were) */}
       {/* ========================================= */}
