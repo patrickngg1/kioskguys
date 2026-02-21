@@ -101,6 +101,7 @@ CORS_ALLOWED_ORIGINS = [ # Must update ALL websites here or else wont work
     "https://utakiosk.netlify.app",
     "https://kioskguys-front.onrender.com/",
     "https://kioskguys-front.onrender.com/dashboard",
+    "https://kioskguys.onrender.com/",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -241,6 +242,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
     "https://kioskguys-front.onrender.com/dashboard",
     "https://kioskguys-front.onrender.com/",
+    "https://kioskguys.onrender.com/", # Backend
 ]
 
 # Optional: custom list you mentioned (Django will ignore unknown settings)
