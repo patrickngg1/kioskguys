@@ -3151,10 +3151,10 @@ select option {
    ABSOLUTE TOP RIGHT SIGN OUT BUTTON
    ============================================================ */
 .corner-signout-wrapper {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 100;
+  position: fixed;  /* This makes it follow you when you scroll */
+  top: 1rem;        /* Pushes it closer to the top edge */
+  right: 1rem;      /* Pushes it closer to the right edge */
+  z-index: 9999;    /* Ensures it always stays on top of other content */
 }
 
 .btn-red-signout {
