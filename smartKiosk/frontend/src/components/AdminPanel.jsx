@@ -1405,9 +1405,8 @@ function BannersSection({ }) {
   const loadBanners = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch('/api/banners/', { method: 'GET' });
-      const data = await res.json();
-      setBanners(data.ok ? data.banners || [] : []);
+      const data = await apiFetch('/api/banners/', { method: 'GET' }); // <-- already JSON
+      setBanners(data?.ok ? (data.banners ?? []) : []);
     } catch (err) {
       console.error('Failed to load banners:', err);
       setBanners([]);
