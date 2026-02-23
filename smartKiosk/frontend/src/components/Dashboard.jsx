@@ -129,19 +129,20 @@ export default function Dashboard() {
     async function initUser() {
       try {
         const sessionUser = await getSessionUser();
+        const u = sessionUser?.user ?? sessionUser;
 
         if (!sessionUser) {
           navigate('/');
           return;
         }
 
-        setUser(sessionUser);
+        setUser(u);
         setProfile({
-          fullName: sessionUser.fullName,
-          email: sessionUser.email,
+          fullName: u.fullName,
+          email: u.email,
         });
 
-        const resetRequiredByServer = sessionUser.mustSetPassword === true;
+        const resetRequiredByServer = u.mustSetPassword === true;
         setMustSetPassword(resetRequiredByServer);
         setIsSetPasswordOpen(resetRequiredByServer);
 
@@ -411,7 +412,7 @@ export default function Dashboard() {
           </div>
 
           {/* 4. BOTTOM FOOTER - ADMIN DASHBOARD */}
-          {user?.isAdmin && (
+          {(user?.isAdmin === true) && (
             <div className='admin-bottom-wrapper'>
               <div className='card action-card'>
                 <div className='action-head'>
