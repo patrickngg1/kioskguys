@@ -572,7 +572,7 @@ function ReserveConferenceRoom({
     const loadRooms = async () => {
       setLoadingRooms(true);
       try {
-        const res = await fetch('/api/rooms/', { credentials: 'include' });
+        const res = await fetch('/api/rooms/', { method: 'GET', credentials: 'include' });
         const data = await res.json();
         setRooms(data.rooms || []);
       } catch {

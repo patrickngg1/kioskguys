@@ -1400,7 +1400,7 @@ function BannersSection({ }) {
   const loadBanners = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/banners/', { credentials: 'include' });
+      const res = await fetch('/api/banners/', { method: 'GET' });
       const data = await res.json();
       setBanners(data.ok ? data.banners || [] : []);
     } catch (err) {
