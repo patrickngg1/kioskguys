@@ -91,14 +91,14 @@ urlpatterns = [
     path("ui-assets/", views.get_ui_assets, name="ui_assets"),
 
     # Banner images
-    path("Banners/", views.list_banners),
-    path("Banners/upload/", views.upload_banner),
-    path("Banners/<int:banner_id>/activate/", views.activate_banner),
-    path("Banners/<int:banner_id>/deactivate/", views.deactivate_banner),
-    path("Banners/<int:banner_id>/delete/", views.delete_banner),
-    path("Banners/<int:banner_id>/schedule/", views.schedule_banner),
-    path("Banners/<int:banner_id>/update/", views.update_banner),
-    path("Banners/active/", views.get_active_banners),
+    path("banners/", views.list_banners),
+    path("banners/upload/", views.upload_banner),
+    path("banners/<int:banner_id>/activate/", views.activate_banner),
+    path("banners/<int:banner_id>/deactivate/", views.deactivate_banner),
+    path("banners/<int:banner_id>/delete/", views.delete_banner),
+    path("banners/<int:banner_id>/schedule/", views.schedule_banner),
+    path("banners/<int:banner_id>/update/", views.update_banner),
+    path("banners/active/", views.get_active_banners),
 
         # --------------------------
     # Card Swipe Auth
