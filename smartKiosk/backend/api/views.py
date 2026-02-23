@@ -59,7 +59,7 @@ def list_banners(request):
     for b in BannerImage.objects.all():
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(b.image.url),
+            "image_url": request.build_absolute_uri(static(f"Banners/{b.image.name}")),
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
@@ -99,7 +99,7 @@ def upload_banner(request):
         "ok": True,
         "banner": {
             "id": banner.id,
-            "image_url": request.build_absolute_uri(banner.image.url),
+            "image_url": request.build_absolute_uri(b.image.url),
             "label": banner.label,
             "link": banner.link, # ✅ RETURN LINK
             "is_active": banner.is_active,
@@ -235,7 +235,7 @@ def get_active_banners(request):
         "banners": [
             {
                 "id": b.id,
-                "image_url": request.build_absolute_uri(b.image.url),
+                "image_url": request.build_absolute_uri(static(f"Banners/{b.image.name}")),
                 "label": b.label,
                 "link": b.link,
             }
