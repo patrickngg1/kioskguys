@@ -4,6 +4,7 @@ import '../styles/AdminPanel.css';
 import '../styles/PremiumModal.css';
 import PremiumInput from './PremiumInput';
 import '../styles/PremiumInput.css';
+import { apiFetch } from '../api/api';
 
 // --- 1 TRILLION DOLLAR ANIMATIONS (Embedded for Instant Power) ---
 const PREMIUM_STYLES = `
@@ -1404,7 +1405,7 @@ function BannersSection({ }) {
   const loadBanners = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/banners/', { method: 'GET' });
+      const res = await apiFetch('/api/banners/', { method: 'GET' });
       const data = await res.json();
       setBanners(data.ok ? data.banners || [] : []);
     } catch (err) {
@@ -1464,7 +1465,7 @@ function BannersSection({ }) {
     formData.append('link', bannerLink);
 
     try {
-      const res = await fetch('/api/banners/upload/', {
+      const res = await apiFetch('/api/banners/upload/', {
         method: 'POST',
         credentials: 'include',
         body: formData,

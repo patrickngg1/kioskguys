@@ -1,6 +1,6 @@
 // api.js (THE ONLY PLACE fetch() IS USED)
 
-export const API_BASE = import.meta.env.VITE_API_URL.replace(/\/$/, "");
+export const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 const devLog = (...args) => {
   if (import.meta.env.DEV) console.log(...args);
