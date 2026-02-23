@@ -355,29 +355,28 @@ export default function Dashboard() {
   
   return (
     <>
+      {/* 1. MOVED OUTSIDE: This guarantees it sticks to the true top-right of the screen */}
+      <div className="corner-signout-wrapper">
+        <button
+          onClick={handleLogout}
+          className="btn-red-signout"
+          disabled={isSigningOut}
+        >
+          {isSigningOut ? 'Signing Out…' : 'Sign Out'}
+        </button>
+      </div>
+
       {/* MAIN DASHBOARD */}
       <div
         className={`dashboard-view dashboard-fade-in ${
           showLogoutSplash ? 'dashboard-freeze' : ''
         }`}
       >
-        {/* 1. ABSOLUTE TOP RIGHT LOGOUT BUTTON */}
-        <div className="corner-signout-wrapper">
-          <button
-            onClick={handleLogout}
-            className="btn-red-signout"
-            disabled={isSigningOut}
-          >
-            {isSigningOut ? 'Signing Out…' : 'Sign Out'}
-          </button>
-        </div>
-
-        {/* CENTERED CONTENT GRID */}
         <div className='dashboard-grid'>
           
-          {/* 2. CENTERED WELCOME TEXT */}
+          {/* 2. ADDED FALLBACK: This prevents "Welcome, !" if the name hasn't loaded yet */}
           <h1 className='welcome-heading'>
-            Welcome, {display.name}!
+            Welcome, {display?.name || 'User'}!
           </h1>
 
           {/* 3. RESERVE CARD */}
@@ -399,14 +398,8 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   setReservationData({
-                    room: '',
-                    date: '',
-                    startHour: '',
-                    startMin: '',
-                    startPeriod: 'AM',
-                    endHour: '',
-                    endMin: '',
-                    endPeriod: 'AM',
+                    room: '', date: '', startHour: '', startMin: '',
+                    startPeriod: 'AM', endHour: '', endMin: '', endPeriod: 'AM',
                   });
                   setShowReserveModal(true);
                 }}
