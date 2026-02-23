@@ -236,6 +236,7 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
   }
 
   // ✅ HANDLER: Registration
+  // ✅ HANDLER: Registration
   async function handleRegister(e) {
     e.preventDefault();
     if (registerStatus !== 'idle') return;
@@ -262,19 +263,57 @@ export default function AuthForm({ onLoginSuccess, swipeState }) {
 
     setRegisterStatus('loading');
     try {
+      // 1. Create the user account
       await registerWithSession(
         fullName,
         email.trim().toLowerCase(),
         password,
         cardString
       );
+
+      // ==========================================
+      // 🟦 NEW: CARD LINKING & AUTO-LOGIN FLOW
+      // ==========================================
+      if (cardString) {
+        // Step A: Authenticate behind the scenes to establish the session cookies
+        const loginRes = await loginWithSession(email.trim().toLowerCase(), password);
+
+        // Step B: Link the card to their newly created session
+        await fetch('/api/card/register/', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_swipe: cardString }),
+        });
+
+        setRegisterStatus('success');
+        
+        // Step C: Skip the login screen entirely and push them into the app!
+        setTimeout(() => {
+          onLoginSuccess?.({
+            id: loginRes.id,
+            email: loginRes.email,
+            fullName: loginRes.fullName,
+            isAdmin: loginRes.isAdmin,
+            mustSetPassword: !!loginRes.mustSetPassword,
+          });
+        }, 1500);
+        return; // Exit early so we don't trigger the default login redirect below
+      }
+      // ==========================================
+
+      // IF NO CARD WAS SWIPED: Default behavior (Send back to login screen)
       setRegisterStatus('success');
       setTimeout(() => {
         setView('login');
         setRegisterStatus('idle');
         setPassword('');
         setConfirmPassword('');
+        // Clean up the card states just in case
+        setCardString('');
+        setSwipeBtnState('idle'); 
       }, 2000);
+      
     } catch (err) {
       // DYNAMIC FEEDBACK: e.g., "EMAIL ALREADY REGISTERED"
       const msg = err.message || 'FAILED';
