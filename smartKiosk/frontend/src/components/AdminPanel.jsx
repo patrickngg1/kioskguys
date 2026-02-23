@@ -184,11 +184,15 @@ export default function AdminPanel({
   const loadAdminReservations = async () => {
     setLoadingAdminReservations(true);
     try {
-      const res = await fetch('/api/rooms/reservations/all/', {
+      const res = await fetch(`/api/rooms/reservations/all/?t=${new Date().getTime()}`, {
         credentials: 'include',
       });
       const data = await res.json();
-      setAdminReservations(data.ok ? data.reservations || [] : []);
+      
+      // Bulletproof extraction
+      const resList = Array.isArray(data) ? data : (data.reservations || data.results || data.data || []);
+      
+      setAdminReservations(resList);
     } catch (err) {
       console.error(err);
       setAdminReservations([]);

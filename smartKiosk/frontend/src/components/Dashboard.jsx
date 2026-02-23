@@ -274,10 +274,15 @@ export default function Dashboard() {
 
   const loadReservations = async () => {
     try {
-      const data = await apiFetch(`/api/rooms/reservations/my/?t=${new Date().getTime()}`);
-      if (data.ok && Array.isArray(data.reservations)) {
-        setReservations(data.reservations);
-      }
+      const res = await apiFetch(`/api/rooms/reservations/my/?t=${new Date().getTime()}`);
+      
+      // If apiFetch returns a raw Response, parse it. If it already parsed it, just use it.
+      const data = typeof res.json === 'function' ? await res.json() : res;
+      
+      // Bulletproof extraction: checks if it's a direct array, or looks for common Django keys
+      const resList = Array.isArray(data) ? data : (data.reservations || data.results || data.data || []);
+      
+      setReservations(resList);
     } catch (err) {
       console.error("Failed to load reservations:", err);
     }
@@ -289,7 +294,7 @@ export default function Dashboard() {
     async function loadItems() {
       try {
         // apiFetch already returns JSON
-        const data = await apiFetch(`/api/items/?t=${new Date().getTime()}`);
+        const data = await apiFetch('/api/items/');
 
         let categoriesOut = {};
 
