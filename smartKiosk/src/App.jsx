@@ -164,9 +164,9 @@ function AppContent({ uiAssets }) {
                 ✕
               </button>
               
-              <h2>Still Here?</h2>
+              <h2>Are You Still Here?</h2>
               <p style={{ marginTop: '0.75rem', fontSize: '1.1rem' }}>
-                Returning to start screen in
+                Exiting Session In
               </p>
               
               <div
@@ -202,7 +202,7 @@ function AppContent({ uiAssets }) {
                   if (countdownRef.current) clearInterval(countdownRef.current);
                 }}
               >
-                Stay Here
+                Stay
               </button>
               
               <button
@@ -214,7 +214,7 @@ function AppContent({ uiAssets }) {
                   setStarted(false);
                 }}
               >
-                Finish
+                I'm Done
               </button>
             </div>
           </div>

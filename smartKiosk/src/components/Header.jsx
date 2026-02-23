@@ -40,8 +40,8 @@ export default function Header() {
           )}
 
           <div className='brand-text'>
-            <div className='brand-title'>ERSA Smart Kiosk</div>
-            <div className='brand-sub'>Engineering Research South • BLDG A</div>
+            <div className='brand-title'>ERB Smart Kiosk</div>
+            <div className='brand-sub'>Engineering Research Building • [West/South]</div>
           </div>
         </div>
 
