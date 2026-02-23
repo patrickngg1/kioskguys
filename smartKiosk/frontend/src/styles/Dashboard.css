@@ -44,12 +44,12 @@
 .dashboard-view {
   position: relative;
   min-height: 90vh;
-  width: 100%; /* <-- CHANGED from 100vw to 100% to fix mobile clipping */
+  width: 100vw;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  overflow-y: auto;
+  overflow-y: auto; /* ✅ enable internal scroll */
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
@@ -85,6 +85,31 @@
   text-align: center;
   margin-bottom: 0.5rem;
   text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================================
+   MAP CONTAINER — DYNAMIC HEIGHT FILL
+   ============================================================ */
+.dashboard-view .map-container {
+  grid-area: map;
+  /* Ensure it takes exactly 100% of the grid area height */
+  height: 100% !important;
+  min-height: 0; /* Prevents overflow in flex/grid containers */
+  display: flex;
+  flex-direction: column;
+  background: none !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Force the KioskMap inside to be responsive */
+.dashboard-view .map-container > * {
+  flex: 1 1 auto;
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 1.5rem;
+  overflow: hidden;
 }
 
 /* ============================================================
@@ -3126,10 +3151,10 @@ select option {
    ABSOLUTE TOP RIGHT SIGN OUT BUTTON
    ============================================================ */
 .corner-signout-wrapper {
-  position: fixed;
-  top: 1rem;
-  right: 1.5rem; /* Pushes it just slightly off the scrollbar */
-  z-index: 999999; /* Guarantees it floats over everything */
+  position: fixed;  /* This makes it follow you when you scroll */
+  top: 1rem;        /* Pushes it closer to the top edge */
+  right: 1rem;      /* Pushes it closer to the right edge */
+  z-index: 9999;    /* Ensures it always stays on top of other content */
 }
 
 .btn-red-signout {
