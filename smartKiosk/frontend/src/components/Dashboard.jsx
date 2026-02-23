@@ -274,7 +274,7 @@ export default function Dashboard() {
 
   const loadReservations = async () => {
     try {
-      const data = await apiFetch("/api/rooms/reservations/my/");
+      const data = await apiFetch(`/api/rooms/reservations/my/?t=${new Date().getTime()}`);
       if (data.ok && Array.isArray(data.reservations)) {
         setReservations(data.reservations);
       }
@@ -289,7 +289,7 @@ export default function Dashboard() {
     async function loadItems() {
       try {
         // apiFetch already returns JSON
-        const data = await apiFetch('/api/items/');
+        const data = await apiFetch(`/api/items/?t=${new Date().getTime()}`);
 
         let categoriesOut = {};
 
