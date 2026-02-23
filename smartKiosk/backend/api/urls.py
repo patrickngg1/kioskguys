@@ -90,7 +90,7 @@ urlpatterns = [
     # --------------------------
     path("ui-assets/", views.get_ui_assets, name="ui_assets"),
 
-    # Banner images
+    # Banner image
     path("banners/", views.list_banners),
     path("banners/upload/", views.upload_banner),
     path("banners/<int:banner_id>/activate/", views.activate_banner),
