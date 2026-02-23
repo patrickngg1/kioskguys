@@ -8,11 +8,11 @@ import {
 } from 'react-router-dom';
 
 import LoginPage from './components/LoginPage';
-import Dashboard from './components/Dashboard';
 import Header from './components/Header';
 import StartOverlay from './components/StartOverlay';
 import './styles/App.css';
 import './styles/Glass.css';
+import './styles/Dashboard.css'; // Make sure this is here so your modal styles load!
 
 // 🟦 NEW: Context to store all Django UI asset URLs
 export const UIAssetsContext = createContext(null);
@@ -31,7 +31,6 @@ function PageLayout() {
     <div className={layoutClass}>
       <Routes>
         <Route path='/' element={<LoginPage />} />
-        <Route path='/dashboard' element={<Dashboard />} />
       </Routes>
     </div>
   );
@@ -39,22 +38,38 @@ function PageLayout() {
 
 function AppContent({ uiAssets }) {
   const [started, setStarted] = useState(false);
-  const inactivityTimer = useRef(null);
   const location = useLocation();
 
   const onDashboard = location.pathname.includes('dashboard');
   const allowContent = started || onDashboard;
 
-  // Inactivity overlay logic (unchanged)
+  // --- Inactivity Modal State ---
+  const [showInactivityModal, setShowInactivityModal] = useState(false);
+  const [countdown, setCountdown] = useState(10);
+  const [ringProgress, setRingProgress] = useState(0);
+
+  const inactivityTimer = useRef(null);
+  const countdownRef = useRef(null);
+
+  const IDLE_LIMIT = 20000; // 60 seconds
+  const WARNING_TIME = 10; // 10 seconds warning
+
+  // 1. Idle Timer Logic
   useEffect(() => {
     if (onDashboard) return;
     if (!started) return;
 
     const resetTimer = () => {
+      // Don't reset the background idle timer if the warning modal is currently up
+      if (showInactivityModal) return;
+
       clearTimeout(inactivityTimer.current);
       inactivityTimer.current = setTimeout(() => {
-        setStarted(false);
-      }, 60000);
+        // Time is up! Pop the modal instead of resetting immediately
+        setCountdown(WARNING_TIME);
+        setRingProgress(0);
+        setShowInactivityModal(true);
+      }, IDLE_LIMIT);
     };
 
     const events = ['click', 'mousemove', 'keydown', 'touchstart'];
@@ -65,7 +80,36 @@ function AppContent({ uiAssets }) {
       clearTimeout(inactivityTimer.current);
       events.forEach((ev) => window.removeEventListener(ev, resetTimer));
     };
-  }, [started, onDashboard]);
+  }, [started, onDashboard, showInactivityModal]);
+
+  // 2. 10-Second Countdown Logic
+  useEffect(() => {
+    if (showInactivityModal) {
+      countdownRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            // Countdown finished! Return to start screen
+            clearInterval(countdownRef.current);
+            setShowInactivityModal(false);
+            setStarted(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(countdownRef.current);
+    }
+
+    return () => clearInterval(countdownRef.current);
+  }, [showInactivityModal]);
+
+  // 3. Ring Progress Math
+  useEffect(() => {
+    const progress = ((WARNING_TIME - countdown) / WARNING_TIME) * 360;
+    setRingProgress(progress);
+  }, [countdown]);
+
 
   return (
     <>
@@ -77,6 +121,104 @@ function AppContent({ uiAssets }) {
       <UIAssetsContext.Provider value={uiAssets}>
         {allowContent && <Header />}
         {allowContent && <PageLayout />}
+
+        {/* ========================================= */}
+        {/* INACTIVITY OVERLAY & MODAL                */}
+        {/* ========================================= */}
+        {showInactivityModal && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 999999
+            }}
+          >
+            {/* 1. SIBLING BACKGROUND DIMMER: Keeps the text sharp! */}
+            <div 
+              className='inactivity-dim' 
+              style={{ position: 'absolute', inset: 0, zIndex: 0 }}
+            ></div>
+
+            {/* 2. THE MODAL BOX */}
+            <div
+              className='modal-box inactivity-modal-enter'
+              style={{ 
+                width: '90%',        // <--- FIX: Forces it to not be skinny!
+                maxWidth: '420px', 
+                textAlign: 'center',
+                position: 'relative',
+                zIndex: 1            // <--- Places it above the dimmer
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className='close-btn'
+                onClick={() => {
+                  setShowInactivityModal(false);
+                  if (countdownRef.current) clearInterval(countdownRef.current);
+                }}
+              >
+                ✕
+              </button>
+              
+              <h2>Still Here?</h2>
+              <p style={{ marginTop: '0.75rem', fontSize: '1.1rem' }}>
+                Returning to start screen in
+              </p>
+              
+              <div
+                className={`countdown-ring ${
+                  countdown <= 3
+                    ? 'ring-glow-strong'
+                    : countdown <= 6
+                    ? 'ring-glow'
+                    : ''
+                }`}
+                style={{
+                  background: `conic-gradient(var(--uta-orange) ${ringProgress}deg, var(--uta-blue) ${ringProgress}deg)`,
+                }}
+              >
+                <div
+                  className={`countdown-ring-inner ${
+                    countdown <= 3
+                      ? 'text-pulse-strong'
+                      : countdown <= 6
+                      ? 'text-pulse'
+                      : ''
+                  }`}
+                >
+                  {countdown}s
+                </div>
+              </div>
+              
+              <button
+                className='btn btn-primary w-full'
+                style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}
+                onClick={() => {
+                  setShowInactivityModal(false);
+                  if (countdownRef.current) clearInterval(countdownRef.current);
+                }}
+              >
+                Stay Here
+              </button>
+              
+              <button
+                className='btn btn-primary w-full'
+                style={{ background: '#d72638' }}
+                onClick={() => {
+                  if (countdownRef.current) clearInterval(countdownRef.current);
+                  setShowInactivityModal(false);
+                  setStarted(false);
+                }}
+              >
+                Finish
+              </button>
+            </div>
+          </div>
+        )}
       </UIAssetsContext.Provider>
     </>
   );
