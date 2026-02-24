@@ -56,11 +56,10 @@ def list_banners(request):
 
     banners = []
     for b in BannerImage.objects.all():
-        filename = os.path.basename(b.image.name)  # "Finals.png"
-
+        
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(static(f"{filename}")),
+            "image_url": request.build_absolute_uri(static(f"{b.image.name}")),
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
