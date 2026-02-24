@@ -208,7 +208,7 @@ export default function AdminPanel({
   const loadAdminItems = async () => {
     setLoadingItems(true);
     try {
-      const data = await apiFetch("/api/items/all/", { method: "GET" });
+      const data = await apiFetch("/api/items/", { method: "GET" });
 
       if (!data?.ok) {
         setAdminItemsByCategory({});
@@ -2097,15 +2097,18 @@ function UsersSection({
 }) {
   const [togglingUsers, setTogglingUsers] = useState({});
 
+
+
   const toggleUserAdmin = async (userId) => {
-    setTogglingUsers((prev) => ({ ...prev, [userId]: 'loading' }));
+    setTogglingUsers((prev) => ({ ...prev, [userId]: "loading" }));
+
     try {
-      const res = await fetch(`/api/users/${userId}/toggle-admin/`, {
-        method: 'POST',
-        credentials: 'include',
+      // apiFetch returns JSON already (and uses credentials: "include")
+      const data = await apiFetch(`/api/users/${userId}/toggle-admin/`, {
+        method: "POST",
       });
-      const data = await res.json();
-      if (!data.ok) {
+
+      if (!data?.ok) {
         setTogglingUsers((prev) => {
           const next = { ...prev };
           delete next[userId];
@@ -2114,14 +2117,13 @@ function UsersSection({
         return;
       }
 
-      setTogglingUsers((prev) => ({ ...prev, [userId]: 'success' }));
+      setTogglingUsers((prev) => ({ ...prev, [userId]: "success" }));
 
       setTimeout(() => {
         setAdminUsers((prev) =>
-          prev.map((u) =>
-            u.id === userId ? { ...u, isAdmin: data.isAdmin } : u
-          )
+          prev.map((u) => (u.id === userId ? { ...u, isAdmin: data.isAdmin } : u))
         );
+
         setTogglingUsers((prev) => {
           const next = { ...prev };
           delete next[userId];
