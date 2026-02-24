@@ -232,7 +232,7 @@ def get_active_banners(request):
 
     return JsonResponse({
         "ok": True,
-        "banners": [
+        "Banners": [
             {
                 "id": b.id,
                 "image_url": request.build_absolute_uri(static(f"{b.image.name}")),
