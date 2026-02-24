@@ -1552,6 +1552,30 @@ function BannersSection({ }) {
       chipClass: 'banner-status-chip scheduled',
     };
   };
+
+    const executeDeleteBanner = async () => {
+    if (!confirmDeleteBanner) return;
+
+    setDeleteBtnState("loading");
+    try {
+      const data = await apiFetch(`/api/banners/${confirmDeleteBanner.id}/delete/`, {
+        method: "POST",
+      });
+
+      if (!data?.ok) throw new Error(data?.error || "Failed to delete banner");
+
+      setDeleteBtnState("success");
+      setTimeout(() => {
+        setConfirmDeleteBanner(null);
+        setDeleteBtnState("idle");
+        loadBanners(); // refresh list
+      }, 1200);
+    } catch (err) {
+      console.error("Delete banner failed:", err);
+      triggerUploadError?.(err?.message || "Delete failed");
+      setDeleteBtnState("idle");
+    }
+  };
   return (
     <div className='admin-section'>
       <div
