@@ -185,7 +185,7 @@ export default function AdminPanel({
   const loadAdminReservations = async () => {
     setLoadingAdminReservations(true);
     try {
-            const data = await apiFetch(`/api/rooms/reservations/all/?t=${Date.now()}`);
+      const data = await apiFetch(`/api/rooms/reservations/all/?t=${Date.now()}`);
       const resList = Array.isArray(data) ? data : (data.reservations || data.results || data.data || []);
       setAdminReservations(resList);
     } catch (err) {
@@ -1467,37 +1467,40 @@ function BannersSection({ }) {
   };
 
   const handleUpload = async () => {
-    if (!bannerTitle.trim()) return triggerUploadError('Title Required');
-    if (!uploadFile) return triggerUploadError('File Required');
+  if (!bannerTitle.trim()) return triggerUploadError("Title Required");
+  if (!uploadFile) return triggerUploadError("File Required");
 
-    setUploadBtnState('loading');
+    setUploadBtnState("loading");
 
     const formData = new FormData();
-    formData.append("image", uploadFile);    
-    formData.append("title", bannerTitle.trim());  
+    formData.append("image", uploadFile);           // ✅ was "file"
+    formData.append("title", bannerTitle.trim());   // ✅ was "label"
     if (bannerLink?.trim()) formData.append("link", bannerLink.trim());
 
     try {
-      const data = await apiFetch('/api/banners/upload/', {
-        method: 'POST',
+      const data = await apiFetch("/api/banners/upload/", {
+        method: "POST",
         body: formData,
       });
-      
-      if (data.ok) {
-        setUploadBtnState('success');
+
+      if (data?.ok) {
+        setUploadBtnState("success");
         setTimeout(() => {
           setShowUploadModal(false);
           setUploadFile(null);
-          setBannerTitle('');
-          setBannerLink('');
-          setUploadBtnState('idle');
+          setBannerTitle("");
+          setBannerLink("");
+          setUploadBtnState("idle");
           loadBanners();
         }, 1500);
       } else {
-        triggerUploadError(data.error || 'Upload failed');
+        triggerUploadError(data?.error || "Upload failed");
+        setUploadBtnState("idle");
       }
     } catch (err) {
-      triggerUploadError('Network Error');
+      console.error(err);
+      triggerUploadError(err?.message || "Upload failed");
+      setUploadBtnState("idle");
     }
   };
   const computeStatus = (b) => {
