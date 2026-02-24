@@ -186,7 +186,7 @@ export default function AdminPanel({
     setLoadingAdminReservations(true);
     try {
       // ✅ apiFetch already prefixes API_BASE (which should end with /api)
-      const data = await apiFetch(`/rooms/reservations/all/?t=${Date.now()}`);
+      const data = await apiFetch(`/api/rooms/reservations/all/?t=${Date.now()}`);
 
       // backend format: { ok: true, reservations: [...] }
       const resList = Array.isArray(data)
