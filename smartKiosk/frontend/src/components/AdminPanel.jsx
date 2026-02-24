@@ -185,11 +185,21 @@ export default function AdminPanel({
   const loadAdminReservations = async () => {
     setLoadingAdminReservations(true);
     try {
-      const data = await apiFetch(`/api/rooms/reservations/all/?t=${Date.now()}`);
-      const resList = Array.isArray(data) ? data : (data.reservations || data.results || data.data || []);
+      // ✅ apiFetch already prefixes API_BASE (which should end with /api)
+      const data = await apiFetch(`/rooms/reservations/all/?t=${Date.now()}`);
+
+      // backend format: { ok: true, reservations: [...] }
+      const resList = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.reservations)
+          ? data.reservations
+          : Array.isArray(data?.results)
+            ? data.results
+            : [];
+
       setAdminReservations(resList);
     } catch (err) {
-      console.error(err);
+      console.error("loadAdminReservations error:", err);
       setAdminReservations([]);
     } finally {
       setLoadingAdminReservations(false);

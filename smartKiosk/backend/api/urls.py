@@ -107,4 +107,6 @@ urlpatterns = [
     # --------------------------
     path("card/register/", views.register_card, name="register_card"),
     path("card/login/", views.login_with_card, name="login_with_card"),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] 
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
