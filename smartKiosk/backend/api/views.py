@@ -52,22 +52,23 @@ def list_banners(request):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
 
-    # Make sure scheduled banners are in the correct state before we return them
     auto_update_banner_state()
 
     banners = []
     for b in BannerImage.objects.all():
+        filename = os.path.basename(b.image.name)  # "Finals.png"
+
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(static(f"{b.image.name}")),
+            "image_url": request.build_absolute_uri(static(f"Banners/{filename}")),
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
-            "repeat_yearly": b.repeat_yearly, # ✅ ADD THIS LINE
+            "repeat_yearly": b.repeat_yearly,
             "start_date": b.start_date.isoformat() if b.start_date else None,
             "end_date": b.end_date.isoformat() if b.end_date else None,
-            
         })
+
     return JsonResponse({"ok": True, "banners": banners}, status=200)
 
 
@@ -99,7 +100,7 @@ def upload_banner(request):
         "ok": True,
         "banner": {
             "id": banner.id,
-            "image_url": request.build_absolute_uri(b.image.url),
+            "image_url": request.build_absolute_uri(static(f"Banners/{os.path.basename(banner.image.name)}")),
             "label": banner.label,
             "link": banner.link, # ✅ RETURN LINK
             "is_active": banner.is_active,
@@ -235,7 +236,9 @@ def get_active_banners(request):
         "banners": [
             {
                 "id": b.id,
-                "image_url": request.build_absolute_uri(static(f"{b.image.name}")),
+                "image_url": request.build_absolute_uri(
+                    static(f"Banners/{os.path.basename(b.image.name)}")
+                ),
                 "label": b.label,
                 "link": b.link,
             }
