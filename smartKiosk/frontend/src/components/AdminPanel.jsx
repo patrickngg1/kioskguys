@@ -328,20 +328,32 @@ export default function AdminPanel({
 
   const executeDeleteItem = async () => {
     if (!deleteItemTarget) return;
-    setGlobalActionState('loading');
+
+    setGlobalActionState("loading");
+
     try {
-      await fetch(`/api/items/${deleteItemTarget.id}/delete/`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      setGlobalActionState('success');
+      const data = await apiFetch(
+        `/api/items/${deleteItemTarget.id}/delete/`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (!data?.ok) {
+        throw new Error(data?.error || "Failed to delete item");
+      }
+
+      setGlobalActionState("success");
+
       setTimeout(() => {
-        loadAdminItems();
+        loadAdminItems();        // refresh list
         setDeleteItemTarget(null);
-        setGlobalActionState('idle');
+        setGlobalActionState("idle");
       }, 1500);
-    } catch {
-      setGlobalActionState('idle');
+
+    } catch (err) {
+      console.error("Delete item failed:", err);
+      setGlobalActionState("idle");
     }
   };
 
@@ -2313,7 +2325,7 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
     const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1) Validation
+    // 1) Validation: Name
     const trimmedName = name
       .trim()
       .split(" ")
@@ -2322,11 +2334,18 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
 
     if (!trimmedName) return triggerError("Name Required");
 
+    const hasExistingCategory = categoryKey && categoryKey !== "__new__";
+    const hasNewCategory = categoryKey === "__new__" && newCategoryName.trim();
+
+    if (!hasExistingCategory && !hasNewCategory) {
+      return triggerError("Category Required");
+    }
+
     const payload = { id: item?.id || null, name: trimmedName };
 
-    if (categoryKey && categoryKey !== "__new__") {
+    if (hasExistingCategory) {
       payload.category_key = categoryKey;
-    } else if (categoryKey === "__new__" && newCategoryName.trim()) {
+    } else if (hasNewCategory) {
       payload.new_category_name = newCategoryName.trim();
     }
 
@@ -2348,12 +2367,14 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
         const formData = new FormData();
         formData.append("file", imageFile);
 
-        const imgData = await apiFetch(`/api/items/${savedItem.id}/upload-image/`, {
-          method: "POST",
-          body: formData,
-        });
+        const imgData = await apiFetch(
+          `/api/items/${savedItem.id}/upload-image/`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-        // depending on backend shape, support either { ok:true, image:"..." } or { image:"..." }
         const newImageUrl = imgData?.image || imgData?.item?.image;
         if (newImageUrl) savedItem = { ...savedItem, image: newImageUrl };
       }
