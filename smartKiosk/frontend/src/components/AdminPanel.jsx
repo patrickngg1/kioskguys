@@ -268,37 +268,38 @@ export default function AdminPanel({
     }
   };
   const adminCancelReservation = async (reservationId) => {
-    setGlobalActionState('loading'); // Triggers loading spinner
-    try {
-      const res = await fetch(
-        `/api/rooms/reservations/${reservationId}/admin-cancel/`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ reason: 'Cancelled by administrator' }),
-        }
-      );
-      const data = await res.json();
-      if (data.ok) {
-        setGlobalActionState('success'); // Triggers green "Cancelled" state
+  setGlobalActionState("loading"); // Triggers loading spinner
 
-        // Pause so the admin can see the success animation on the Kiosk
-        setTimeout(() => {
-          if (typeof loadReservations === 'function') loadReservations();
-          loadAdminReservations();
-          setConfirmCancelId(null); // Closes the confirmation modal
-          setGlobalActionState('idle'); // Resets button state
-        }, 1500);
-      } else {
-        setGlobalActionState('idle');
+  try {
+    // apiFetch returns parsed JSON (not a Response)
+    const data = await apiFetch(
+      `/api/rooms/reservations/${reservationId}/admin-cancel/`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reason: "Cancelled by administrator" }),
+
       }
-    } catch (err) {
-      console.error(err);
-      setGlobalActionState('idle');
-    }
-  };
+    );
 
+    if (data?.ok) {
+      setGlobalActionState("success");
+
+      setTimeout(() => {
+        if (typeof loadReservations === "function") loadReservations();
+        if (typeof loadAdminReservations === "function") loadAdminReservations();
+        setConfirmCancelId(null);
+        setGlobalActionState("idle");
+      }, 1500);
+    } else {
+      console.error("Admin cancel failed:", data);
+      setGlobalActionState("idle");
+    }
+  } catch (err) {
+    // This will include backend error messages thrown by apiFetch (403/409/etc.)
+    console.error("Admin cancel error:", err);
+    setGlobalActionState("idle");
+  }
+};
   const openAddItemModal = () => {
     setEditingItem(null);
     setShowItemModal(true);
@@ -1406,24 +1407,26 @@ function BannersSection({ }) {
   }, []);
 
   const setBannerActiveState = async (id, shouldActivate) => {
-    setTogglingBanners((prev) => ({ ...prev, [id]: 'loading' }));
+    setTogglingBanners((prev) => ({ ...prev, [id]: "loading" }));
+
     try {
       const endpoint = shouldActivate
         ? `/api/banners/${id}/activate/`
         : `/api/banners/${id}/deactivate/`;
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        credentials: 'include',
+      // apiFetch returns JSON already
+      const data = await apiFetch(endpoint, {
+        method: "POST",
+        // no credentials here; apiFetch already includes credentials: "include"
+        // no headers needed
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'Action failed');
 
-      setTogglingBanners((prev) => ({ ...prev, [id]: 'success' }));
+      if (!data?.ok) throw new Error(data?.error || "Action failed");
 
-      // Snappy Refresh
+      setTogglingBanners((prev) => ({ ...prev, [id]: "success" }));
+
       setTimeout(() => {
-        loadBanners(); // Refresh the whole list to see computed status
+        loadBanners(); // refresh list
         setTogglingBanners((prev) => {
           const next = { ...prev };
           delete next[id];
@@ -1431,6 +1434,7 @@ function BannersSection({ }) {
         });
       }, 800);
     } catch (err) {
+      console.error("Toggle banner failed:", err);
       setTogglingBanners((prev) => {
         const next = { ...prev };
         delete next[id];
