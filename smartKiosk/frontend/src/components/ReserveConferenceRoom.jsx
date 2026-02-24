@@ -736,13 +736,10 @@ function ReserveConferenceRoom({
     try {
       const data = await apiFetch('/api/rooms/reserve/', {
         method: 'POST',
-        body: JSON.stringify(payloadObject),
+        body: JSON.stringify({ roomId, date, startTime: start24, endTime: end24 }),
       });
       
-      if (!res.ok || !data.ok) {
-        // API Error -> Trigger Error Button
-        return triggerError(data.error || 'Reservation Failed');
-      }
+      if (!data.ok) return triggerError(data.error || 'Reservation Failed');
 
       // 4. Success -> Green Button
       const r = data.reservation;

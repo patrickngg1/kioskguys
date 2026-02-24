@@ -1450,12 +1450,11 @@ function BannersSection({ }) {
     formData.append('link', bannerLink);
 
     try {
-      const res = await apiFetch('/api/banners/upload/', {
+      const data = await apiFetch('/api/banners/upload/', {
         method: 'POST',
-        credentials: 'include',
         body: formData,
       });
-      const data = await res.json();
+      
       if (data.ok) {
         setUploadBtnState('success');
         setTimeout(() => {
@@ -1909,7 +1908,7 @@ function BannerEditModal({
     formData.append('repeat_yearly', repeatYearly ? '1' : '0');
 
     try {
-      const res = await fetch(`/api/banners/${banner.id}/update/`, {
+      const res = await apiFetch(`/api/banners/${banner.id}/update/`, {
         method: 'POST',
         credentials: 'include',
         body: formData, // Browser sets correct Content-Type for FormData
