@@ -1473,8 +1473,8 @@ function BannersSection({ }) {
     setUploadBtnState("loading");
 
     const formData = new FormData();
-    formData.append("image", uploadFile);           // ✅ was "file"
-    formData.append("title", bannerTitle.trim());   // ✅ was "label"
+    formData.append("image", uploadFile);          // ✅ backend likely expects this
+    formData.append("title", bannerTitle.trim());
     if (bannerLink?.trim()) formData.append("link", bannerLink.trim());
 
     try {
