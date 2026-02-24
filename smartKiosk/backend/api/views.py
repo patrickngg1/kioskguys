@@ -60,7 +60,7 @@ def list_banners(request):
 
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(static(f"Banners/{filename}")),
+            "image_url": request.build_absolute_uri(static(f"{filename}")),
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
