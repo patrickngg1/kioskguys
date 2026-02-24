@@ -205,25 +205,35 @@ export default function AdminPanel({
     }
   };
 
-  const loadAdminItems = async () => {
+    const loadAdminItems = async () => {
     setLoadingItems(true);
+
     try {
+      
       const data = await apiFetch("/api/items/", { method: "GET" });
 
       if (!data?.ok) {
         setAdminItemsByCategory({});
         return;
       }
+      
+      if (data.categories && typeof data.categories === "object") {
+        setAdminItemsByCategory(data.categories);
+        return;
+      }
 
       const grouped = {};
-      for (const item of data.items || []) {
+      const items = Array.isArray(data.items) ? data.items : [];
+
+      for (const item of items) {
         const category = item.category_name || "Uncategorized";
         if (!grouped[category]) grouped[category] = [];
         grouped[category].push(item);
       }
+
       setAdminItemsByCategory(grouped);
     } catch (err) {
-      console.error(err);
+      console.error("loadAdminItems failed:", err);
       setAdminItemsByCategory({});
     } finally {
       setLoadingItems(false);
