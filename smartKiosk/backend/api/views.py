@@ -109,9 +109,7 @@ def upload_banner(request):
             "ok": True,
             "banner": {
                 "id": banner.id,
-                "image_url": request.build_absolute_uri(
-                    static(f"Banners/{os.path.basename(banner.image.name)}")
-                ),
+                "image_url": request.build_absolute_uri(banner.image.url) if banner.image else None,
                 "label": banner.label,
                 "link": banner.link,
                 "is_active": banner.is_active,
@@ -369,7 +367,7 @@ def update_banner(request, banner_id):
                 "id": banner.id,
                 "label": banner.label,
                 "link": banner.link,
-                "image_url": image_url,
+                "image_url": request.build_absolute_uri(banner.image.url) if banner.image else None,
                 "is_active": banner.is_active,
                 "start_date": banner.start_date.isoformat() if banner.start_date else None,
                 "end_date": banner.end_date.isoformat() if banner.end_date else None,
