@@ -2,8 +2,7 @@
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from django.conf.urls.static import static
-
-from smartKiosk.backend.kiosks import settings
+from django.conf import settings
 from . import views
 from .views import login_user, get_session_user, cancel_room_reservations_bulk, password_reset_request, get_all_items
 
