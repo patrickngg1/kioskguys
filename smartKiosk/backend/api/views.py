@@ -56,10 +56,11 @@ def list_banners(request):
 
     banners = []
     for b in BannerImage.objects.all():
-        
+        filename = os.path.basename(b.image.name)
+
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(static(f"{b.image.name}")),
+            "image_url": request.build_absolute_uri(f"/static/Banners/{filename}"),
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
@@ -227,7 +228,6 @@ def delete_banner(request, banner_id):
 @require_GET
 def get_active_banners(request):
     auto_update_banner_state()
-
     banners = BannerImage.objects.filter(is_active=True)
 
     return JsonResponse({
@@ -236,7 +236,7 @@ def get_active_banners(request):
             {
                 "id": b.id,
                 "image_url": request.build_absolute_uri(
-                    static(f"Banners/{os.path.basename(b.image.name)}")
+                    f"/static/Banners/{os.path.basename(b.image.name)}"
                 ),
                 "label": b.label,
                 "link": b.link,
