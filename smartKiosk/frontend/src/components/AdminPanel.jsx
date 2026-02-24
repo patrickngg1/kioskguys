@@ -185,14 +185,8 @@ export default function AdminPanel({
   const loadAdminReservations = async () => {
     setLoadingAdminReservations(true);
     try {
-      const res = await fetch(`/api/rooms/reservations/all/?t=${new Date().getTime()}`, {
-        credentials: 'include',
-      });
-      const data = await res.json();
-      
-      // Bulletproof extraction
+            const data = await apiFetch(`/api/rooms/reservations/all/?t=${Date.now()}`);
       const resList = Array.isArray(data) ? data : (data.reservations || data.results || data.data || []);
-      
       setAdminReservations(resList);
     } catch (err) {
       console.error(err);
@@ -204,8 +198,7 @@ export default function AdminPanel({
 
   const loadAdminRooms = async () => {
     try {
-      const res = await fetch('/api/rooms/', { credentials: 'include' });
-      const data = await res.json();
+      const data = await apiFetch('/api/rooms/');
       setFilterRoomsList(data.ok ? data.rooms || [] : []);
     } catch (err) {
       console.error(err);
@@ -814,8 +807,7 @@ function RoomsSection({ rooms }) {
   const loadRooms = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/rooms/', { credentials: 'include' });
-      const data = await res.json();
+      const data = await apiFetch('/api/rooms/');
       if (data.ok) setRoomList(data.rooms || []);
     } catch (err) {
       console.error(err);
@@ -892,18 +884,14 @@ function RoomsSection({ rooms }) {
           ? `/api/rooms/${roomForm.id}/update/`
           : '/api/rooms/create/';
 
-      const res = await fetch(url, {
+      const data = await apiFetch(url, {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: roomForm.name,
           capacity: parseInt(roomForm.capacity),
           features: roomForm.features,
         }),
       });
-
-      const data = await res.json();
 
       if (data.ok) {
         setBtnState('success');
@@ -927,12 +915,10 @@ function RoomsSection({ rooms }) {
 
     setDeleteBtnState('loading');
     try {
-      const res = await fetch(`/api/rooms/${deleteTarget.id}/delete/`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json();
-
+      const data = await apiFetch(`/api/rooms/${deleteTarget.id}/delete/`, {
+      method: 'POST',
+    });
+      
       if (res.ok && data.ok) {
         setDeleteBtnState('success');
         setTimeout(() => {
