@@ -2310,60 +2310,64 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
     }, 2500);
   };
 
-  const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. Validation -> Trigger Button Error
+    // 1) Validation
     const trimmedName = name
       .trim()
-      .split(' ')
+      .split(" ")
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
-    if (!trimmedName) return triggerError('Name Required');
+      .join(" ");
+
+    if (!trimmedName) return triggerError("Name Required");
 
     const payload = { id: item?.id || null, name: trimmedName };
-    if (categoryKey && categoryKey !== '__new__') {
+
+    if (categoryKey && categoryKey !== "__new__") {
       payload.category_key = categoryKey;
-    } else if (categoryKey === '__new__' && newCategoryName.trim()) {
+    } else if (categoryKey === "__new__" && newCategoryName.trim()) {
       payload.new_category_name = newCategoryName.trim();
     }
 
-    setBtnState('loading');
+    setBtnState("loading");
 
     try {
-      const res = await fetch('/api/items/save/', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+      // ✅ Save item (JSON)
+      const data = await apiFetch("/api/items/save/", {
+        method: "POST",
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'Failed to save item');
+
+      if (!data?.ok) throw new Error(data?.error || "Failed to save item");
 
       let savedItem = data.item;
 
+      // ✅ Optional image upload (FormData)
       if (imageFile) {
         const formData = new FormData();
-        formData.append('file', imageFile);
-        const imgRes = await fetch(`/api/items/${savedItem.id}/upload-image/`, {
-          method: 'POST',
-          credentials: 'include',
+        formData.append("file", imageFile);
+
+        const imgData = await apiFetch(`/api/items/${savedItem.id}/upload-image/`, {
+          method: "POST",
           body: formData,
         });
-        const imgData = await imgRes.json();
-        if (imgData.image) {
-          savedItem = { ...savedItem, image: imgData.image };
-        }
+
+        // depending on backend shape, support either { ok:true, image:"..." } or { image:"..." }
+        const newImageUrl = imgData?.image || imgData?.item?.image;
+        if (newImageUrl) savedItem = { ...savedItem, image: newImageUrl };
       }
 
-      setBtnState('success');
+      setBtnState("success");
       setTimeout(() => {
         onSaved && onSaved(savedItem);
         onClose();
-        setBtnState('idle');
+        setBtnState("idle");
       }, 1500);
     } catch (err) {
-      triggerError(err.message || 'Failed to save item.');
+      console.error(err);
+      triggerError(err?.message || "Failed to save item.");
+      setBtnState("idle");
     }
   };
 
