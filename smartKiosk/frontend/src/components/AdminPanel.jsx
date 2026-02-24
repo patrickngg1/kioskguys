@@ -208,21 +208,23 @@ export default function AdminPanel({
   const loadAdminItems = async () => {
     setLoadingItems(true);
     try {
-      const res = await fetch('/api/items/all/', { credentials: 'include' });
-      const data = await res.json();
-      if (!data.ok) {
+      const data = await apiFetch("/api/items/all/", { method: "GET" });
+
+      if (!data?.ok) {
         setAdminItemsByCategory({});
         return;
       }
+
       const grouped = {};
-      for (const item of data.items) {
-        const category = item.category_name || 'Uncategorized';
+      for (const item of data.items || []) {
+        const category = item.category_name || "Uncategorized";
         if (!grouped[category]) grouped[category] = [];
         grouped[category].push(item);
       }
       setAdminItemsByCategory(grouped);
     } catch (err) {
       console.error(err);
+      setAdminItemsByCategory({});
     } finally {
       setLoadingItems(false);
     }
@@ -231,11 +233,11 @@ export default function AdminPanel({
   const loadAdminUsers = async () => {
     setLoadingUsers(true);
     try {
-      const res = await fetch('/api/users/', { credentials: 'include' });
-      const data = await res.json();
-      setAdminUsers(data.ok ? data.users || [] : users || []);
+      const data = await apiFetch("/api/users/", { method: "GET" });
+      setAdminUsers(data?.ok ? data.users || [] : users || []);
     } catch (err) {
       console.error(err);
+      setAdminUsers(users || []);
     } finally {
       setLoadingUsers(false);
     }
@@ -244,27 +246,26 @@ export default function AdminPanel({
   // --- ACTIONS ---
 
   const deleteUser = async (userId) => {
-    setGlobalActionState('loading');
+    setGlobalActionState("loading");
     try {
-      const res = await fetch(`/api/users/${userId}/delete/`, {
-        method: 'POST',
-        credentials: 'include',
+      const data = await apiFetch(`/api/users/${userId}/delete/`, {
+        method: "POST",
       });
-      const data = await res.json();
-      if (!data.ok) {
-        setGlobalActionState('idle');
+
+      if (!data?.ok) {
+        setGlobalActionState("idle");
         return;
       }
 
-      setGlobalActionState('success');
+      setGlobalActionState("success");
       setTimeout(() => {
         setAdminUsers((prev) => prev.filter((u) => u.id !== userId));
         setConfirmDeleteUser(null);
-        setGlobalActionState('idle');
+        setGlobalActionState("idle");
       }, 1500);
     } catch (err) {
       console.error(err);
-      setGlobalActionState('idle');
+      setGlobalActionState("idle");
     }
   };
   const adminCancelReservation = async (reservationId) => {
