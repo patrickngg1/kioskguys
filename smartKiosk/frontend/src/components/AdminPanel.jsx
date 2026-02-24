@@ -1471,10 +1471,11 @@ function BannersSection({ }) {
     if (!uploadFile) return triggerUploadError('File Required');
 
     setUploadBtnState('loading');
+
     const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('label', bannerTitle);
-    formData.append('link', bannerLink);
+    formData.append("image", uploadFile);    
+    formData.append("title", bannerTitle.trim());  
+    if (bannerLink?.trim()) formData.append("link", bannerLink.trim());
 
     try {
       const data = await apiFetch('/api/banners/upload/', {
