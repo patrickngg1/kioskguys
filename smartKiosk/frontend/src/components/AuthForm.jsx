@@ -260,8 +260,7 @@ export default function AuthForm({ onLoginSuccess }) {
       await registerWithSession(
         fullName,
         email.trim().toLowerCase(),
-        password,
-        cardString
+        password
       );
       setRegisterStatus('success');
       setTimeout(() => {
