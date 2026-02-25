@@ -1971,7 +1971,7 @@ function BannerEditModal({
     formData.append("repeat_yearly", repeatYearly ? "1" : "0");
 
     try {
-      const data = await apiFetch(`/banners/${banner.id}/update/`, {
+      const data = await apiFetch(`/api/banners/${banner.id}/update/`, {
         method: "POST",
         body: formData,
       });
