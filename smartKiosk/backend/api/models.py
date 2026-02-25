@@ -3,9 +3,16 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils.text import slugify
+from datetime import datetime
+import os
 
 def banner_upload_path(instance, filename):
-    return f"Banners/{filename}"   # stored inside media/banners/
+
+    base, ext = os.path.splitext(filename)
+    safe = slugify(base) or "banner"
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return f"Banners/{safe}-{ts}{ext.lower()}"
 
 class BannerImage(models.Model):
     image = models.ImageField(upload_to=banner_upload_path)

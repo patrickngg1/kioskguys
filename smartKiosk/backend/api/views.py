@@ -46,6 +46,17 @@ from django.utils import timezone
 import random
 
 
+def _abs_media_url(request, file_field):
+
+    if not file_field:
+        return None
+    try:
+        rel = file_field.url  # uses MEDIA_URL automatically
+    except Exception:
+        return None
+    return request.build_absolute_uri(rel)
+
+
 # ---------------------------
 #  LIST ALL BANNERS (ADMIN)
 # ---------------------------
@@ -57,11 +68,9 @@ def list_banners(request):
 
     banners = []
     for b in BannerImage.objects.all():
-        filename = os.path.basename(b.image.name)
-
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(f"/static/Banners/{filename}"),
+            "image_url": _abs_media_url(request, b.image),
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
@@ -237,9 +246,11 @@ def delete_banner(request, banner_id):
 # ---------------------------
 #  GET ACTIVE BANNER (KIOSK)
 # ---------------------------
+
 @require_GET
 def get_active_banners(request):
     auto_update_banner_state()
+
     banners = BannerImage.objects.filter(is_active=True)
 
     return JsonResponse({
@@ -247,16 +258,13 @@ def get_active_banners(request):
         "banners": [
             {
                 "id": b.id,
-                "image_url": request.build_absolute_uri(
-                    f"/static/Banners/{os.path.basename(b.image.name)}"
-                ),
+                "image_url": _abs_media_url(request, b.image),
                 "label": b.label,
                 "link": b.link,
             }
             for b in banners
         ],
-    })
-
+    }, status=200)
 
 
 def auto_update_banner_state():
@@ -317,7 +325,6 @@ def update_banner(request, banner_id):
 
     link = request.POST.get("link")
 
-    # Only update if provided (avoid wiping label accidentally)
     if label is not None:
         banner.label = label.strip()
 
@@ -330,7 +337,6 @@ def update_banner(request, banner_id):
     end_raw = request.POST.get("end_date")
     repeat_raw = request.POST.get("repeat_yearly")
 
-    # Only update if provided (avoid wiping dates when field not sent)
     if start_raw is not None:
         banner.start_date = (
             parse_date(start_raw) if (start_raw and start_raw not in ["null", ""]) else None
@@ -345,21 +351,13 @@ def update_banner(request, banner_id):
         banner.repeat_yearly = str(repeat_raw).lower() in ["true", "1", "on", "yes"]
 
     # 3) Handle File Upload (accept image/file/banner)
-    uploaded = (
-        request.FILES.get("image") or request.FILES.get("file") or request.FILES.get("banner")
-    )
+    uploaded = request.FILES.get("image") or request.FILES.get("file") or request.FILES.get("banner")
     if uploaded:
         banner.image = uploaded
 
     # 4) Save and Recalculate
     banner.save()
     auto_update_banner_state()
-
-    image_url = (
-        request.build_absolute_uri(static(f"Banners/{os.path.basename(banner.image.name)}"))
-        if banner.image
-        else None
-    )
 
     return JsonResponse(
         {
@@ -368,7 +366,7 @@ def update_banner(request, banner_id):
                 "id": banner.id,
                 "label": banner.label,
                 "link": banner.link,
-                "image_url": request.build_absolute_uri(banner.image.url) if banner.image else None,
+                "image_url": _abs_media_url(request, banner.image),
                 "is_active": banner.is_active,
                 "start_date": banner.start_date.isoformat() if banner.start_date else None,
                 "end_date": banner.end_date.isoformat() if banner.end_date else None,
