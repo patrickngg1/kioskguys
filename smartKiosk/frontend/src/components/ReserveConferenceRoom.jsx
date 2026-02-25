@@ -795,44 +795,38 @@ function ReserveConferenceRoom({
   // --- SMART CANCEL BUTTON LOGIC ---
   const handleConfirmCancelSelected = async () => {
     if (selectedIds.length === 0) return;
-    setCancelBtnState('loading');
+    setCancelBtnState("loading");
 
     try {
-      let success = false;
-      let error = '';
+      let data;
 
       if (selectedIds.length === 1) {
         const id = selectedIds[0];
-        await apiFetch(`/api/rooms/reservations/${id}/cancel/`, {
-          method: 'POST',
+        data = await apiFetch(`/api/rooms/reservations/${id}/cancel/`, {
+          method: "POST",
         });
-        const data = await res.json();
-        if (data.ok) success = true;
-        else error = data.error;
       } else {
-        await apiFetch('/api/rooms/reservations/cancel-bulk/', {
-          method: 'POST',
+        data = await apiFetch("/api/rooms/reservations/cancel-bulk/", {
+          method: "POST",
           body: JSON.stringify({ ids: selectedIds, reason }),
         });
-        const data = await res.json();
-        if (data.ok) success = true;
-        else error = data.error;
       }
 
-      if (success) {
-        setCancelBtnState('success');
+      if (data?.ok) {
+        setCancelBtnState("success");
         setTimeout(() => {
-          setMyReservations((prev) =>
-            prev.filter((r) => !selectedIds.includes(r.id))
-          );
+          setMyReservations((prev) => prev.filter((r) => !selectedIds.includes(r.id)));
           clearSelection();
-          setCancelBtnState('idle');
+          setCancelBtnState("idle");
         }, 1500);
       } else {
-        triggerCancelError(error || 'Failed');
+        triggerCancelError(data?.error || "Failed");
+        setCancelBtnState("idle");
       }
-    } catch {
-      triggerCancelError('Network Error');
+    } catch (err) {
+      console.error("Cancel error:", err);
+      triggerCancelError(err?.message || "Network Error");
+      setCancelBtnState("idle");
     }
   };
 

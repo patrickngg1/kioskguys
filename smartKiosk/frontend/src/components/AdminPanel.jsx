@@ -1577,8 +1577,9 @@ function BannersSection({ }) {
       setDeleteBtnState("success");
       setTimeout(() => {
         setConfirmDeleteBanner(null);
+        setEditingBanner(null);  
         setDeleteBtnState("idle");
-        loadBanners(); // refresh list
+        loadBanners();
       }, 1200);
     } catch (err) {
       console.error("Delete banner failed:", err);
