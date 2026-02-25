@@ -947,41 +947,37 @@ function RoomsSection({ rooms }) {
   const handleDelete = async () => {
     if (!deleteTarget) return;
 
-    setDeleteBtnState('loading');
+    setDeleteBtnState("loading");
     try {
       const data = await apiFetch(`/api/rooms/${deleteTarget.id}/delete/`, {
-      method: 'POST',
-    });
-      
-      if (res.ok && data.ok) {
-        setDeleteBtnState('success');
+        method: "POST",
+      });
+
+      if (data?.ok) {
+        setDeleteBtnState("success");
         setTimeout(() => {
           loadRooms();
           setDeleteTarget(null);
-          setDeleteBtnState('idle');
+          setDeleteBtnState("idle");
         }, 1500);
       } else {
-        // --- SENTIENT ERROR LOGIC ---
-        // If there are future reservations, the backend returns data.error
-        let msg = data.error || 'Delete Failed';
-        if (msg.toLowerCase().includes('upcoming reservations'))
-          msg = 'Has Reservations';
+        let msg = data?.error || "Delete Failed";
+        if (msg.toLowerCase().includes("upcoming reservations")) msg = "Has Reservations";
 
         setErrorMsg(msg);
-        setDeleteBtnState('error'); // Triggers red shake animation
-
+        setDeleteBtnState("error");
         setTimeout(() => {
-          setDeleteBtnState('idle');
-          setErrorMsg('');
+          setDeleteBtnState("idle");
+          setErrorMsg("");
         }, 2500);
       }
     } catch (e) {
-      setErrorMsg('Network Error');
-      setDeleteBtnState('error');
-      setTimeout(() => setDeleteBtnState('idle'), 2500);
+      console.error("Delete room error:", e);
+      setErrorMsg(e?.message || "Network Error");
+      setDeleteBtnState("error");
+      setTimeout(() => setDeleteBtnState("idle"), 2500);
     }
   };
-
   return (
     <div className='admin-section'>
       <div
