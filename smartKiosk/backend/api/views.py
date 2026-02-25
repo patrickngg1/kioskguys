@@ -29,6 +29,7 @@ from accounts.models import UserProfile
 from django.utils.dateparse import parse_date
 from pathlib import Path
 from django.templatetags.static import static
+from urllib.parse import quote
 
 from .models import (
     Category,
@@ -633,6 +634,13 @@ def _image_url(request, image_name: str | None):
 # Returns all items grouped by category (display name)
 # Uses Django Media image URLs from Item.image
 # ---------------------------------------------------------
+def _static_item_fallback_url(request, item_name: str):
+    # Build: static/items/<SafeName>/<SafeName>.png
+    safe = item_name.strip().replace(" ", "_")
+    safe = quote(safe, safe="._-")  # encode weird chars safely
+    path = f"items/{safe}/{safe}.png"
+    return request.build_absolute_uri(static(path))
+
 @require_GET
 def get_items(request):
     items = Item.objects.select_related("category").all()
@@ -641,11 +649,18 @@ def get_items(request):
     for item in items:
         cat = getattr(item, "category", None)
 
-        # ✅ Prevent 500 if category is missing
         category_name = getattr(cat, "name", None) or "Uncategorized"
         category_key = getattr(cat, "key", None)
 
-        image_url = _image_url(request, getattr(item, "image_name", None))
+        # ✅ 1) If uploaded image exists -> MEDIA URL
+        if getattr(item, "image", None):
+            try:
+                image_url = request.build_absolute_uri(item.image.url)
+            except Exception:
+                image_url = None
+        else:
+            # ✅ 2) Otherwise fallback to STATIC naming convention
+            image_url = _static_item_fallback_url(request, item.name)
 
         categories.setdefault(category_name, []).append({
             "id": item.id,
@@ -656,7 +671,6 @@ def get_items(request):
         })
 
     return JsonResponse({"ok": True, "categories": categories}, status=200)
-
 
 # ---------------------------------------------------------
 # POST /api/items/<item_id>/upload-image/
