@@ -1952,42 +1952,39 @@ function BannerEditModal({
   };
 
   const handleSave = async () => {
-    // 1. Check for Title
-    if (!label.trim()) return triggerError('Title Required');
+    if (!label.trim()) return triggerError("Title Required");
 
-    // 2. BUG FIX: Prevent repeat if dates are missing
     if (repeatYearly && (!startDate || !endDate)) {
-      return triggerError('Dates Required for Repeat');
+      return triggerError("Dates Required for Repeat");
     }
 
-    setBtnState('loading');
+    setBtnState("loading");
+
     const formData = new FormData();
-    formData.append('label', label);
-    formData.append('link', link || '');
-    if (imageFile) formData.append('file', imageFile);
+    formData.append("label", label);
+    formData.append("link", link || "");
+    if (imageFile) formData.append("file", imageFile);
 
-    formData.append('start_date', startDate || '');
-    formData.append('end_date', endDate || '');
-
-    // Send as 1 or 0 to ensure high compatibility with most backends (Django/Node/PHP)
-    formData.append('repeat_yearly', repeatYearly ? '1' : '0');
+    formData.append("start_date", startDate || "");
+    formData.append("end_date", endDate || "");
+    formData.append("repeat_yearly", repeatYearly ? "1" : "0");
 
     try {
-      const res = await apiFetch(`/api/banners/${banner.id}/update/`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData, // Browser sets correct Content-Type for FormData
+      const data = await apiFetch(`/banners/${banner.id}/update/`, {
+        method: "POST",
+        body: formData,
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'Update failed');
 
-      setBtnState('success');
+      if (!data.ok) throw new Error(data.error || "Update failed");
+
+      setBtnState("success");
       setTimeout(() => {
         onSaved?.();
-        setBtnState('idle');
+        setBtnState("idle");
       }, 1000);
     } catch (err) {
-      triggerError(err.message || 'Update Error');
+      triggerError(err?.message || "Update Error");
+      setBtnState("idle");
     }
   };
 
