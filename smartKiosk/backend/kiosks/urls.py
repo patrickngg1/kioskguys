@@ -32,4 +32,5 @@ urlpatterns = [
     path('api/auth/jwt/refresh/', TokenRefreshView.as_view(), name='jwt_refresh'),
     path('api/auth/jwt/verify/', TokenVerifyView.as_view(), name='jwt_verify'),
 ]
+
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
