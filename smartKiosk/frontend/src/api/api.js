@@ -1,6 +1,6 @@
 // api.js (THE ONLY PLACE fetch() IS USED)
 
-export const API_BASE = import.meta.env.VITE_API_URL.replace(/\/$/, "");
+export const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 const devLog = (...args) => {
   if (import.meta.env.DEV) console.log(...args);
@@ -23,20 +23,23 @@ async function parseJsonSafe(res) {
 }
 
 export async function apiFetch(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
+
+  const headers = {
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(options.headers || {}),
+  };
+
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers,
   });
 
-  const data = await parseJsonSafe(res);
+  const contentType = res.headers.get("content-type") || "";
+  const text = await res.text();
+  const data = text && contentType.includes("application/json") ? JSON.parse(text) : {};
 
-  if (!res.ok) {
-    throw new Error(data?.error || `Request failed (${res.status})`);
-  }
-
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }

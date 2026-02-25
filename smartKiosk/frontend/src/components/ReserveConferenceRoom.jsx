@@ -4,6 +4,7 @@ import '../styles/reserveModal.css';
 import '../styles/PremiumInput.css';
 import PremiumInput from './PremiumInput';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { apiFetch } from '../api/api';
 
 // --- 100 BILLION DOLLAR STYLES (Embedded for Instant Power) ---
 const PREMIUM_STYLES = `
@@ -572,8 +573,8 @@ function ReserveConferenceRoom({
     const loadRooms = async () => {
       setLoadingRooms(true);
       try {
-        const res = await fetch('/api/rooms/', { method: 'GET', credentials: 'include' });
-        const data = await res.json();
+        const data = await apiFetch('/api/rooms/');
+        
         setRooms(data.rooms || []);
       } catch {
         setRooms([]);
@@ -588,10 +589,8 @@ function ReserveConferenceRoom({
       }
       setLoadingMyReservations(true);
       try {
-        const res = await fetch('/api/rooms/reservations/my/', {
-          credentials: 'include',
-        });
-        const data = await res.json();
+        const data = await apiFetch('/api/rooms/reservations/my/');
+
         setMyReservations(data.reservations || []);
       } catch {
         setMyReservations([]);
@@ -619,20 +618,18 @@ function ReserveConferenceRoom({
       setLoadingDayReservations(true);
       setDayReservationsError(null);
       try {
-        const res = await fetch(
+        const data = await apiFetch(
           `/api/rooms/reservations/by-date/?date=${reservationData.date}`,
-          { credentials: 'include', signal: controller.signal }
+          { signal: controller.signal }
         );
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          setDayReservations([]);
-          setDayReservationsError(data.error || 'Could not load availability.');
-        } else {
-          setDayReservations(data.reservations || []);
-        }
+        setDayReservations(data.reservations || []);
+        setDayReservationsError(null);
       } catch (err) {
-        if (err.name !== 'AbortError') setDayReservations([]);
-      } finally {
+        if (err.name !== 'AbortError') {
+          setDayReservations([]);
+          setDayReservationsError('Could not load availability.');
+        }
+      }finally {
         setLoadingDayReservations(false);
       }
     };
@@ -737,23 +734,12 @@ function ReserveConferenceRoom({
     setBtnState('loading');
 
     try {
-      const res = await fetch('/api/rooms/reserve/', {
+      const data = await apiFetch('/api/rooms/reserve/', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId,
-          date,
-          startTime: start24,
-          endTime: end24,
-        }),
+        body: JSON.stringify({ roomId, date, startTime: start24, endTime: end24 }),
       });
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        // API Error -> Trigger Error Button
-        return triggerError(data.error || 'Reservation Failed');
-      }
+      
+      if (!data.ok) return triggerError(data.error || 'Reservation Failed');
 
       // 4. Success -> Green Button
       const r = data.reservation;
@@ -817,19 +803,16 @@ function ReserveConferenceRoom({
 
       if (selectedIds.length === 1) {
         const id = selectedIds[0];
-        const res = await fetch(`/api/rooms/reservations/${id}/cancel/`, {
+        await apiFetch(`/api/rooms/reservations/${id}/cancel/`, {
           method: 'POST',
-          credentials: 'include',
         });
         const data = await res.json();
         if (data.ok) success = true;
         else error = data.error;
       } else {
-        const res = await fetch('/api/rooms/reservations/cancel-bulk/', {
+        await apiFetch('/api/rooms/reservations/cancel-bulk/', {
           method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: selectedIds, reason: 'User cancelled.' }),
+          body: JSON.stringify({ ids: selectedIds, reason }),
         });
         const data = await res.json();
         if (data.ok) success = true;

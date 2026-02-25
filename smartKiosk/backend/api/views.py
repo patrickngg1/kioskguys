@@ -52,22 +52,23 @@ def list_banners(request):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
 
-    # Make sure scheduled banners are in the correct state before we return them
     auto_update_banner_state()
 
     banners = []
     for b in BannerImage.objects.all():
+        filename = os.path.basename(b.image.name)
+
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(b.image.url),
+            "image_url": request.build_absolute_uri(f"/static/Banners/{filename}"),
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
-            "repeat_yearly": b.repeat_yearly, # ✅ ADD THIS LINE
+            "repeat_yearly": b.repeat_yearly,
             "start_date": b.start_date.isoformat() if b.start_date else None,
             "end_date": b.end_date.isoformat() if b.end_date else None,
-            
         })
+
     return JsonResponse({"ok": True, "banners": banners}, status=200)
 
 
@@ -80,33 +81,44 @@ def upload_banner(request):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
 
-    file = request.FILES.get("file")
-    if not file:
+    uploaded = (
+        request.FILES.get("image") 
+        or request.FILES.get("file") 
+        or request.FILES.get("banner")
+    )
+
+    if not uploaded:
         return JsonResponse({"ok": False, "error": "No file uploaded"}, status=400)
 
-    label = request.POST.get("label", "")
-    link = request.POST.get("link", "").strip()  # ✅ GET LINK
+    label = (request.POST.get("title") or request.POST.get("label") or "").strip()
+    link = (request.POST.get("link") or "").strip()
+
+    if not label:
+        return JsonResponse({"ok": False, "error": "Title required"}, status=400)
 
     banner = BannerImage.objects.create(
-        image=file,
+        image=uploaded,
         label=label,
-        link=link if link else None,  # ✅ SAVE LINK
+        link=link if link else None,
         start_date=None,
         end_date=None,
     )
 
-    return JsonResponse({
-        "ok": True,
-        "banner": {
-            "id": banner.id,
-            "image_url": request.build_absolute_uri(banner.image.url),
-            "label": banner.label,
-            "link": banner.link, # ✅ RETURN LINK
-            "is_active": banner.is_active,
-            "start_date": None,
-            "end_date": None,
+    return JsonResponse(
+        {
+            "ok": True,
+            "banner": {
+                "id": banner.id,
+                "image_url": request.build_absolute_uri(banner.image.url) if banner.image else None,
+                "label": banner.label,
+                "link": banner.link,
+                "is_active": banner.is_active,
+                "start_date": None,
+                "end_date": None,
+            },
         },
-    }, status=201)
+        status=201,
+    )
 
 
 @csrf_exempt
@@ -227,7 +239,6 @@ def delete_banner(request, banner_id):
 @require_GET
 def get_active_banners(request):
     auto_update_banner_state()
-
     banners = BannerImage.objects.filter(is_active=True)
 
     return JsonResponse({
@@ -235,7 +246,9 @@ def get_active_banners(request):
         "banners": [
             {
                 "id": b.id,
-                "image_url": request.build_absolute_uri(b.image.url),
+                "image_url": request.build_absolute_uri(
+                    f"/static/Banners/{os.path.basename(b.image.name)}"
+                ),
                 "label": b.label,
                 "link": b.link,
             }
@@ -296,40 +309,73 @@ def update_banner(request, banner_id):
     except BannerImage.DoesNotExist:
         return JsonResponse({"ok": False, "error": "Banner not found"}, status=404)
 
-    # 1. Update Text Fields
-    label = request.POST.get("label")
-    link = request.POST.get("link")
-    if label is not None: banner.label = label.strip()
-    banner.link = link.strip() if link else None
+    # 1) Update Text Fields (accept both frontend naming styles)
+    label = request.POST.get("title")
+    if label is None:
+        label = request.POST.get("label")
 
-    # Update Schedule & Repeat Yearly
+    link = request.POST.get("link")
+
+    # Only update if provided (avoid wiping label accidentally)
+    if label is not None:
+        banner.label = label.strip()
+
+    if link is not None:
+        link = link.strip()
+        banner.link = link if link else None
+
+    # 2) Update Schedule & Repeat Yearly
     start_raw = request.POST.get("start_date")
     end_raw = request.POST.get("end_date")
     repeat_raw = request.POST.get("repeat_yearly")
-    
-    banner.start_date = parse_date(start_raw) if (start_raw and start_raw not in ['null', '']) else None
-    banner.end_date = parse_date(end_raw) if (end_raw and end_raw not in ['null', '']) else None
-    
-    # FIX: Check for 'true', '1', or 'on' to handle various frontend formats
-    banner.repeat_yearly = str(repeat_raw).lower() in ["true", "1", "on"]
 
-    # 3. Handle File Upload
-    file = request.FILES.get("file")
-    if file:
-        banner.image = file
+    # Only update if provided (avoid wiping dates when field not sent)
+    if start_raw is not None:
+        banner.start_date = (
+            parse_date(start_raw) if (start_raw and start_raw not in ["null", ""]) else None
+        )
 
-    # 4. Save and Recalculate
+    if end_raw is not None:
+        banner.end_date = (
+            parse_date(end_raw) if (end_raw and end_raw not in ["null", ""]) else None
+        )
+
+    if repeat_raw is not None:
+        banner.repeat_yearly = str(repeat_raw).lower() in ["true", "1", "on", "yes"]
+
+    # 3) Handle File Upload (accept image/file/banner)
+    uploaded = (
+        request.FILES.get("image") or request.FILES.get("file") or request.FILES.get("banner")
+    )
+    if uploaded:
+        banner.image = uploaded
+
+    # 4) Save and Recalculate
     banner.save()
-    auto_update_banner_state() 
+    auto_update_banner_state()
 
-    return JsonResponse({
-        "ok": True,
-        "banner": {
-            "id": banner.id,
-            "is_active": banner.is_active,
-            "repeat_yearly": banner.repeat_yearly,
-        }
-    })
+    image_url = (
+        request.build_absolute_uri(static(f"Banners/{os.path.basename(banner.image.name)}"))
+        if banner.image
+        else None
+    )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "banner": {
+                "id": banner.id,
+                "label": banner.label,
+                "link": banner.link,
+                "image_url": request.build_absolute_uri(banner.image.url) if banner.image else None,
+                "is_active": banner.is_active,
+                "start_date": banner.start_date.isoformat() if banner.start_date else None,
+                "end_date": banner.end_date.isoformat() if banner.end_date else None,
+                "repeat_yearly": banner.repeat_yearly,
+            },
+        },
+        status=200,
+    )
 # ============================================================
 # GET /api/users/
 # List all users (TiDB-backed via UserProfile)
@@ -620,24 +666,43 @@ def get_items(request):
 @csrf_exempt
 @require_POST
 def upload_item_image(request, item_id):
+    # OPTIONAL: enforce admin if this is an admin-only action
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
+
     try:
         item = Item.objects.get(id=item_id)
     except Item.DoesNotExist:
         return JsonResponse({"ok": False, "error": "Item not found"}, status=404)
 
-    file = request.FILES.get("file")
-    if not file:
+    uploaded = (
+        request.FILES.get("image")
+        or request.FILES.get("file")
+        or request.FILES.get("upload")
+    )
+
+    if not uploaded:
         return JsonResponse({"ok": False, "error": "No file uploaded"}, status=400)
 
-    # Directly assign the uploaded file to the ImageField
-    item.image = file
+    # Assign and save
+    item.image = uploaded
     item.save()
 
-    # Return the new image URL so frontend can refresh
-    image_url = request.build_absolute_uri(item.image.url)
+    image_url = request.build_absolute_uri(item.image.url) if item.image else None
 
     return JsonResponse(
-        {"ok": True, "message": "Image uploaded successfully", "image": image_url},
+        {
+            "ok": True,
+            "message": "Image uploaded successfully",
+            "image": image_url,
+            "item": {
+                "id": item.id,
+                "name": item.name,
+                "image": image_url,
+                "category_key": item.category.key if item.category else None,
+                "category_name": item.category.name if item.category else None,
+            },
+        },
         status=200,
     )
 

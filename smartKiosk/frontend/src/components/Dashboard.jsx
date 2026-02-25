@@ -173,7 +173,7 @@ export default function Dashboard() {
 
       try {
         // 2. Fetch Active Banner from Admin
-        const res = await fetch('/api/banners/active/');
+        const res = await apiFetch('/api/banners/active/');
         const data = await res.json();
 
         if (data.ok && Array.isArray(data.banners)) {
