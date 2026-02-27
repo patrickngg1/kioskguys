@@ -57,9 +57,19 @@ def list_banners(request):
     banners = []
     for b in BannerImage.objects.all():
         
+        # 1. Safely extract just the filename
+        if b.image:
+            filename = os.path.basename(str(b.image.name))
+            # 2. Rebuild the clean relative path (e.g., '/media/Banners/image.jpg')
+            clean_path = f"{settings.MEDIA_URL}Banners/{filename}"
+            # 3. Add the correct domain (localhost or Render)
+            image_url = request.build_absolute_uri(clean_path)
+        else:
+            image_url = ""
+
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(static(f"{b.image.name}")),
+            "image_url": image_url,
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
@@ -229,20 +239,28 @@ def get_active_banners(request):
     auto_update_banner_state()
 
     banners = BannerImage.objects.filter(is_active=True)
+    
+    formatted_banners = []
+    for b in banners:
+        
+        # Apply the exact same parsing logic here
+        if b.image:
+            filename = os.path.basename(str(b.image.name))
+            clean_path = f"{settings.MEDIA_URL}Banners/{filename}"
+            image_url = request.build_absolute_uri(clean_path)
+        else:
+            image_url = ""
+            
+        formatted_banners.append({
+            "id": b.id,
+            "image_url": image_url,
+            "label": b.label,
+            "link": b.link,
+        })
 
     return JsonResponse({
         "ok": True,
-        "banners": [
-            {
-                "id": b.id,
-                "image_url": request.build_absolute_uri(
-                    static(f"Banners/{os.path.basename(b.image.name)}")
-                ),
-                "label": b.label,
-                "link": b.link,
-            }
-            for b in banners
-        ],
+        "banners": formatted_banners,
     })
 
 
