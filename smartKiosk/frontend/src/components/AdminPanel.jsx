@@ -185,17 +185,21 @@ export default function AdminPanel({
   const loadAdminReservations = async () => {
     setLoadingAdminReservations(true);
     try {
-      const res = await fetch(`/api/rooms/reservations/all/?t=${new Date().getTime()}`, {
-        credentials: 'include',
-      });
-      const data = await res.json();
-      
-      // Bulletproof extraction
-      const resList = Array.isArray(data) ? data : (data.reservations || data.results || data.data || []);
-      
+      // ✅ apiFetch already prefixes API_BASE (which should end with /api)
+      const data = await apiFetch(`/api/rooms/reservations/all/?t=${Date.now()}`);
+
+      // backend format: { ok: true, reservations: [...] }
+      const resList = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.reservations)
+          ? data.reservations
+          : Array.isArray(data?.results)
+            ? data.results
+            : [];
+
       setAdminReservations(resList);
     } catch (err) {
-      console.error(err);
+      console.error("loadAdminReservations error:", err);
       setAdminReservations([]);
     } finally {
       setLoadingAdminReservations(false);
@@ -204,32 +208,43 @@ export default function AdminPanel({
 
   const loadAdminRooms = async () => {
     try {
-      const res = await fetch('/api/rooms/', { credentials: 'include' });
-      const data = await res.json();
+      const data = await apiFetch('/api/rooms/');
       setFilterRoomsList(data.ok ? data.rooms || [] : []);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const loadAdminItems = async () => {
+    const loadAdminItems = async () => {
     setLoadingItems(true);
+
     try {
-      const res = await fetch('/api/items/all/', { credentials: 'include' });
-      const data = await res.json();
-      if (!data.ok) {
+      
+      const data = await apiFetch("/api/items/", { method: "GET" });
+
+      if (!data?.ok) {
         setAdminItemsByCategory({});
         return;
       }
+      
+      if (data.categories && typeof data.categories === "object") {
+        setAdminItemsByCategory(data.categories);
+        return;
+      }
+
       const grouped = {};
-      for (const item of data.items) {
-        const category = item.category_name || 'Uncategorized';
+      const items = Array.isArray(data.items) ? data.items : [];
+
+      for (const item of items) {
+        const category = item.category_name || "Uncategorized";
         if (!grouped[category]) grouped[category] = [];
         grouped[category].push(item);
       }
+
       setAdminItemsByCategory(grouped);
     } catch (err) {
-      console.error(err);
+      console.error("loadAdminItems failed:", err);
+      setAdminItemsByCategory({});
     } finally {
       setLoadingItems(false);
     }
@@ -238,11 +253,11 @@ export default function AdminPanel({
   const loadAdminUsers = async () => {
     setLoadingUsers(true);
     try {
-      const res = await fetch('/api/users/', { credentials: 'include' });
-      const data = await res.json();
-      setAdminUsers(data.ok ? data.users || [] : users || []);
+      const data = await apiFetch("/api/users/", { method: "GET" });
+      setAdminUsers(data?.ok ? data.users || [] : users || []);
     } catch (err) {
       console.error(err);
+      setAdminUsers(users || []);
     } finally {
       setLoadingUsers(false);
     }
@@ -251,61 +266,61 @@ export default function AdminPanel({
   // --- ACTIONS ---
 
   const deleteUser = async (userId) => {
-    setGlobalActionState('loading');
+    setGlobalActionState("loading");
     try {
-      const res = await fetch(`/api/users/${userId}/delete/`, {
-        method: 'POST',
-        credentials: 'include',
+      const data = await apiFetch(`/api/users/${userId}/delete/`, {
+        method: "POST",
       });
-      const data = await res.json();
-      if (!data.ok) {
-        setGlobalActionState('idle');
+
+      if (!data?.ok) {
+        setGlobalActionState("idle");
         return;
       }
 
-      setGlobalActionState('success');
+      setGlobalActionState("success");
       setTimeout(() => {
         setAdminUsers((prev) => prev.filter((u) => u.id !== userId));
         setConfirmDeleteUser(null);
-        setGlobalActionState('idle');
+        setGlobalActionState("idle");
       }, 1500);
     } catch (err) {
       console.error(err);
-      setGlobalActionState('idle');
+      setGlobalActionState("idle");
     }
   };
   const adminCancelReservation = async (reservationId) => {
-    setGlobalActionState('loading'); // Triggers loading spinner
-    try {
-      const res = await fetch(
-        `/api/rooms/reservations/${reservationId}/admin-cancel/`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ reason: 'Cancelled by administrator' }),
-        }
-      );
-      const data = await res.json();
-      if (data.ok) {
-        setGlobalActionState('success'); // Triggers green "Cancelled" state
+  setGlobalActionState("loading"); // Triggers loading spinner
 
-        // Pause so the admin can see the success animation on the Kiosk
-        setTimeout(() => {
-          if (typeof loadReservations === 'function') loadReservations();
-          loadAdminReservations();
-          setConfirmCancelId(null); // Closes the confirmation modal
-          setGlobalActionState('idle'); // Resets button state
-        }, 1500);
-      } else {
-        setGlobalActionState('idle');
+  try {
+    // apiFetch returns parsed JSON (not a Response)
+    const data = await apiFetch(
+      `/api/rooms/reservations/${reservationId}/admin-cancel/`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reason: "Cancelled by administrator" }),
+
       }
-    } catch (err) {
-      console.error(err);
-      setGlobalActionState('idle');
-    }
-  };
+    );
 
+    if (data?.ok) {
+      setGlobalActionState("success");
+
+      setTimeout(() => {
+        if (typeof loadReservations === "function") loadReservations();
+        if (typeof loadAdminReservations === "function") loadAdminReservations();
+        setConfirmCancelId(null);
+        setGlobalActionState("idle");
+      }, 1500);
+    } else {
+      console.error("Admin cancel failed:", data);
+      setGlobalActionState("idle");
+    }
+  } catch (err) {
+    // This will include backend error messages thrown by apiFetch (403/409/etc.)
+    console.error("Admin cancel error:", err);
+    setGlobalActionState("idle");
+  }
+};
   const openAddItemModal = () => {
     setEditingItem(null);
     setShowItemModal(true);
@@ -323,20 +338,32 @@ export default function AdminPanel({
 
   const executeDeleteItem = async () => {
     if (!deleteItemTarget) return;
-    setGlobalActionState('loading');
+
+    setGlobalActionState("loading");
+
     try {
-      await fetch(`/api/items/${deleteItemTarget.id}/delete/`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      setGlobalActionState('success');
+      const data = await apiFetch(
+        `/api/items/${deleteItemTarget.id}/delete/`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (!data?.ok) {
+        throw new Error(data?.error || "Failed to delete item");
+      }
+
+      setGlobalActionState("success");
+
       setTimeout(() => {
-        loadAdminItems();
+        loadAdminItems();        // refresh list
         setDeleteItemTarget(null);
-        setGlobalActionState('idle');
+        setGlobalActionState("idle");
       }, 1500);
-    } catch {
-      setGlobalActionState('idle');
+
+    } catch (err) {
+      console.error("Delete item failed:", err);
+      setGlobalActionState("idle");
     }
   };
 
@@ -814,8 +841,7 @@ function RoomsSection({ rooms }) {
   const loadRooms = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/rooms/', { credentials: 'include' });
-      const data = await res.json();
+      const data = await apiFetch('/api/rooms/');
       if (data.ok) setRoomList(data.rooms || []);
     } catch (err) {
       console.error(err);
@@ -892,18 +918,14 @@ function RoomsSection({ rooms }) {
           ? `/api/rooms/${roomForm.id}/update/`
           : '/api/rooms/create/';
 
-      const res = await fetch(url, {
+      const data = await apiFetch(url, {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: roomForm.name,
           capacity: parseInt(roomForm.capacity),
           features: roomForm.features,
         }),
       });
-
-      const data = await res.json();
 
       if (data.ok) {
         setBtnState('success');
@@ -925,43 +947,37 @@ function RoomsSection({ rooms }) {
   const handleDelete = async () => {
     if (!deleteTarget) return;
 
-    setDeleteBtnState('loading');
+    setDeleteBtnState("loading");
     try {
-      const res = await fetch(`/api/rooms/${deleteTarget.id}/delete/`, {
-        method: 'POST',
-        credentials: 'include',
+      const data = await apiFetch(`/api/rooms/${deleteTarget.id}/delete/`, {
+        method: "POST",
       });
-      const data = await res.json();
 
-      if (res.ok && data.ok) {
-        setDeleteBtnState('success');
+      if (data?.ok) {
+        setDeleteBtnState("success");
         setTimeout(() => {
           loadRooms();
           setDeleteTarget(null);
-          setDeleteBtnState('idle');
+          setDeleteBtnState("idle");
         }, 1500);
       } else {
-        // --- SENTIENT ERROR LOGIC ---
-        // If there are future reservations, the backend returns data.error
-        let msg = data.error || 'Delete Failed';
-        if (msg.toLowerCase().includes('upcoming reservations'))
-          msg = 'Has Reservations';
+        let msg = data?.error || "Delete Failed";
+        if (msg.toLowerCase().includes("upcoming reservations")) msg = "Has Reservations";
 
         setErrorMsg(msg);
-        setDeleteBtnState('error'); // Triggers red shake animation
-
+        setDeleteBtnState("error");
         setTimeout(() => {
-          setDeleteBtnState('idle');
-          setErrorMsg('');
+          setDeleteBtnState("idle");
+          setErrorMsg("");
         }, 2500);
       }
     } catch (e) {
-      setErrorMsg('Network Error');
-      setDeleteBtnState('error');
-      setTimeout(() => setDeleteBtnState('idle'), 2500);
+      console.error("Delete room error:", e);
+      setErrorMsg(e?.message || "Network Error");
+      setDeleteBtnState("error");
+      setTimeout(() => setDeleteBtnState("idle"), 2500);
     }
   };
-
   return (
     <div className='admin-section'>
       <div
@@ -1405,7 +1421,7 @@ function BannersSection({ }) {
   const loadBanners = async () => {
     setLoading(true);
     try {
-      const data = await apiFetch('/api/Banners/', { method: 'GET' }); // <-- already JSON
+      const data = await apiFetch('/api/banners/', { method: 'GET' }); // <-- already JSON
       setBanners(data?.ok ? (data.banners ?? []) : []);
     } catch (err) {
       console.error('Failed to load banners:', err);
@@ -1420,24 +1436,26 @@ function BannersSection({ }) {
   }, []);
 
   const setBannerActiveState = async (id, shouldActivate) => {
-    setTogglingBanners((prev) => ({ ...prev, [id]: 'loading' }));
+    setTogglingBanners((prev) => ({ ...prev, [id]: "loading" }));
+
     try {
       const endpoint = shouldActivate
         ? `/api/banners/${id}/activate/`
         : `/api/banners/${id}/deactivate/`;
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        credentials: 'include',
+      // apiFetch returns JSON already
+      const data = await apiFetch(endpoint, {
+        method: "POST",
+        // no credentials here; apiFetch already includes credentials: "include"
+        // no headers needed
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'Action failed');
 
-      setTogglingBanners((prev) => ({ ...prev, [id]: 'success' }));
+      if (!data?.ok) throw new Error(data?.error || "Action failed");
 
-      // Snappy Refresh
+      setTogglingBanners((prev) => ({ ...prev, [id]: "success" }));
+
       setTimeout(() => {
-        loadBanners(); // Refresh the whole list to see computed status
+        loadBanners(); // refresh list
         setTogglingBanners((prev) => {
           const next = { ...prev };
           delete next[id];
@@ -1445,6 +1463,7 @@ function BannersSection({ }) {
         });
       }, 800);
     } catch (err) {
+      console.error("Toggle banner failed:", err);
       setTogglingBanners((prev) => {
         const next = { ...prev };
         delete next[id];
@@ -1454,37 +1473,40 @@ function BannersSection({ }) {
   };
 
   const handleUpload = async () => {
-    if (!bannerTitle.trim()) return triggerUploadError('Title Required');
-    if (!uploadFile) return triggerUploadError('File Required');
+  if (!bannerTitle.trim()) return triggerUploadError("Title Required");
+  if (!uploadFile) return triggerUploadError("File Required");
 
-    setUploadBtnState('loading');
+    setUploadBtnState("loading");
+
     const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('label', bannerTitle);
-    formData.append('link', bannerLink);
+    formData.append("image", uploadFile);          // ✅ backend likely expects this
+    formData.append("title", bannerTitle.trim());
+    if (bannerLink?.trim()) formData.append("link", bannerLink.trim());
 
     try {
-      const res = await apiFetch('/api/banners/upload/', {
-        method: 'POST',
-        credentials: 'include',
+      const data = await apiFetch("/api/banners/upload/", {
+        method: "POST",
         body: formData,
       });
-      const data = await res.json();
-      if (data.ok) {
-        setUploadBtnState('success');
+
+      if (data?.ok) {
+        setUploadBtnState("success");
         setTimeout(() => {
           setShowUploadModal(false);
           setUploadFile(null);
-          setBannerTitle('');
-          setBannerLink('');
-          setUploadBtnState('idle');
+          setBannerTitle("");
+          setBannerLink("");
+          setUploadBtnState("idle");
           loadBanners();
         }, 1500);
       } else {
-        triggerUploadError(data.error || 'Upload failed');
+        triggerUploadError(data?.error || "Upload failed");
+        setUploadBtnState("idle");
       }
     } catch (err) {
-      triggerUploadError('Network Error');
+      console.error(err);
+      triggerUploadError(err?.message || "Upload failed");
+      setUploadBtnState("idle");
     }
   };
   const computeStatus = (b) => {
@@ -1535,6 +1557,31 @@ function BannersSection({ }) {
       statusText: 'Scheduled',
       chipClass: 'banner-status-chip scheduled',
     };
+  };
+
+    const executeDeleteBanner = async () => {
+    if (!confirmDeleteBanner) return;
+
+    setDeleteBtnState("loading");
+    try {
+      const data = await apiFetch(`/api/banners/${confirmDeleteBanner.id}/delete/`, {
+        method: "POST",
+      });
+
+      if (!data?.ok) throw new Error(data?.error || "Failed to delete banner");
+
+      setDeleteBtnState("success");
+      setTimeout(() => {
+        setConfirmDeleteBanner(null);
+        setEditingBanner(null);  
+        setDeleteBtnState("idle");
+        loadBanners();
+      }, 1200);
+    } catch (err) {
+      console.error("Delete banner failed:", err);
+      triggerUploadError?.(err?.message || "Delete failed");
+      setDeleteBtnState("idle");
+    }
   };
   return (
     <div className='admin-section'>
@@ -1902,42 +1949,39 @@ function BannerEditModal({
   };
 
   const handleSave = async () => {
-    // 1. Check for Title
-    if (!label.trim()) return triggerError('Title Required');
+    if (!label.trim()) return triggerError("Title Required");
 
-    // 2. BUG FIX: Prevent repeat if dates are missing
     if (repeatYearly && (!startDate || !endDate)) {
-      return triggerError('Dates Required for Repeat');
+      return triggerError("Dates Required for Repeat");
     }
 
-    setBtnState('loading');
+    setBtnState("loading");
+
     const formData = new FormData();
-    formData.append('label', label);
-    formData.append('link', link || '');
-    if (imageFile) formData.append('file', imageFile);
+    formData.append("label", label);
+    formData.append("link", link || "");
+    if (imageFile) formData.append("file", imageFile);
 
-    formData.append('start_date', startDate || '');
-    formData.append('end_date', endDate || '');
-
-    // Send as 1 or 0 to ensure high compatibility with most backends (Django/Node/PHP)
-    formData.append('repeat_yearly', repeatYearly ? '1' : '0');
+    formData.append("start_date", startDate || "");
+    formData.append("end_date", endDate || "");
+    formData.append("repeat_yearly", repeatYearly ? "1" : "0");
 
     try {
-      const res = await fetch(`/api/banners/${banner.id}/update/`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData, // Browser sets correct Content-Type for FormData
+      const data = await apiFetch(`/api/banners/${banner.id}/update/`, {
+        method: "POST",
+        body: formData,
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'Update failed');
 
-      setBtnState('success');
+      if (!data.ok) throw new Error(data.error || "Update failed");
+
+      setBtnState("success");
       setTimeout(() => {
         onSaved?.();
-        setBtnState('idle');
+        setBtnState("idle");
       }, 1000);
     } catch (err) {
-      triggerError(err.message || 'Update Error');
+      triggerError(err?.message || "Update Error");
+      setBtnState("idle");
     }
   };
 
@@ -2107,15 +2151,18 @@ function UsersSection({
 }) {
   const [togglingUsers, setTogglingUsers] = useState({});
 
+
+
   const toggleUserAdmin = async (userId) => {
-    setTogglingUsers((prev) => ({ ...prev, [userId]: 'loading' }));
+    setTogglingUsers((prev) => ({ ...prev, [userId]: "loading" }));
+
     try {
-      const res = await fetch(`/api/users/${userId}/toggle-admin/`, {
-        method: 'POST',
-        credentials: 'include',
+      // apiFetch returns JSON already (and uses credentials: "include")
+      const data = await apiFetch(`/api/users/${userId}/toggle-admin/`, {
+        method: "POST",
       });
-      const data = await res.json();
-      if (!data.ok) {
+
+      if (!data?.ok) {
         setTogglingUsers((prev) => {
           const next = { ...prev };
           delete next[userId];
@@ -2124,14 +2171,13 @@ function UsersSection({
         return;
       }
 
-      setTogglingUsers((prev) => ({ ...prev, [userId]: 'success' }));
+      setTogglingUsers((prev) => ({ ...prev, [userId]: "success" }));
 
       setTimeout(() => {
         setAdminUsers((prev) =>
-          prev.map((u) =>
-            u.id === userId ? { ...u, isAdmin: data.isAdmin } : u
-          )
+          prev.map((u) => (u.id === userId ? { ...u, isAdmin: data.isAdmin } : u))
         );
+
         setTogglingUsers((prev) => {
           const next = { ...prev };
           delete next[userId];
@@ -2308,60 +2354,73 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
     }, 2500);
   };
 
-  const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. Validation -> Trigger Button Error
+    // 1) Validation: Name
     const trimmedName = name
       .trim()
-      .split(' ')
+      .split(" ")
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
-    if (!trimmedName) return triggerError('Name Required');
+      .join(" ");
+
+    if (!trimmedName) return triggerError("Name Required");
+
+    const hasExistingCategory = categoryKey && categoryKey !== "__new__";
+    const hasNewCategory = categoryKey === "__new__" && newCategoryName.trim();
+
+    if (!hasExistingCategory && !hasNewCategory) {
+      return triggerError("Category Required");
+    }
 
     const payload = { id: item?.id || null, name: trimmedName };
-    if (categoryKey && categoryKey !== '__new__') {
+
+    if (hasExistingCategory) {
       payload.category_key = categoryKey;
-    } else if (categoryKey === '__new__' && newCategoryName.trim()) {
+    } else if (hasNewCategory) {
       payload.new_category_name = newCategoryName.trim();
     }
 
-    setBtnState('loading');
+    setBtnState("loading");
 
     try {
-      const res = await fetch('/api/items/save/', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+      // ✅ Save item (JSON)
+      const data = await apiFetch("/api/items/save/", {
+        method: "POST",
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'Failed to save item');
+
+      if (!data?.ok) throw new Error(data?.error || "Failed to save item");
 
       let savedItem = data.item;
 
+      // ✅ Optional image upload (FormData)
       if (imageFile) {
         const formData = new FormData();
-        formData.append('file', imageFile);
-        const imgRes = await fetch(`/api/items/${savedItem.id}/upload-image/`, {
-          method: 'POST',
-          credentials: 'include',
-          body: formData,
-        });
-        const imgData = await imgRes.json();
-        if (imgData.image) {
-          savedItem = { ...savedItem, image: imgData.image };
-        }
+        formData.append("file", imageFile);
+
+        const imgData = await apiFetch(
+          `/api/items/${savedItem.id}/upload-image/`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const newImageUrl = imgData?.image || imgData?.item?.image;
+        if (newImageUrl) savedItem = { ...savedItem, image: newImageUrl };
       }
 
-      setBtnState('success');
+      setBtnState("success");
       setTimeout(() => {
         onSaved && onSaved(savedItem);
         onClose();
-        setBtnState('idle');
+        setBtnState("idle");
       }, 1500);
     } catch (err) {
-      triggerError(err.message || 'Failed to save item.');
+      console.error(err);
+      triggerError(err?.message || "Failed to save item.");
+      setBtnState("idle");
     }
   };
 

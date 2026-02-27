@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'kiosks',
     'accounts',
-    'api',
+    "api.apps.ApiConfig",
     'rest_framework',
     'rest_framework_simplejwt',
 ]
@@ -101,6 +101,7 @@ CORS_ALLOWED_ORIGINS = [ # Must update ALL websites here or else wont work
     "https://utakiosk.netlify.app",
     "https://kioskguys-front.onrender.com/",
     "https://kioskguys-front.onrender.com/dashboard",
+    "https://kioskguys-1.onrender.com",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -255,7 +256,8 @@ CSRF_IGNORE_PATHS = [
 # ---------------------------------------------------------
 # MEDIA (uploaded images)
 # ---------------------------------------------------------
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+
+MEDIA_URL = "/api/media/"
+MEDIA_ROOT = "/var/data/media"
 
 print("DEBUG SENDGRID KEY:", os.environ.get("SENDGRID_API_KEY"))

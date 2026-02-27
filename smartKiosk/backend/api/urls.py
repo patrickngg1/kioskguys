@@ -1,6 +1,10 @@
 # api/urls.py
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
+from django.conf.urls.static import static
+from django.conf import settings
+from django.urls import re_path
+from django.views.static import serve
 from . import views
 from .views import login_user, get_session_user, cancel_room_reservations_bulk, password_reset_request, get_all_items
 
@@ -105,4 +109,8 @@ urlpatterns = [
     # --------------------------
     path("card/register/", views.register_card, name="register_card"),
     path("card/login/", views.login_with_card, name="login_with_card"),
+] 
+
+urlpatterns += [
+    re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
 ]

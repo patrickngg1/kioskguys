@@ -33,7 +33,4 @@ urlpatterns = [
     path('api/auth/jwt/verify/', TokenVerifyView.as_view(), name='jwt_verify'),
 ]
 
-# ⭐ ADD THIS BLOCK BELOW
-# Serve media files (uploaded images)
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
