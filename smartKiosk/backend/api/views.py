@@ -46,6 +46,27 @@ import random
 
 
 # ---------------------------
+#  URL PARSING HELPER
+# ---------------------------
+def get_clean_banner_url(request, image_field):
+    if not image_field:
+        return ""
+    
+    # 1. Convert to raw string to stop Django from auto-prepending the media path
+    raw_string = str(image_field)
+    
+    # 2. Split by '/' and grab ONLY the very last piece (the filename)
+    # This safely extracts 'wang-20260225-220625.jpeg' from ANY messy URL or DB path
+    filename = raw_string.split('/')[-1]
+    
+    # 3. Manually reconstruct the correct relative path using your settings
+    clean_path = f"{settings.MEDIA_URL}Banners/{filename}"
+    
+    # 4. Let request.build_absolute_uri() attach http://localhost:8000 or https://kioskguys...
+    return request.build_absolute_uri(clean_path)
+
+
+# ---------------------------
 #  LIST ALL BANNERS (ADMIN)
 # ---------------------------
 def list_banners(request):
@@ -56,20 +77,9 @@ def list_banners(request):
 
     banners = []
     for b in BannerImage.objects.all():
-        
-        # 1. Safely extract just the filename
-        if b.image:
-            filename = os.path.basename(str(b.image.name))
-            # 2. Rebuild the clean relative path (e.g., '/media/Banners/image.jpg')
-            clean_path = f"{settings.MEDIA_URL}Banners/{filename}"
-            # 3. Add the correct domain (localhost or Render)
-            image_url = request.build_absolute_uri(clean_path)
-        else:
-            image_url = ""
-
         banners.append({
             "id": b.id,
-            "image_url": image_url,
+            "image_url": get_clean_banner_url(request, b.image), # 🟦 Use the helper here!
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
@@ -209,6 +219,8 @@ def deactivate_active_banner(request):
     return JsonResponse({"ok": True})
 
 
+
+
 # ---------------------------
 #  DELETE BANNER (ADMIN)
 # ---------------------------
@@ -239,28 +251,18 @@ def get_active_banners(request):
     auto_update_banner_state()
 
     banners = BannerImage.objects.filter(is_active=True)
-    
-    formatted_banners = []
-    for b in banners:
-        
-        # Apply the exact same parsing logic here
-        if b.image:
-            filename = os.path.basename(str(b.image.name))
-            clean_path = f"{settings.MEDIA_URL}Banners/{filename}"
-            image_url = request.build_absolute_uri(clean_path)
-        else:
-            image_url = ""
-            
-        formatted_banners.append({
-            "id": b.id,
-            "image_url": image_url,
-            "label": b.label,
-            "link": b.link,
-        })
 
     return JsonResponse({
         "ok": True,
-        "banners": formatted_banners,
+        "banners": [
+            {
+                "id": b.id,
+                "image_url": get_clean_banner_url(request, b.image), # 🟦 Use the helper here!
+                "label": b.label,
+                "link": b.link,
+            }
+            for b in banners
+        ],
     })
 
 
