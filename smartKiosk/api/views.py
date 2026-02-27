@@ -54,13 +54,20 @@ def list_banners(request):
 
     banners = []
     for b in BannerImage.objects.all():
+        
+        # 👇 FIX: Cleanly extract the URL regardless of how it is stored
+        if b.image and str(b.image).startswith('http'):
+            final_url = str(b.image)
+        else:
+            final_url = request.build_absolute_uri(b.image.url) if b.image else ""
+
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(b.image.url),
+            "image_url": final_url,
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
-            "repeat_yearly": b.repeat_yearly, # ✅ ADD THIS LINE
+            "repeat_yearly": b.repeat_yearly, 
             "start_date": b.start_date.isoformat() if b.start_date else None,
             "end_date": b.end_date.isoformat() if b.end_date else None,
             
@@ -232,7 +239,8 @@ def get_active_banners(request):
         "banners": [
             {
                 "id": b.id,
-                "image_url": request.build_absolute_uri(b.image.url),
+                # 👇 FIX: If the DB has a full link, use the raw string. Otherwise, build it normally.
+                "image_url": str(b.image) if b.image and str(b.image).startswith('http') else (request.build_absolute_uri(b.image.url) if b.image else ""),
                 "label": b.label,
                 "link": b.link,
             }
