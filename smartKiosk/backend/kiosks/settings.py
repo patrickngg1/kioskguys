@@ -101,6 +101,7 @@ CORS_ALLOWED_ORIGINS = [ # Must update ALL websites here or else wont work
     "https://utakiosk.netlify.app",
     "https://kioskguys-front.onrender.com/",
     "https://kioskguys-front.onrender.com/dashboard",
+    "https://kioskguys-1.onrender.com",
 ]
 
 CORS_ALLOW_HEADERS = [
