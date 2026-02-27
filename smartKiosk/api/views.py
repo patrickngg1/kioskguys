@@ -43,28 +43,48 @@ import random
 
 
 # ---------------------------
+#  URL PARSING HELPER
+# ---------------------------
+def get_clean_banner_url(request, image_field):
+    if not image_field:
+        return ""
+    
+    # 1. Safely extract the filename from the database string
+    raw_string = str(image_field)
+    filename = raw_string.split('/')[-1]
+    
+    # 2. Hardcode your Render domain
+    RENDER_DOMAIN = "https://kioskguys.onrender.com"
+    
+    # 3. Stitch it all together so it ALWAYS points to the live server
+    # Output: https://kioskguys.onrender.com/api/media/Banners/wang-20260225-220625.jpeg
+    clean_path = f"{RENDER_DOMAIN}/api{settings.MEDIA_URL}Banners/{filename}"
+    
+    return clean_path
+
+
+# ---------------------------
 #  LIST ALL BANNERS (ADMIN)
 # ---------------------------
 def list_banners(request):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
 
-    # Make sure scheduled banners are in the correct state before we return them
     auto_update_banner_state()
 
     banners = []
     for b in BannerImage.objects.all():
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(b.image.url),
+            "image_url": get_clean_banner_url(request, b.image), # 🟦 Use the helper here!
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
-            "repeat_yearly": b.repeat_yearly, # ✅ ADD THIS LINE
+            "repeat_yearly": b.repeat_yearly,
             "start_date": b.start_date.isoformat() if b.start_date else None,
             "end_date": b.end_date.isoformat() if b.end_date else None,
-            
         })
+
     return JsonResponse({"ok": True, "banners": banners}, status=200)
 
 
@@ -232,7 +252,7 @@ def get_active_banners(request):
         "banners": [
             {
                 "id": b.id,
-                "image_url": request.build_absolute_uri(b.image.url),
+                "image_url": get_clean_banner_url(request, b.image), # 🟦 Use the helper here!
                 "label": b.label,
                 "link": b.link,
             }
