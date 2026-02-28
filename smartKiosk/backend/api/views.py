@@ -100,17 +100,19 @@ def upload_banner(request):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
 
+    # Make sure your React formData.append() is exactly "file"
     file = request.FILES.get("file")
     if not file:
         return JsonResponse({"ok": False, "error": "No file uploaded"}, status=400)
 
+    # Make sure React is sending "label", not "title"
     label = request.POST.get("label", "")
-    link = request.POST.get("link", "").strip()  # ✅ GET LINK
+    link = request.POST.get("link", "").strip()  
 
     banner = BannerImage.objects.create(
         image=file,
         label=label,
-        link=link if link else None,  # ✅ SAVE LINK
+        link=link if link else None,  
         start_date=None,
         end_date=None,
     )
@@ -119,14 +121,15 @@ def upload_banner(request):
         "ok": True,
         "banner": {
             "id": banner.id,
-            "image_url": request.build_absolute_uri(static(f"Banners/{os.path.basename(banner.image.name)}")),
+            # 👇 FIX: Use the clean parser helper we created earlier!
+            "image_url": get_clean_banner_url(request, banner.image),
             "label": banner.label,
-            "link": banner.link, # ✅ RETURN LINK
+            "link": banner.link, 
             "is_active": banner.is_active,
             "start_date": None,
             "end_date": None,
         },
-    }, status=201)
+    }, status=201) 
 
 
 @csrf_exempt
