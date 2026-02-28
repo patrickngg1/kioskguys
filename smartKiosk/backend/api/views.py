@@ -1,4 +1,3 @@
-from email.utils import quote
 import json
 import re
 import smtplib
@@ -585,28 +584,6 @@ def register_user(request):
     return JsonResponse({"ok": True, "message": "Account created successfully"}, status=201)
 
 
-def _image_url(request, image_name: str | None):
-    if not image_name:
-        return None
-
-    s = str(image_name).strip()
-
-    # If stored as full URL already, keep it
-    if s.startswith("http://") or s.startswith("https://"):
-        return s
-
-    # Normalize common bad prefixes and slashes
-    s = s.replace("\\", "/").lstrip("/")
-    if s.startswith("static/"):
-        s = s[len("static/"):]
-    if s.startswith("items/"):
-        s = s[len("items/"):]  # we'll add items/ ourselves
-
-    # URL-encode (keep / for folders)
-    s = quote(s, safe="/._-")
-
-    return request.build_absolute_uri(static(f"items/{s}"))
-
 # ---------------------------------------------------------
 # GET /api/items/
 # Returns all items grouped by category (display name)
@@ -624,7 +601,7 @@ def get_items(request):
         category_name = getattr(cat, "name", None) or "Uncategorized"
         category_key = getattr(cat, "key", None)
 
-        image_url = _image_url(request, getattr(item, "image_name", None))
+        image_url = request.build_absolute_uri(item.image.url) if item.image else None
 
         categories.setdefault(category_name, []).append({
             "id": item.id,
@@ -962,11 +939,7 @@ def get_all_items(request):
 
     data = []
     for item in items:
-        if item.image_name:
-            #image_url = request.build_absolute_uri(item.image.url)
-            image_url = request.build_absolute_uri(static(f"items/{item.image_name}"))
-        else:
-            image_url = None
+        image_url = request.build_absolute_uri(item.image.url) if item.image else None
 
         data.append({
             "id": item.id,
