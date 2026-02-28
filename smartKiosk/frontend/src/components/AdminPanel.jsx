@@ -1479,8 +1479,8 @@ function BannersSection({ }) {
     setUploadBtnState("loading");
 
     const formData = new FormData();
-    formData.append("image", uploadFile);          // ✅ backend likely expects this
-    formData.append("title", bannerTitle.trim());
+    formData.append("file", uploadFile);
+    formData.append("label", bannerTitle.trim());
     if (bannerLink?.trim()) formData.append("link", bannerLink.trim());
 
     try {
