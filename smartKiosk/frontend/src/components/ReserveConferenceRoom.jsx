@@ -768,18 +768,14 @@ function ReserveConferenceRoom({
   };
 
   const finalizeReservation = async (req) => {
-    // If called from overnight modal, update main button state
     setBtnState('loading');
     try {
-      const res = await fetch('/api/rooms/reserve/', {
+      const data = await apiFetch('/api/rooms/reserve/', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
       });
-      const data = await res.json();
 
-      if (!res.ok || !data.ok) {
+      if (!data.ok) {
         return triggerError(data.error || 'Reservation Failed');
       }
 
@@ -787,8 +783,8 @@ function ReserveConferenceRoom({
       setBtnState('success');
       if (onReservationCreated) onReservationCreated(r);
       setTimeout(() => onClose(), 1500);
-    } catch {
-      triggerError('Network Error');
+    } catch (err) {
+      triggerError(err.message || 'Network Error');
     }
   };
 

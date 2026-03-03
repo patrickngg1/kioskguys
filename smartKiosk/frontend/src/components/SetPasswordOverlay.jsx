@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Login.css';
+import { apiFetch } from '../api/api';
 
 // Helper for strength logic (Mirrors your registration form)
 function getPasswordStrength(password) {
@@ -30,26 +31,13 @@ export default function SetPasswordOverlay({ isOpen, onSuccess }) {
     setStatus('loading');
 
     try {
-      // ✅ Extract CSRF token to authorize the POST request
-      const csrfToken = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-
-      const res = await fetch('/api/me/set-password/', {
+      const data = await apiFetch('/api/me/set-password/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken, // ✅ Required for Django POST
-        },
         body: JSON.stringify({ password }),
-        credentials: 'include', // ✅ Ensures session cookies are sent
       });
 
-      const data = await res.json();
       if (data.ok) {
         setStatus('success');
-        // Transition back after showing the emerald state
         setTimeout(() => onSuccess(true), 1500);
       } else {
         throw new Error(data.error || 'Update failed');

@@ -1443,12 +1443,7 @@ function BannersSection({ }) {
         ? `/api/banners/${id}/activate/`
         : `/api/banners/${id}/deactivate/`;
 
-      // apiFetch returns JSON already
-      const data = await apiFetch(endpoint, {
-        method: "POST",
-        // no credentials here; apiFetch already includes credentials: "include"
-        // no headers needed
-      });
+      const data = await apiFetch(endpoint, { method: "POST" });
 
       if (!data?.ok) throw new Error(data?.error || "Action failed");
 
@@ -2157,7 +2152,6 @@ function UsersSection({
     setTogglingUsers((prev) => ({ ...prev, [userId]: "loading" }));
 
     try {
-      // apiFetch returns JSON already (and uses credentials: "include")
       const data = await apiFetch(`/api/users/${userId}/toggle-admin/`, {
         method: "POST",
       });

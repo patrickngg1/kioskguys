@@ -61,10 +61,15 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
 
-    # CSRF still allowed—our login/register uses @csrf_exempt
+    # CSRF still enabled for Django admin (/admin/); API uses @csrf_exempt
     'django.middleware.csrf.CsrfViewMiddleware',
 
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+
+    # Reads Authorization: Bearer <token> and sets request.user for plain Django views.
+    # Must come AFTER AuthenticationMiddleware so session auth has priority (/admin/).
+    'kiosks.middleware.JWTAuthMiddleware',
+
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -89,8 +94,10 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # ---------------------------------------------------------
 # CORS SETTINGS
 # ---------------------------------------------------------
-CORS_ALLOW_CREDENTIALS = True   # allow cookies with cross-origin fetch
-CORS_ALLOWED_ORIGINS = [ # Must update ALL websites here or else wont work
+# JWT uses Authorization header — cookies not required for the API.
+# CORS_ALLOW_CREDENTIALS is kept False; no SameSite/Secure cookie headaches.
+CORS_ALLOW_CREDENTIALS = False
+CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://ersakiosk.netlify.app",
@@ -99,8 +106,8 @@ CORS_ALLOWED_ORIGINS = [ # Must update ALL websites here or else wont work
     "https://ersakioskuta.netlify.app",
     "http://utakiosk.netlify.app",
     "https://utakiosk.netlify.app",
-    "https://kioskguys-front.onrender.com/",
-    "https://kioskguys-front.onrender.com/dashboard",
+    # Render — no trailing slash or path; origin = scheme+host only
+    "https://kioskguys-front.onrender.com",
     "https://kioskguys-1.onrender.com",
 ]
 
@@ -188,9 +195,10 @@ USE_TZ = True
 # DRF + SIMPLE JWT (works alongside sessions)
 # ---------------------------------------------------------
 REST_FRAMEWORK = {
+    # JWT only for API views. Session is still used by /admin/ but handled
+    # separately by Django's own middleware — no need to list it here.
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",

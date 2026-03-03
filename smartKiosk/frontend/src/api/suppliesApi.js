@@ -1,14 +1,14 @@
-// src/api/suppliesApi.js
-import axios from 'axios';
+// suppliesApi.js — uses apiFetch so Authorization: Bearer is sent automatically
+import { apiFetch } from "./api";
 
 export async function submitSupplyRequest(payload) {
   try {
-    const res = await axios.post('/api/supplies/request/', payload, {
-      withCredentials: true, // include Django session cookie
+    return await apiFetch("/api/supplies/request/", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
-    return res.data;
   } catch (error) {
-    console.error('Supply request API error:', error);
+    console.error("Supply request API error:", error);
     return { ok: false, error };
   }
 }

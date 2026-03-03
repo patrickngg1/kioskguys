@@ -153,6 +153,7 @@ export default function Dashboard() {
         await loadReservations();
       } catch (err) {
         console.error('Dashboard initUser error:', err);
+        navigate('/');
       }
     }
 
@@ -173,8 +174,7 @@ export default function Dashboard() {
 
       try {
         // 2. Fetch Active Banner from Admin
-        const res = await apiFetch('/api/banners/active/');
-        const data = await res.json();
+        const data = await apiFetch('/api/banners/active/');
 
         if (data.ok && Array.isArray(data.banners)) {
           const dynamicBanners = data.banners.map((b) => ({
@@ -209,30 +209,22 @@ export default function Dashboard() {
   };
 
   const handleSaveName = async (e) => {
-    e.preventDefault(); // Ensure form doesn't reload
+    e.preventDefault();
 
-    // 1. Clean up extra spaces
     const cleanName = editNameValue.trim().replace(/\s+/g, ' ');
-
-    setEditNameBtnState('loading'); // Start Loading Spinner
+    setEditNameBtnState('loading');
 
     try {
-      const res = await fetch('/api/me/update-name/', {
+      const data = await apiFetch('/api/me/update-name/', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        // Send the cleaned, multi-part name
         body: JSON.stringify({ fullName: cleanName }),
       });
-      const data = await res.json();
 
       if (data.ok) {
         const newName = data.fullName;
         setUser((prev) => ({ ...prev, fullName: newName }));
         setProfile((prev) => ({ ...prev, fullName: newName }));
-
         setEditNameBtnState('success');
-
         setTimeout(() => {
           setShowEditNameModal(false);
           setEditNameBtnState('idle');
@@ -326,8 +318,7 @@ export default function Dashboard() {
   const [popularByCategory, setPopularByCategory] = useState({});
   const loadPopular = async () => {
     try {
-      const res = await apiFetch('/api/supplies/popular/?limit=3');
-      const data = await res.json();
+      const data = await apiFetch('/api/supplies/popular/?limit=3');
       const popular = data?.popular || {};
       const mapped = {};
       Object.entries(popular).forEach(([categoryName, items]) => {
@@ -336,7 +327,6 @@ export default function Dashboard() {
       setPopularByCategory(mapped);
     } catch (err) {
       console.error('Failed to load popular items', err);
-      console.log("items status", res.status, text.slice(0, 200));
     }
   };
 

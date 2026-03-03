@@ -5,6 +5,13 @@ import os
 import requests
 from base64 import b64encode
 from accounts.models import UserCard
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
+def _generate_jwt_tokens(user):
+    """Return (access_str, refresh_str) for user."""
+    refresh = RefreshToken.for_user(user)
+    return str(refresh.access_token), str(refresh)
 
 from email.mime.text import MIMEText
 from base64 import b64encode
@@ -1774,17 +1781,18 @@ def login_user(request):
         reset_obj.used = True
         reset_obj.save()
 
-        # Login user
-        user_obj.backend = "django.contrib.auth.backends.ModelBackend"
-        login(request, user_obj)
-
         # Update profile: MUST set must_set_password = True here
         profile, _ = UserProfile.objects.get_or_create(user=user_obj)
         profile.must_set_password = True
         profile.save()
 
+        # Issue JWT tokens (no session needed — Safari-safe)
+        access, refresh = _generate_jwt_tokens(user_obj)
+
         return JsonResponse({
             "ok": True,
+            "access": access,
+            "refresh": refresh,
             "id": user_obj.id,
             "fullName": profile.full_name,
             "email": user_obj.email,
@@ -1805,20 +1813,21 @@ def login_user(request):
     if user is None:
         return JsonResponse({"ok": False, "error": "Invalid credentials"}, status=400)
 
-    # LOGIN (this creates session + sends sessionid cookie)
-    login(request, user)
-
     profile, _ = UserProfile.objects.get_or_create(user=user)
-    # profile.must_set_password = False # <-- REMOVED THIS LINE
     profile.save()
+
+    # Issue JWT tokens (no session cookie needed — Safari-safe)
+    access, refresh = _generate_jwt_tokens(user)
 
     return JsonResponse({
         "ok": True,
+        "access": access,
+        "refresh": refresh,
         "id": user.id,
         "fullName": profile.full_name or user.username,
         "email": user.email,
         "isAdmin": user.is_staff,
-        "mustSetPassword": profile.must_set_password, # <-- Use the actual value from the profile
+        "mustSetPassword": profile.must_set_password,
     })
 
 
@@ -1967,11 +1976,13 @@ def get_ui_assets(request):
 @csrf_exempt
 @require_POST
 def logoutSession(request):
+    # JWT is stateless; the client discards its tokens.
+    # Session logout is a no-op here but kept for safety.
     try:
         logout(request)
-        return JsonResponse({"ok": True, "message": "Logged out"}, status=200)
-    except Exception as e:
-        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+    except Exception:
+        pass
+    return JsonResponse({"ok": True, "message": "Logged out"}, status=200)
 
 
 # ---------------------------------------------------------
@@ -2144,8 +2155,6 @@ def login_with_card(request):
         return JsonResponse({"ok": False, "error": "Card not registered."}, status=401)
 
     user = card_obj.user
-    user.backend = "django.contrib.auth.backends.ModelBackend"
-    login(request, user)
 
     full_name = ""
     must_set_pw = False
@@ -2181,7 +2190,9 @@ def login_with_card(request):
         "ok": True,
         "id": user.id,
         "email": user.email,
-        "fullName": first_name_only, # ✅ Strictly sending "Prakash"
+        "fullName": first_name_only,
         "isAdmin": user.is_staff,
         "mustSetPassword": must_set_pw,
+        # JWT tokens — client stores these; no cookie needed
+        **dict(zip(("access", "refresh"), _generate_jwt_tokens(user))),
     })
