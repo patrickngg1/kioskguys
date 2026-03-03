@@ -41,94 +41,92 @@
 /* =================================
    1. DASHBOARD VIEW STYLES
    ==================================*/
+
+/* dashboard-view is a full-height flex row that fills its fixed parent */
 .dashboard-view {
-  position: relative;
-  min-height: 90vh;
-  width: 100vw;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  overflow-y: auto; /* ✅ enable internal scroll */
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  box-sizing: border-box;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
   z-index: 1;
 }
 
 /* ============================================================
-   GRID SYSTEM — PERFECT SYNC FOR ALL RESOLUTIONS
+   LEFT PANEL — scrollable sidebar with user card + action cards
    ============================================================ */
-.dashboard-view .dashboard-grid {
-  display: grid;
-  /* Left column fixed, right column takes remaining space */
-  grid-template-columns: 340px 1fr;
-  /* Rows: 1. Banner (auto), 2. Content (Takes all available space), 3. Admin (auto) */
-  grid-template-rows: auto 1fr auto;
-  grid-template-areas:
-    'user banner'
-    'reserve map'
-    'supplies map'
-    'adminFull adminFull';
-  gap: 2rem;
-  width: min(1400px, 95vw);
-  margin: 0 auto;
-  padding: 1rem 0rem;
+.dashboard-panel-left {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar visually on kiosk — still scrollable via touch */
+  scrollbar-width: none;
+  box-sizing: border-box;
+}
 
-  /* ✅ FORCE vertical alignment so columns match height exactly */
-  align-items: stretch;
+.dashboard-panel-left::-webkit-scrollbar {
+  display: none;
 }
 
 /* ============================================================
-   MAP CONTAINER — DYNAMIC HEIGHT FILL
+   MAP — fills all remaining horizontal and vertical space
    ============================================================ */
-.dashboard-view .map-container {
-  grid-area: map;
-  /* Ensure it takes exactly 100% of the grid area height */
-  height: 100% !important;
-  min-height: 0; /* Prevents overflow in flex/grid containers */
-  display: flex;
-  flex-direction: column;
-  background: none !important;
-  padding: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
+.map-fullscreen {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
-/* Force the KioskMap inside to be responsive */
-.dashboard-view .map-container > * {
-  flex: 1 1 auto;
-  height: 100% !important;
-  width: 100% !important;
-  border-radius: 1.5rem;
-  overflow: hidden;
+/* The iframe returned by KioskMap must fill its container */
+.map-fullscreen iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ============================================================
+   BANNER — compact height inside left panel
+   ============================================================ */
+.dashboard-panel-left .banner-block {
+  height: 210px;
+  flex-shrink: 0;
 }
 
 /* ============================================================
    SMALL SCREEN QUERIES (Mobile/Tablet)
    ============================================================ */
-@media (max-width: 1100px) {
-  .dashboard-view .dashboard-grid {
-    display: flex; /* Switch to stack for small screens */
+@media (max-width: 900px) {
+  /* Stack vertically on small screens */
+  .dashboard-view {
     flex-direction: column;
-    align-items: center;
-    width: 100%;
-    padding: 1rem;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
-  /* Reset widths for mobile compatibility */
-  .dashboard-view .user-card,
-  .dashboard-view .card.action-card,
-  .dashboard-view .banner-block,
-  .dashboard-view .map-container {
+  .dashboard-panel-left {
     width: 100%;
-    max-width: 720px;
-    height: auto !important; /* Allow natural height on stack */
+    flex-shrink: 0;
+    overflow-y: visible;
   }
 
-  /* Define a generous mobile height for the map so it's usable */
-  .dashboard-view .map-container {
-    min-height: 450px;
+  .map-fullscreen {
+    flex: none;
+    width: 100%;
+    height: 50vh;
+    min-height: 320px;
+  }
+
+  .dashboard-panel-left .banner-block {
+    height: 180px;
   }
 }
 
@@ -170,8 +168,8 @@
   transition: transform 0.35s ease, box-shadow 0.35s ease, filter 0.35s ease;
 }
 
-/* Make reserve + supplies cards fill their grid row */
-.dashboard-grid > .card.action-card {
+/* Action cards inside the left panel stretch to their natural height */
+.dashboard-panel-left > .card.action-card {
   display: flex;
   flex-direction: column;
 }

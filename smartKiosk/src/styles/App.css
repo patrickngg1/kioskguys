@@ -116,21 +116,19 @@ html {
 }
 
 /*
-  FIX #3: .dashboard-layout (FOR DASHBOARD PAGE)
-  - This rule is unchanged, but will now work correctly
-    because 'html, body, #root' are no longer conflicting.
-  - This layout will be the main scrolling container for the dashboard.
+  .dashboard-layout — fixed, full-screen container for the dashboard.
+  The map iframe fills everything below the fixed header with zero
+  scrollbars or layout shift at any resolution.
 */
 .dashboard-layout {
-  min-height: 100vh;
-  width: 100%;
-  box-sizing: border-box;
-  position: relative;
+  position: fixed;
+  top: 84px; /* height of .kiosk-header + .kiosk-accent */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
   isolation: isolate;
   background: transparent !important;
-  padding-top: 84px; /* Keeps content below header (68px + 16px) */
-  overflow-y: auto; /* ✅ This will now create the main scrollbar */
-  overflow-x: hidden;
   z-index: 1;
 }
 

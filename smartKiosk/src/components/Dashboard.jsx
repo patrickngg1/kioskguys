@@ -13,6 +13,7 @@ import AdminPanel from './AdminPanel';
 import RequestSupply from './RequestSupply';
 import ReserveConferenceRoom from './ReserveConferenceRoom';
 import { getSessionUser, logoutSession } from '../api/authApi';
+import { useInactivityTimer } from '../hooks/useInactivityTimer';
 import SetPasswordOverlay from './SetPasswordOverlay';
 import CardSwipeModal from './CardSwipeModal';
 import PremiumInput from './PremiumInput';
@@ -103,13 +104,14 @@ export default function Dashboard() {
   const [countdown, setCountdown] = useState(30);
   const countdownRef = useRef(null);
 
-  const INACTIVITY_LIMIT = 1 * 60 * 1000;
+  const INACTIVITY_LIMIT = 1 * 60 * 1000;   // 1 min idle → warning
+  const MAX_SESSION      = 5 * 60 * 1000;   // 5 min hard cap regardless of activity
   const WARNING_TIME = 30;
-  const inactivityTimer = useRef(null);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const chimeRef = useRef(null);
+  const mapContainerRef = useRef(null);
 
   // ------------------------ Dynamic Banners State ------------------------
   const [banners, setBanners] = useState([]);
@@ -215,41 +217,14 @@ export default function Dashboard() {
   }, [uiAssets]);
 
   // ------------------------ Inactivity Detection ------------------------
-  useEffect(() => {
-    if (!user) return;
-
-    const startWarningCountdown = () => {
-      setShowInactivityModal(true);
-    };
-
-    const resetInactivityTimer = () => {
-      if (showInactivityModal) return;
-      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-      inactivityTimer.current = setTimeout(
-        startWarningCountdown,
-        INACTIVITY_LIMIT
-      );
-    };
-
-    const events = [
-      'mousemove',
-      'mousedown',
-      'keydown',
-      'scroll',
-      'touchstart',
-      'touchmove',
-    ];
-    events.forEach((ev) => window.addEventListener(ev, resetInactivityTimer));
-
-    resetInactivityTimer();
-
-    return () => {
-      events.forEach((ev) =>
-        window.removeEventListener(ev, resetInactivityTimer)
-      );
-      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
-    };
-  }, [user, showInactivityModal]);
+  useInactivityTimer({
+    enabled: !!user,
+    paused: showInactivityModal,
+    limitMs: INACTIVITY_LIMIT,
+    maxSessionMs: MAX_SESSION,
+    onTimeout: () => setShowInactivityModal(true),
+    mapContainerRef,
+  });
 
   // ------------------------ Countdown Timer Logic ------------------------
   useEffect(() => {
@@ -549,12 +524,13 @@ export default function Dashboard() {
           showLogoutSplash ? 'dashboard-freeze' : ''
         }`}
       >
-        <div className='dashboard-grid'>
-          {/* USER CARD (CENTERED) */}
+        {/* LEFT PANEL — user card, banner, action cards */}
+        <aside className='dashboard-panel-left'>
+
+          {/* USER CARD */}
           <div
             className='card user-card action-card'
             style={{
-              gridArea: 'user',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -713,9 +689,9 @@ export default function Dashboard() {
             ) : null}
           </div>
 
-          {/* ADMIN CARDS */}
+          {/* ADMIN CARD */}
           {user?.isAdmin && (
-            <div className='card action-card' style={{ gridArea: 'adminFull' }}>
+            <div className='card action-card'>
               <div className='action-head'>
                 <div className='action-title'>Admin Dashboard</div>
               </div>
@@ -731,15 +707,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className='map-container'>
-            <KioskMap />
-          </div>
-
           {/* RESERVE CARD */}
-          <div
-            className='card action-card premium-card'
-            style={{ gridArea: 'reserve' }}
-          >
+          <div className='card action-card premium-card'>
             <div className='premium-card-content'>
               <div className='action-head'>
                 <div className='action-title'>Reserve Conference Room</div>
@@ -776,10 +745,7 @@ export default function Dashboard() {
           </div>
 
           {/* SUPPLIES CARD */}
-          <div
-            className='card action-card premium-card'
-            style={{ gridArea: 'supplies' }}
-          >
+          <div className='card action-card premium-card'>
             <div className='premium-card-content'>
               <div className='action-head'>
                 <div className='action-title'>Request Supplies</div>
@@ -805,7 +771,14 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
+
+        </aside>
+
+        {/* MAP — fills all remaining width and height */}
+        <div className='map-fullscreen' ref={mapContainerRef}>
+          <KioskMap />
         </div>
+
       </div>
 
       {/* ADMIN PANEL */}

@@ -10,6 +10,7 @@ import {
 import LoginPage from './components/LoginPage';
 import Header from './components/Header';
 import StartOverlay from './components/StartOverlay';
+import { useInactivityTimer } from './hooks/useInactivityTimer';
 import './styles/App.css';
 import './styles/Glass.css';
 import './styles/Dashboard.css'; // Make sure this is here so your modal styles load!
@@ -48,39 +49,28 @@ function AppContent({ uiAssets }) {
   const [countdown, setCountdown] = useState(10);
   const [ringProgress, setRingProgress] = useState(0);
 
-  const inactivityTimer = useRef(null);
   const countdownRef = useRef(null);
 
-  const IDLE_LIMIT = 20000; // 60 seconds
-  const WARNING_TIME = 10; // 10 seconds warning
+  const IDLE_LIMIT    = 60_000;      // 60 s  — idle on parent page → warn
+  const MAX_SESSION   = 3 * 60_000;  // 3 min — walked away mid-navigation → warn
+  const WARNING_TIME  = 10;          // 10 s countdown before returning to start
 
-  // 1. Idle Timer Logic
-  useEffect(() => {
-    if (onDashboard) return;
-    if (!started) return;
-
-    const resetTimer = () => {
-      // Don't reset the background idle timer if the warning modal is currently up
-      if (showInactivityModal) return;
-
-      clearTimeout(inactivityTimer.current);
-      inactivityTimer.current = setTimeout(() => {
-        // Time is up! Pop the modal instead of resetting immediately
-        setCountdown(WARNING_TIME);
-        setRingProgress(0);
-        setShowInactivityModal(true);
-      }, IDLE_LIMIT);
-    };
-
-    const events = ['click', 'mousemove', 'keydown', 'touchstart'];
-    events.forEach((ev) => window.addEventListener(ev, resetTimer));
-    resetTimer();
-
-    return () => {
-      clearTimeout(inactivityTimer.current);
-      events.forEach((ev) => window.removeEventListener(ev, resetTimer));
-    };
-  }, [started, onDashboard, showInactivityModal]);
+  // Idle + max-session timer. Both call onTimeout which shows the warning modal.
+  //   limitMs    — fires if user hasn't touched the parent page for 60 s
+  //   maxSessionMs — fires unconditionally after 3 min even if user is on the map
+  //                  (handles "walked away while the timer was suspended")
+  // No mapContainerRef needed — hook falls back to document.getElementById('map-frame')
+  useInactivityTimer({
+    enabled: started,
+    paused: showInactivityModal,
+    limitMs: IDLE_LIMIT,
+    maxSessionMs: MAX_SESSION,
+    onTimeout: () => {
+      setCountdown(WARNING_TIME);
+      setRingProgress(0);
+      setShowInactivityModal(true);
+    },
+  });
 
   // 2. 10-Second Countdown Logic
   useEffect(() => {

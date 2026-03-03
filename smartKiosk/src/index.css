@@ -9,6 +9,7 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  overflow: hidden; /* prevent page-level scrollbars on the kiosk */
 }
 
 :root {
@@ -37,8 +38,7 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
+  display: block; /* override Vite default flex centering */
   min-width: 320px;
   min-height: 100vh;
 }
