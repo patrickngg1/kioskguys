@@ -26,6 +26,7 @@ urlpatterns = [
     path("supplies/popular/", views.get_popular_items, name="get_popular_items"),
 
     # Admin: create/update items
+    # Admin: create/update/delete items
     path("items/save/", views.admin_save_item, name="admin_save_item"),
 
 

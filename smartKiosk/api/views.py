@@ -42,28 +42,67 @@ import random
 
 
 # ---------------------------
+#  URL PARSING HELPER
+# ---------------------------
+def get_clean_banner_url(request, image_field):
+    if not image_field:
+        return ""
+    
+    # 1. Safely extract the filename from the database string
+    raw_string = str(image_field)
+    filename = raw_string.split('/')[-1]
+    
+    # 2. Hardcode your Render domain
+    RENDER_DOMAIN = "https://kioskguys.onrender.com"
+    
+    # 3. Stitch it all together so it ALWAYS points to the live server
+    clean_path = f"{RENDER_DOMAIN}/api{settings.MEDIA_URL}Banners/{filename}"
+    
+    return clean_path
+
+# ---------------------------
+#  SUPPLY ITEM URL PARSER
+# ---------------------------
+def get_clean_item_url(image_field):
+    if not image_field:
+        return None
+    
+    # 1. Safely extract the subfolder and filename from the database string
+    # e.g., grabs "Kleenex" and "Kleenex.png" from ANY messy url
+    raw_string = str(image_field)
+    folder_name = raw_string.split('/')[-2] 
+    filename = raw_string.split('/')[-1]
+    
+    # 2. Hardcode your Render domain
+    RENDER_DOMAIN = "https://kioskguys.onrender.com"
+    
+    # 3. Stitch it all together so it ALWAYS points to the live server
+    clean_path = f"{RENDER_DOMAIN}/api{settings.MEDIA_URL}items/{folder_name}/{filename}"
+    
+    return clean_path
+
+# ---------------------------
 #  LIST ALL BANNERS (ADMIN)
 # ---------------------------
 def list_banners(request):
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
 
-    # Make sure scheduled banners are in the correct state before we return them
     auto_update_banner_state()
 
     banners = []
     for b in BannerImage.objects.all():
         banners.append({
             "id": b.id,
-            "image_url": request.build_absolute_uri(b.image.url),
+            "image_url": get_clean_banner_url(request, b.image), # 🟦 Use the helper here!
             "label": b.label,
             "link": b.link,
             "is_active": b.is_active,
-            "repeat_yearly": b.repeat_yearly, # ✅ ADD THIS LINE
+            "repeat_yearly": b.repeat_yearly,
             "start_date": b.start_date.isoformat() if b.start_date else None,
             "end_date": b.end_date.isoformat() if b.end_date else None,
-            
         })
+
     return JsonResponse({"ok": True, "banners": banners}, status=200)
 
 
@@ -173,7 +212,7 @@ def get_active_banners(request):
         "banners": [
             {
                 "id": b.id,
-                "image_url": request.build_absolute_uri(b.image.url),
+                "image_url": get_clean_banner_url(request, b.image), # 🟦 Use the helper here!
                 "label": b.label,
                 "link": b.link,
             }
@@ -504,6 +543,10 @@ def register_user(request):
 # Returns all items grouped by category (display name)
 # Uses Django Media image URLs from Item.image
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# GET /api/items/
+# Grouped by category display name
+# ---------------------------------------------------------
 @require_GET
 def get_items(request):
     items = Item.objects.select_related("category").all()
@@ -513,11 +556,8 @@ def get_items(request):
     for item in items:
         category_name = item.category.name  # e.g. "Storage Closet"
 
-        # If an image was uploaded in Django admin, build an absolute URL
-        if item.image:
-            image_url = request.build_absolute_uri(item.image.url)
-        else:
-            image_url = None  # frontend can show a placeholder if it wants
+        # 👇 FIX: Use our new helper function here!
+        image_url = get_clean_item_url(item.image)
 
         if category_name not in categories:
             categories[category_name] = []
@@ -815,10 +855,8 @@ def get_all_items(request):
 
     data = []
     for item in items:
-        if item.image:
-            image_url = request.build_absolute_uri(item.image.url)
-        else:
-            image_url = None
+        # 👇 FIX: Use our new helper function here!
+        image_url = get_clean_item_url(item.image)
 
         data.append({
             "id": item.id,
