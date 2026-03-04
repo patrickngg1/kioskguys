@@ -1,7 +1,6 @@
 import json
 import re
 import smtplib
-import os
 import requests
 from base64 import b64encode
 from accounts.models import UserCard
@@ -67,43 +66,6 @@ def list_banners(request):
         })
     return JsonResponse({"ok": True, "banners": banners}, status=200)
 
-
-# ---------------------------
-#  UPLOAD BANNER (ADMIN)
-# ---------------------------
-@csrf_exempt
-@require_POST
-def upload_banner(request):
-    if not request.user.is_authenticated or not request.user.is_staff:
-        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
-
-    file = request.FILES.get("file")
-    if not file:
-        return JsonResponse({"ok": False, "error": "No file uploaded"}, status=400)
-
-    label = request.POST.get("label", "")
-    link = request.POST.get("link", "").strip()  # ✅ GET LINK
-
-    banner = BannerImage.objects.create(
-        image=file,
-        label=label,
-        link=link if link else None,  # ✅ SAVE LINK
-        start_date=None,
-        end_date=None,
-    )
-
-    return JsonResponse({
-        "ok": True,
-        "banner": {
-            "id": banner.id,
-            "image_url": request.build_absolute_uri(banner.image.url),
-            "label": banner.label,
-            "link": banner.link, # ✅ RETURN LINK
-            "is_active": banner.is_active,
-            "start_date": None,
-            "end_date": None,
-        },
-    }, status=201)
 
 
 @csrf_exempt
@@ -195,27 +157,6 @@ def deactivate_active_banner(request):
 
     return JsonResponse({"ok": True})
 
-
-# ---------------------------
-#  DELETE BANNER (ADMIN)
-# ---------------------------
-@csrf_exempt
-@require_POST
-def delete_banner(request, banner_id):
-    if not request.user.is_authenticated or not request.user.is_staff:
-        return JsonResponse({"ok": False, "error": "Admin required"}, status=403)
-
-    try:
-        banner = BannerImage.objects.get(id=banner_id)
-    except BannerImage.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Not found"}, status=404)
-
-    # Delete file
-    if banner.image and os.path.isfile(banner.image.path):
-        os.remove(banner.image.path)
-
-    banner.delete()
-    return JsonResponse({"ok": True}, status=200)
 
 
 # ---------------------------
@@ -594,35 +535,6 @@ def get_items(request):
     return JsonResponse({"ok": True, "categories": categories}, status=200)
 
 
-# ---------------------------------------------------------
-# POST /api/items/<item_id>/upload-image/
-# Optional: Admin/API image upload using Django ImageField
-# Expects multipart/form-data with "file" field
-# ---------------------------------------------------------
-@csrf_exempt
-@require_POST
-def upload_item_image(request, item_id):
-    try:
-        item = Item.objects.get(id=item_id)
-    except Item.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Item not found"}, status=404)
-
-    file = request.FILES.get("file")
-    if not file:
-        return JsonResponse({"ok": False, "error": "No file uploaded"}, status=400)
-
-    # Directly assign the uploaded file to the ImageField
-    item.image = file
-    item.save()
-
-    # Return the new image URL so frontend can refresh
-    image_url = request.build_absolute_uri(item.image.url)
-
-    return JsonResponse(
-        {"ok": True, "message": "Image uploaded successfully", "image": image_url},
-        status=200,
-    )
-
 
 # ---------------------------------------------------------
 # POST /api/items/save/
@@ -704,22 +616,6 @@ def admin_save_item(request):
         },
         status=status_code,
     )
-
-
-# ---------------------------------------------------------
-# POST /api/items/<item_id>/delete/
-# Soft/simple delete for admin
-# ---------------------------------------------------------
-@csrf_exempt
-@require_POST
-def admin_delete_item(request, item_id):
-    try:
-        item = Item.objects.get(id=item_id)
-    except Item.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Item not found"}, status=404)
-
-    item.delete()
-    return JsonResponse({"ok": True, "message": "Item deleted"})
 
 
 

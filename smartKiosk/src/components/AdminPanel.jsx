@@ -165,7 +165,6 @@ export default function AdminPanel({
   const [loadingItems, setLoadingItems] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [deleteItemTarget, setDeleteItemTarget] = useState(null);
 
   // --- USERS STATE ---
   const [adminUsers, setAdminUsers] = useState(users || []);
@@ -301,10 +300,6 @@ export default function AdminPanel({
     }
   };
 
-  const openAddItemModal = () => {
-    setEditingItem(null);
-    setShowItemModal(true);
-  };
   const openEditItemModal = (item) => {
     setEditingItem(item);
     setShowItemModal(true);
@@ -312,29 +307,6 @@ export default function AdminPanel({
   const handleItemSaved = () => {
     loadAdminItems();
   };
-  const handleDeleteItem = (item) => {
-    setDeleteItemTarget(item);
-  };
-
-  const executeDeleteItem = async () => {
-    if (!deleteItemTarget) return;
-    setGlobalActionState('loading');
-    try {
-      await fetch(`/api/items/${deleteItemTarget.id}/delete/`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      setGlobalActionState('success');
-      setTimeout(() => {
-        loadAdminItems();
-        setDeleteItemTarget(null);
-        setGlobalActionState('idle');
-      }, 1500);
-    } catch {
-      setGlobalActionState('idle');
-    }
-  };
-
   useEffect(() => {
     if (isOpen) {
       loadAdminReservations();
@@ -444,9 +416,7 @@ export default function AdminPanel({
               <ItemsSection
                 itemsByCategory={adminItemsByCategory}
                 loading={loadingItems}
-                onAddItem={openAddItemModal}
                 onEditItem={openEditItemModal}
-                onDeleteItem={handleDeleteItem}
               />
             )}
             {activeSection === 'banners' && <BannersSection />}
@@ -460,53 +430,6 @@ export default function AdminPanel({
             )}
           </section>
         </div>
-
-        {/* --- GLOBAL DELETE ITEM MODAL (PORTAL VERSION) --- */}
-        {deleteItemTarget &&
-          createPortal(
-            <div
-              className='modal-overlay'
-              onClick={() => {
-                // Only allow closing via overlay if not currently deleting
-                if (globalActionState === 'idle') setDeleteItemTarget(null);
-              }}
-            >
-              <div
-                className='premium-modal'
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h2 className='premium-modal-title'>Delete Item?</h2>
-                <p className='premium-modal-message'>
-                  You are about to permanently delete{' '}
-                  <strong>{deleteItemTarget.name}</strong>.
-                  <br />
-                  This action cannot be undone.
-                </p>
-                <div className='premium-modal-actions'>
-                  <button
-                    className='premium-btn cancel'
-                    onClick={() => setDeleteItemTarget(null)}
-                    disabled={globalActionState !== 'idle'}
-                  >
-                    Keep Item
-                  </button>
-                  <button
-                    className={`premium-btn delete smart-submit-btn ${globalActionState}`}
-                    onClick={executeDeleteItem}
-                    disabled={globalActionState !== 'idle'}
-                  >
-                    <SmartButtonContent
-                      btnState={globalActionState}
-                      idleText='Delete Item'
-                      loadingText='Deleting...'
-                      successText='Deleted'
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body /* This is the secret for the full-page blur */,
-          )}
 
         {/* --- GLOBAL DELETE USER MODAL --- */}
         {confirmDeleteUser &&
@@ -1205,9 +1128,7 @@ function RoomsSection({ rooms }) {
 function ItemsSection({
   itemsByCategory,
   loading,
-  onAddItem,
   onEditItem,
-  onDeleteItem,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -1261,13 +1182,6 @@ function ItemsSection({
             Manage the catalog of items shown in the Request Supplies modal.
           </p>
         </div>
-        <button
-          type='button'
-          className='admin-pill-button admin-pill-primary'
-          onClick={onAddItem}
-        >
-          + Add Item
-        </button>
       </div>
 
       <div className='admin-filter-bar' style={{ marginTop: '0.5rem' }}>
@@ -1338,13 +1252,6 @@ function ItemsSection({
                       >
                         Edit
                       </button>
-                      <button
-                        type='button'
-                        className='admin-pill-button admin-pill-danger'
-                        onClick={() => onDeleteItem(item)}
-                      >
-                        Delete
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -1361,37 +1268,11 @@ function BannersSection({}) {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // --- UPLOAD MODAL STATE ---
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadFile, setUploadFile] = useState(null);
-  const [bannerTitle, setBannerTitle] = useState('');
-  const [bannerLink, setBannerLink] = useState('');
-
-  // Smart Button State
-  const [uploadBtnState, setUploadBtnState] = useState('idle');
-  const [uploadError, setUploadError] = useState('');
-  const errorTimerRef = useRef(null);
-
-  // Edit / preview / delete state
+  // Edit / preview state
   const [editingBanner, setEditingBanner] = useState(null);
   const [previewBanner, setPreviewBanner] = useState(null);
-  const [confirmDeleteBanner, setConfirmDeleteBanner] = useState(null);
-  const [deleteBtnState, setDeleteBtnState] = useState('idle');
 
   const [togglingBanners, setTogglingBanners] = useState({});
-
-  // Validation: Button is disabled until a file is picked and title is entered
-  const isUploadDirty = bannerTitle.trim() !== '' || uploadFile !== null;
-
-  const triggerUploadError = (msg) => {
-    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-    setUploadError(msg);
-    setUploadBtnState('error');
-    errorTimerRef.current = setTimeout(() => {
-      setUploadBtnState('idle');
-      setUploadError('');
-    }, 2500);
-  };
 
   const loadBanners = async () => {
     setLoading(true);
@@ -1445,40 +1326,6 @@ function BannersSection({}) {
     }
   };
 
-  const handleUpload = async () => {
-    if (!bannerTitle.trim()) return triggerUploadError('Title Required');
-    if (!uploadFile) return triggerUploadError('File Required');
-
-    setUploadBtnState('loading');
-    const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('label', bannerTitle);
-    formData.append('link', bannerLink);
-
-    try {
-      const res = await fetch('/api/banners/upload/', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setUploadBtnState('success');
-        setTimeout(() => {
-          setShowUploadModal(false);
-          setUploadFile(null);
-          setBannerTitle('');
-          setBannerLink('');
-          setUploadBtnState('idle');
-          loadBanners();
-        }, 1500);
-      } else {
-        triggerUploadError(data.error || 'Upload failed');
-      }
-    } catch (err) {
-      triggerUploadError('Network Error');
-    }
-  };
   const computeStatus = (b) => {
     const today = new Date();
     const todayISO = today.toISOString().slice(0, 10);
@@ -1541,15 +1388,9 @@ function BannersSection({}) {
         <div>
           <h2 className='admin-section-title'>Banner Images</h2>
           <p className='admin-section-subtitle'>
-            Upload seasonal images to display on the Kiosk welcome screen.
+            Manage seasonal images displayed on the Kiosk welcome screen.
           </p>
         </div>
-        <button
-          className='admin-pill-button admin-pill-primary'
-          onClick={() => setShowUploadModal(true)}
-        >
-          + Upload Banner
-        </button>
       </div>
 
       {loading ? (
@@ -1659,108 +1500,6 @@ function BannersSection({}) {
         </div>
       )}
 
-      {/* Upload Modal - Portalled for Full Screen Overlay */}
-      {showUploadModal &&
-        createPortal(
-          <div className='modal-overlay' style={{ zIndex: 999999 }}>
-            <div
-              className='premium-modal'
-              onClick={(e) => e.stopPropagation()}
-              style={{ maxWidth: '520px' }}
-            >
-              <button
-                className='close-btn'
-                type='button'
-                onClick={() => setShowUploadModal(false)}
-              >
-                ✕
-              </button>
-              <h2 className='premium-modal-title'>Upload Banner</h2>
-
-              <div className='form-row'>
-                <label
-                  style={{
-                    color:
-                      uploadError === 'Title Required' ? '#ef4444' : 'inherit',
-                  }}
-                >
-                  Title {uploadError === 'Title Required' && '— Required'}
-                </label>
-                <PremiumInput
-                  type='text'
-                  value={bannerTitle}
-                  onChange={(e) => {
-                    setBannerTitle(e.target.value);
-                    if (uploadBtnState === 'error') setUploadBtnState('idle');
-                  }}
-                  placeholder='e.g. Winter Break'
-                />
-              </div>
-
-              <div className='form-row'>
-                <label>Link / URL (Optional)</label>
-                <PremiumInput
-                  type='text'
-                  value={bannerLink}
-                  onChange={(e) => setBannerLink(e.target.value)}
-                  placeholder='https://uta.edu...'
-                />
-              </div>
-
-              <div className='form-row'>
-                <label
-                  style={{
-                    color:
-                      uploadError === 'File Required' ? '#ef4444' : 'inherit',
-                  }}
-                >
-                  Image {uploadError === 'File Required' && '— Required'}
-                </label>
-                <PremiumInput
-                  type='file'
-                  accept='image/*'
-                  onChange={(e) => {
-                    setUploadFile(e.target.files?.[0] || null);
-                    if (uploadBtnState === 'error') setUploadBtnState('idle');
-                  }}
-                />
-              </div>
-
-              <div
-                className='premium-modal-actions'
-                style={{ marginTop: '2.5rem' }}
-              >
-                <button
-                  type='button'
-                  className='premium-btn cancel'
-                  onClick={() => setShowUploadModal(false)}
-                  disabled={uploadBtnState !== 'idle'}
-                >
-                  Cancel
-                </button>
-                <button
-                  type='button'
-                  className={`premium-btn primary smart-submit-btn ${uploadBtnState}`}
-                  onClick={handleUpload}
-                  disabled={
-                    !isUploadDirty ||
-                    (uploadBtnState !== 'idle' && uploadBtnState !== 'error')
-                  }
-                >
-                  <SmartButtonContent
-                    btnState={uploadBtnState}
-                    idleText='Upload Banner'
-                    loadingText='Uploading...'
-                    successText='Uploaded'
-                    errorText={uploadError || 'Error'}
-                  />
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
-
       {editingBanner && (
         <BannerEditModal
           isOpen={!!editingBanner}
@@ -1770,50 +1509,8 @@ function BannersSection({}) {
             setEditingBanner(null);
             loadBanners();
           }}
-          onRequestDelete={(b) => setConfirmDeleteBanner(b)}
         />
       )}
-
-      {confirmDeleteBanner &&
-        createPortal(
-          <div
-            className='modal-overlay'
-            style={{ zIndex: 99999 }}
-            onClick={() => {
-              if (deleteBtnState === 'idle') setConfirmDeleteBanner(null);
-            }}
-          >
-            <div className='premium-modal' onClick={(e) => e.stopPropagation()}>
-              <h2 className='premium-modal-title'>Delete Banner?</h2>
-              <p className='premium-modal-message'>
-                You are about to permanently delete{' '}
-                <strong>{confirmDeleteBanner.label || 'this banner'}</strong>.
-              </p>
-              <div className='premium-modal-actions'>
-                <button
-                  className='premium-btn cancel'
-                  onClick={() => setConfirmDeleteBanner(null)}
-                  disabled={deleteBtnState !== 'idle'}
-                >
-                  Cancel
-                </button>
-                <button
-                  className={`premium-btn delete smart-submit-btn ${deleteBtnState}`}
-                  onClick={executeDeleteBanner}
-                  disabled={deleteBtnState !== 'idle'}
-                >
-                  <SmartButtonContent
-                    btnState={deleteBtnState}
-                    idleText='Delete Banner'
-                    loadingText='Deleting...'
-                    successText='Deleted'
-                  />
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
 
       {previewBanner && (
         <div className='modal-overlay' onClick={() => setPreviewBanner(null)}>
@@ -1841,7 +1538,6 @@ function BannerEditModal({
   onClose,
   banner,
   onSaved,
-  onRequestDelete,
 }) {
   const [label, setLabel] = useState(banner?.label || '');
   const [link, setLink] = useState(banner?.link || '');
@@ -2065,13 +1761,6 @@ function BannerEditModal({
             Cancel
           </button>
           <button
-            className='premium-btn danger'
-            onClick={() => onRequestDelete?.(banner)}
-            disabled={btnState !== 'idle'}
-          >
-            Delete
-          </button>
-          <button
             className={`premium-btn primary smart-submit-btn ${btnState}`}
             onClick={handleSave}
             disabled={!isDirty || (btnState !== 'idle' && btnState !== 'error')}
@@ -2282,8 +1971,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
   const [name, setName] = useState(item?.name || '');
   const [categoryKey, setCategoryKey] = useState(item?.category_key || '');
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(item?.image || null);
 
   // Dirty Check State
   const [initialState, setInitialState] = useState(null);
@@ -2313,37 +2000,25 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
       name: item?.name || '',
       categoryKey: item?.category_key || '',
       newCategoryName: '',
-      previewUrl: item?.image || null,
     };
     setName(init.name);
     setCategoryKey(init.categoryKey);
     setNewCategoryName('');
-    setImageFile(null);
-    setPreviewUrl(init.previewUrl);
 
     setInitialState(init); // Set baseline for dirty check
     setBtnState('idle');
     setErrorMsg('');
   }, [isOpen, item]);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-  };
-
   // Dirty Check: Compare current inputs against initial state
   const isDirty = useMemo(() => {
     if (!initialState) return false;
-    // If image file is selected, it's dirty
-    if (imageFile) return true;
     return (
       name !== initialState.name ||
       categoryKey !== initialState.categoryKey ||
       newCategoryName !== initialState.newCategoryName
     );
-  }, [name, categoryKey, newCategoryName, imageFile, initialState]);
+  }, [name, categoryKey, newCategoryName, initialState]);
 
   const triggerError = (msg) => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
@@ -2385,21 +2060,7 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Failed to save item');
 
-      let savedItem = data.item;
-
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        const imgRes = await fetch(`/api/items/${savedItem.id}/upload-image/`, {
-          method: 'POST',
-          credentials: 'include',
-          body: formData,
-        });
-        const imgData = await imgRes.json();
-        if (imgData.image) {
-          savedItem = { ...savedItem, image: imgData.image };
-        }
-      }
+      const savedItem = data.item;
 
       setBtnState('success');
       setTimeout(() => {
@@ -2481,45 +2142,6 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
               </div>
             </div>
           )}
-
-          <div className='form-row' style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: 2 }}>
-              <label>Item Image (Optional)</label>
-              <PremiumInput
-                type='file'
-                accept='image/*'
-                onChange={handleImageChange}
-              />
-              <div
-                style={{
-                  marginTop: '0.5rem',
-                  fontSize: '0.85rem',
-                  opacity: 0.6,
-                }}
-              >
-                Recommended size: 500x500px, PNG or JPG.
-              </div>
-            </div>
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-              }}
-            >
-              <label style={{ marginBottom: '10px' }}>Preview</label>
-              <div className='admin-item-thumb admin-item-thumb-preview'>
-                {previewUrl ? (
-                  <img src={previewUrl} alt='Preview' />
-                ) : (
-                  <div className='admin-item-placeholder'>
-                    {(name || '?').charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
           <div
             className='premium-modal-actions'

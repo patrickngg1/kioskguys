@@ -25,16 +25,8 @@ urlpatterns = [
 
     path("supplies/popular/", views.get_popular_items, name="get_popular_items"),
 
-    # Item image upload (admin)
-    path(
-        "items/<int:item_id>/upload-image/",
-        views.upload_item_image,
-        name="upload_item_image",
-    ),
-
-    # Admin: create/update/delete items
+    # Admin: create/update items
     path("items/save/", views.admin_save_item, name="admin_save_item"),
-    path("items/<int:item_id>/delete/", views.admin_delete_item, name="admin_delete_item"),
 
 
 
@@ -92,10 +84,8 @@ urlpatterns = [
 
     # Banner images
     path("banners/", views.list_banners),
-    path("banners/upload/", views.upload_banner),
     path("banners/<int:banner_id>/activate/", views.activate_banner),
     path("banners/<int:banner_id>/deactivate/", views.deactivate_banner),
-    path("banners/<int:banner_id>/delete/", views.delete_banner),
     path("banners/<int:banner_id>/schedule/", views.schedule_banner),
     path("banners/<int:banner_id>/update/", views.update_banner),
     path("banners/active/", views.get_active_banners),
