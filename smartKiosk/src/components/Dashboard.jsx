@@ -106,6 +106,9 @@ export default function Dashboard() {
   const INACTIVITY_LIMIT = 1 * 60 * 1000;
   const WARNING_TIME = 30;
   const inactivityTimer = useRef(null);
+  const isInMapRef = useRef(false);
+  const mapMaxTimer = useRef(null);
+  const MAP_MAX_SESSION = 1 * 60 * 1000; // force logout after 1 min in map regardless
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -224,11 +227,39 @@ export default function Dashboard() {
 
     const resetInactivityTimer = () => {
       if (showInactivityModal) return;
+      if (isInMapRef.current) return; // suspended while user is inside the map iframe
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
       inactivityTimer.current = setTimeout(
         startWarningCountdown,
         INACTIVITY_LIMIT
       );
+    };
+
+    // When window loses focus to the map iframe, suspend the inactivity timer
+    // and start an unconditional max-session timer so it can't hang forever.
+    const handleWindowBlur = () => {
+      const active = document.activeElement;
+      if (active && active.id === 'map-frame') {
+        isInMapRef.current = true;
+        if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+        if (mapMaxTimer.current) clearTimeout(mapMaxTimer.current);
+        mapMaxTimer.current = setTimeout(() => {
+          isInMapRef.current = false;
+          startWarningCountdown();
+        }, MAP_MAX_SESSION);
+      }
+    };
+
+    // When the user returns to the main page, resume the inactivity timer.
+    const handleWindowFocus = () => {
+      if (isInMapRef.current) {
+        isInMapRef.current = false;
+        if (mapMaxTimer.current) {
+          clearTimeout(mapMaxTimer.current);
+          mapMaxTimer.current = null;
+        }
+        resetInactivityTimer();
+      }
     };
 
     const events = [
@@ -240,6 +271,8 @@ export default function Dashboard() {
       'touchmove',
     ];
     events.forEach((ev) => window.addEventListener(ev, resetInactivityTimer));
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
 
     resetInactivityTimer();
 
@@ -247,7 +280,10 @@ export default function Dashboard() {
       events.forEach((ev) =>
         window.removeEventListener(ev, resetInactivityTimer)
       );
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      if (mapMaxTimer.current) clearTimeout(mapMaxTimer.current);
     };
   }, [user, showInactivityModal]);
 
