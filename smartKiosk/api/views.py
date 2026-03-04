@@ -57,11 +57,30 @@ def get_clean_banner_url(request, image_field):
     RENDER_DOMAIN = "https://kioskguys.onrender.com"
     
     # 3. Stitch it all together so it ALWAYS points to the live server
-    # Output: https://kioskguys.onrender.com/api/media/Banners/wang-20260225-220625.jpeg
     clean_path = f"{RENDER_DOMAIN}/api{settings.MEDIA_URL}Banners/{filename}"
     
     return clean_path
 
+# ---------------------------
+#  SUPPLY ITEM URL PARSER
+# ---------------------------
+def get_clean_item_url(image_field):
+    if not image_field:
+        return None
+    
+    # 1. Safely extract the subfolder and filename from the database string
+    # e.g., grabs "Kleenex" and "Kleenex.png" from ANY messy url
+    raw_string = str(image_field)
+    folder_name = raw_string.split('/')[-2] 
+    filename = raw_string.split('/')[-1]
+    
+    # 2. Hardcode your Render domain
+    RENDER_DOMAIN = "https://kioskguys.onrender.com"
+    
+    # 3. Stitch it all together so it ALWAYS points to the live server
+    clean_path = f"{RENDER_DOMAIN}/api{settings.MEDIA_URL}items/{folder_name}/{filename}"
+    
+    return clean_path
 
 # ---------------------------
 #  LIST ALL BANNERS (ADMIN)
@@ -583,6 +602,10 @@ def register_user(request):
 # Returns all items grouped by category (display name)
 # Uses Django Media image URLs from Item.image
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# GET /api/items/
+# Grouped by category display name
+# ---------------------------------------------------------
 @require_GET
 def get_items(request):
     items = Item.objects.select_related("category").all()
@@ -592,11 +615,8 @@ def get_items(request):
     for item in items:
         category_name = item.category.name  # e.g. "Storage Closet"
 
-        # If an image was uploaded in Django admin, build an absolute URL
-        if item.image:
-            image_url = request.build_absolute_uri(item.image.url)
-        else:
-            image_url = None  # frontend can show a placeholder if it wants
+        # 👇 FIX: Use our new helper function here!
+        image_url = get_clean_item_url(item.image)
 
         if category_name not in categories:
             categories[category_name] = []
@@ -612,37 +632,6 @@ def get_items(request):
         )
 
     return JsonResponse({"ok": True, "categories": categories}, status=200)
-
-
-# ---------------------------------------------------------
-# POST /api/items/<item_id>/upload-image/
-# Optional: Admin/API image upload using Django ImageField
-# Expects multipart/form-data with "file" field
-# ---------------------------------------------------------
-@csrf_exempt
-@require_POST
-def upload_item_image(request, item_id):
-    try:
-        item = Item.objects.get(id=item_id)
-    except Item.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Item not found"}, status=404)
-
-    file = request.FILES.get("file")
-    if not file:
-        return JsonResponse({"ok": False, "error": "No file uploaded"}, status=400)
-
-    # Directly assign the uploaded file to the ImageField
-    item.image = file
-    item.save()
-
-    # Return the new image URL so frontend can refresh
-    image_url = request.build_absolute_uri(item.image.url)
-
-    return JsonResponse(
-        {"ok": True, "message": "Image uploaded successfully", "image": image_url},
-        status=200,
-    )
-
 
 # ---------------------------------------------------------
 # POST /api/items/save/
@@ -724,23 +713,6 @@ def admin_save_item(request):
         },
         status=status_code,
     )
-
-
-# ---------------------------------------------------------
-# POST /api/items/<item_id>/delete/
-# Soft/simple delete for admin
-# ---------------------------------------------------------
-@csrf_exempt
-@require_POST
-def admin_delete_item(request, item_id):
-    try:
-        item = Item.objects.get(id=item_id)
-    except Item.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Item not found"}, status=404)
-
-    item.delete()
-    return JsonResponse({"ok": True, "message": "Item deleted"})
-
 
 
 # ---------------------------------------------------------
@@ -939,10 +911,8 @@ def get_all_items(request):
 
     data = []
     for item in items:
-        if item.image:
-            image_url = request.build_absolute_uri(item.image.url)
-        else:
-            image_url = None
+        # 👇 FIX: Use our new helper function here!
+        image_url = get_clean_item_url(item.image)
 
         data.append({
             "id": item.id,

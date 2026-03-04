@@ -25,16 +25,8 @@ urlpatterns = [
 
     path("supplies/popular/", views.get_popular_items, name="get_popular_items"),
 
-    # Item image upload (admin)
-    path(
-        "items/<int:item_id>/upload-image/",
-        views.upload_item_image,
-        name="upload_item_image",
-    ),
-
     # Admin: create/update/delete items
     path("items/save/", views.admin_save_item, name="admin_save_item"),
-    path("items/<int:item_id>/delete/", views.admin_delete_item, name="admin_delete_item"),
 
 
 
