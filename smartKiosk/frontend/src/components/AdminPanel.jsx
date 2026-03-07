@@ -376,9 +376,9 @@ export default function AdminPanel({
 
   useEffect(() => {
     if (!isOpen) return;
-    if (activeSection === 'reservations') loadAdminReservations();
-    if (activeSection === 'items') loadAdminItems();
-    if (activeSection === 'users') loadAdminUsers();
+    if (activeSection === 'reservations' && adminReservations.length === 0) loadAdminReservations();
+    if (activeSection === 'items' && Object.keys(adminItemsByCategory).length === 0) loadAdminItems();
+    if (activeSection === 'users' && adminUsers.length === 0) loadAdminUsers();
   }, [isOpen, activeSection]);
 
   if (!isOpen) return null;
@@ -406,7 +406,6 @@ export default function AdminPanel({
 
   return (
     <div className='admin-overlay'>
-      <style>{PREMIUM_STYLES}</style>
       <div
         className='admin-shell'
         onClick={(e) => e.stopPropagation()}

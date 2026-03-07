@@ -166,16 +166,12 @@
     ),
     linear-gradient(135deg, rgba(17, 24, 39, 0.92), rgba(15, 23, 42, 0.86));
   border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-
   /* Depth + ambient color glow */
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35), 0 0 28px rgba(37, 99, 235, 0.22),
     inset 0 1px 4px rgba(255, 255, 255, 0.1);
 
-  /* Keep the soft breathing you already use on action cards */
   animation: glowBreath 5s ease-in-out infinite;
-  transition: transform 0.35s ease, box-shadow 0.35s ease, filter 0.35s ease;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
 }
 
 /* Make reserve + supplies cards fill their grid row */
@@ -184,11 +180,10 @@
   flex-direction: column;
 }
 
-/* Unified hover state (slightly lifted, brighter, stronger glow) */
+/* Unified hover state (slightly lifted, stronger glow) */
 .dashboard-view .user-card:hover,
 .dashboard-view .card.action-card:hover {
   transform: translateY(-4px) scale(1.01);
-  filter: brightness(1.06);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4), 0 0 36px rgba(59, 130, 246, 0.45),
     0 0 24px rgba(249, 115, 22, 0.28), inset 0 1px 5px rgba(255, 255, 255, 0.14);
 }
@@ -238,8 +233,6 @@
   height: 398px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 38px rgba(37, 99, 235, 0.25),
     0 0 26px rgba(249, 115, 22, 0.15);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transition: transform 0.6s ease, box-shadow 0.6s ease;
 }
 
@@ -261,7 +254,6 @@
   position: absolute;
   top: 0;
   left: 0;
-  filter: brightness(1.25);
   transition: opacity 1.2s ease-in-out, transform 8s ease-out;
   transform: scale(1.05); /* slight zoom for depth */
 }
@@ -336,19 +328,14 @@
       transparent 70%
     );
   border: 1px solid rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
   box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.4),
     0 10px 26px rgba(0, 0, 0, 0.25), 0 0 28px rgba(37, 99, 235, 0.18);
-  transition: all 0.35s ease;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
 }
 
 .dashboard-view .card.action-card:hover {
-  filter: brightness(1.05);
   box-shadow: 0 0 25px rgba(37, 99, 235, 0.35),
     0 0 18px rgba(249, 115, 22, 0.25);
-  transition: box-shadow 0.35s ease;
-  filter: brightness(1.03);
 }
 
 /* ∂s & content spacing */
@@ -386,11 +373,10 @@
   background: linear-gradient(135deg, #5aa2ff 0%, #2563eb 45%, #1d4ed8 100%);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .dashboard-view .card.action-card .btn-primary:hover {
-  filter: brightness(1.1);
   transform: translateY(-3px) scale(1.02);
   box-shadow: 0 0 30px rgba(37, 99, 235, 0.55),
     0 0 18px rgba(249, 115, 22, 0.25);
@@ -429,8 +415,6 @@
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 1.5rem;
   padding: 0.75rem;
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
   box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.4),
     0 10px 26px rgba(0, 0, 0, 0.25), 0 0 28px rgba(37, 99, 235, 0.18);
 
@@ -549,8 +533,8 @@
     rgba(30, 58, 138, 0.35),
     rgba(7, 12, 24, 0.95)
   );
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 9999999 !important;
   animation: fadeIn 0.3s ease;
   padding-top: 4rem;
@@ -574,8 +558,8 @@
   padding: 2.5rem;
   overflow-y: auto;
   animation: slideUp 0.3s ease;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Larger modals inherit the same styles */
@@ -667,9 +651,7 @@
 
   box-shadow: 0 0 35px rgba(37, 99, 235, 0.45),
     inset 0 0 20px rgba(37, 99, 235, 0.2);
-  /* box-shadow: 0 0 10px #f97316, 0 0 15px #f97316; */
   transform: translateY(-2px);
-  filter: brightness(1.1);
 }
 
 @keyframes fadeIn {
@@ -734,22 +716,18 @@
 @keyframes glowBreath {
   0%,
   100% {
-    box-shadow: 0 0 18px rgba(37, 99, 235, 0.25),
-      0 0 12px rgba(249, 115, 22, 0.15);
-    filter: brightness(1);
+    opacity: 0.95;
   }
   50% {
-    box-shadow: 0 0 28px rgba(37, 99, 235, 0.4),
-      0 0 20px rgba(249, 115, 22, 0.25);
-    filter: brightness(1.05);
+    opacity: 1;
   }
 }
 
 /* Slight intensity boost on hover without killing the glow */
 .dashboard-view .card.action-card:hover {
-  animation: none; /* freeze the cycle */
+  animation: none;
+  opacity: 1;
   box-shadow: 0 0 32px rgba(37, 99, 235, 0.55), 0 0 22px rgba(249, 115, 22, 0.3);
-  filter: brightness(1.07);
   transition: transform 0.6s ease, box-shadow 0.6s ease;
 }
 
@@ -760,12 +738,10 @@
   from {
     opacity: 0;
     transform: translateY(50px);
-    filter: blur(10px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 

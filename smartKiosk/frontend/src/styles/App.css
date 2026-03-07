@@ -66,15 +66,12 @@ html {
 @keyframes slowZoom {
   0% {
     transform: scale(1.06);
-    filter: blur(8px) brightness(0.75);
   }
   50% {
     transform: scale(1.08);
-    filter: blur(9px) brightness(0.72);
   }
   100% {
     transform: scale(1.06);
-    filter: blur(8px) brightness(0.75);
   }
 }
 
@@ -387,12 +384,12 @@ html {
 @keyframes idlePulse {
   0%,
   100% {
-    filter: brightness(1);
     transform: scale(1);
+    opacity: 0.95;
   }
   50% {
-    filter: brightness(1.1);
     transform: scale(1.015);
+    opacity: 1;
   }
 }
 .idle {
@@ -528,11 +525,11 @@ html {
   0%,
   100% {
     transform: scale(1);
-    filter: brightness(1) saturate(1);
+    opacity: 0.9;
   }
   50% {
-    transform: scale(1.04); /* Subtle breathing */
-    filter: brightness(1.25) saturate(1.2);
+    transform: scale(1.04);
+    opacity: 1;
   }
 }
 /* --- 1 TRILLION DOLLAR CINEMATIC SWEEP --- */
@@ -578,16 +575,13 @@ html {
   0% {
     left: -180%;
     opacity: 0;
-    filter: blur(5px);
   }
   15% {
-    opacity: 0.8; /* Slow brighten */
-    filter: blur(2px);
+    opacity: 0.8;
   }
   45% {
-    left: 200%; /* The long, slow transit */
+    left: 200%;
     opacity: 0;
-    filter: blur(8px);
   }
   100% {
     left: 200%;

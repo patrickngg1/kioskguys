@@ -38,8 +38,6 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 30px 65px rgba(0, 0, 0, 0.85), 0 0 45px rgba(37, 99, 235, 0.4),
     0 0 40px rgba(249, 115, 22, 0.2);
-  backdrop-filter: blur(15px) saturate(180%);
-  -webkit-backdrop-filter: blur(15px) saturate(180%);
   animation: adminFadeIn 0.45s ease-out forwards;
   /* GPU HINT */
   will-change: opacity;
@@ -100,19 +98,6 @@
   }
 }
 
-/* breathing glow, subtle like visionOS windows */
-@keyframes adminShellBreathing {
-  0%,
-  100% {
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(37, 99, 235, 0.4),
-      0 0 30px rgba(249, 115, 22, 0.15);
-  }
-  50% {
-    box-shadow: 0 36px 75px rgba(0, 0, 0, 0.9), 0 0 55px rgba(37, 99, 235, 0.55),
-      0 0 40px rgba(249, 115, 22, 0.22);
-  }
-}
-
 /* sheen highlight layer */
 .admin-shell::after {
   content: '';
@@ -128,7 +113,6 @@
     transparent 100%
   );
   opacity: 0.45;
-  mix-blend-mode: soft-light;
 }
 
 /* hovering tilt effect */
@@ -274,7 +258,7 @@
 
   color: #9ca3af;
   font-size: 0.95rem;
-  transition: all 0.22s ease;
+  transition: background 0.22s ease, border-color 0.22s ease, color 0.22s ease, transform 0.22s ease;
 }
 
 .admin-nav-item:hover .admin-nav-pill {
@@ -431,8 +415,6 @@
   border-radius: 16px;
   padding: 1rem 1.1rem !important;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(14px) saturate(180%);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
@@ -496,7 +478,6 @@
   object-fit: contain;
   z-index: 2;
   transition: transform 0.25s ease;
-  filter: brightness(1.5) contrast(1);
 }
 
 .admin-item-card:hover .admin-item-thumb img {
@@ -522,8 +503,6 @@
       rgba(15, 23, 42, 0.85) 60%
     ),
     linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(168, 85, 247, 0.15));
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   border-radius: 20px;
 }
 
@@ -532,7 +511,6 @@
   padding: 1.25rem;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -2848,4 +2826,45 @@
   border-radius: 4px;
   margin-left: 10px;
   text-transform: uppercase;
+}
+
+/* =====================================================================
+   SMART SUBMIT BUTTON STATES (moved from inline AdminPanel.jsx)
+   ===================================================================== */
+
+@keyframes premium-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.smart-submit-btn.error {
+  background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.6) !important;
+  animation: premium-shake 0.4s ease-in-out;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  cursor: not-allowed;
+  padding-left: 3rem !important;
+  padding-right: 3rem !important;
+  min-width: 200px !important;
+  white-space: nowrap !important;
+}
+
+.smart-submit-btn.warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.6) !important;
+  animation: premium-shake 0.4s ease-in-out;
+  cursor: not-allowed;
+  padding-left: 3rem !important;
+  padding-right: 3rem !important;
+  min-width: 200px !important;
+  white-space: nowrap !important;
+}
+
+.smart-submit-btn:disabled:not(.error):not(.warning):not(.loading):not(.success) {
+  opacity: 0.5;
+  background: rgba(255,255,255,0.1) !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  filter: grayscale(1);
 }

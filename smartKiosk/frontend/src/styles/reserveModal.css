@@ -47,10 +47,8 @@
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.085);
-  backdrop-filter: blur(18px) saturate(165%);
-  -webkit-backdrop-filter: blur(18px) saturate(165%);
   position: relative;
-  transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background 220ms cubic-bezier(0.22, 1, 0.36, 1), border-color 220ms ease, box-shadow 220ms ease;
   cursor: pointer;
   overflow: hidden;
   box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.06),
@@ -123,11 +121,10 @@
   overflow: hidden;
   /* Smooth open/close animation */
   transition: max-height 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease,
-    transform 0.4s ease, filter 0.3s ease;
+    transform 0.4s ease;
   max-height: 0;
   opacity: 0;
   transform: translateY(-10px);
-  filter: blur(4px);
   margin-bottom: 0.9rem;
 }
 
@@ -136,7 +133,6 @@
   max-height: 3000px;
   opacity: 1;
   transform: translateY(0);
-  filter: blur(0);
   padding-bottom: 1rem; /* Space at the bottom */
 }
 
@@ -164,8 +160,6 @@
   background: rgba(255, 255, 255, 0.08);
 
   border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(20px) saturate(165%);
-  -webkit-backdrop-filter: blur(20px) saturate(165%);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3),
     inset 0 0 25px rgba(255, 255, 255, 0.05);
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -261,8 +255,6 @@
   border-radius: 15px;
   /* Glassmorphism */
   background: tra;
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
   display: flex;
   gap: 0.75rem;
   width: 100%;
@@ -312,7 +304,6 @@
 .myres-clear-btn {
   background: rgba(255, 255, 255, 0.08) !important;
   color: #d5d7e0 !important;
-  backdrop-filter: blur(22px) saturate(200%);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -333,8 +324,6 @@
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.32);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   animation: resConfirmDrop 380ms cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   z-index: 9999 !important;
@@ -375,19 +364,16 @@
 
 /* ---------------- Rooms row animation (when <=2) ---------------- */
 .rooms-row-premium {
-  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 240ms ease;
-  will-change: opacity, transform, filter;
+  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
 }
 .rooms-row-premium.cards-in {
   opacity: 1;
   transform: translateY(0) scale(1);
-  filter: blur(0);
 }
 .rooms-row-premium.cards-out {
   opacity: 0;
   transform: translateY(-6px) scale(0.98);
-  filter: blur(6px);
   pointer-events: none;
 }
 
@@ -427,12 +413,10 @@
   from {
     opacity: 0;
     transform: translateY(8px) scale(0.98);
-    filter: blur(6px);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0);
   }
 }
 
@@ -467,9 +451,6 @@
   box-shadow: 0 0 0 rgba(0, 0, 0, 0) !important;
   inset: 0 0 0 rgba(255, 255, 255, 0.08) !important;
 
-  backdrop-filter: blur(20px) saturate(120%) brightness(90%);
-  -webkit-backdrop-filter: blur(20px) saturate(120%) brightness(90%);
-
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
 
   background: rgba(255, 255, 255, 0.04) !important;
@@ -502,8 +483,6 @@
   box-shadow: 0 22px 55px rgba(15, 23, 42, 0.92),
     inset 0 0 28px rgba(255, 255, 255, 0.04);
 
-  backdrop-filter: blur(28px) saturate(185%);
-  -webkit-backdrop-filter: blur(28px) saturate(185%);
 }
 
 .day-availability-header {
@@ -824,9 +803,7 @@
   z-index: 10;
 
   /* Glass Background to hide scrolling items behind it */
-  background: rgba(17, 24, 39, 0); /* Matches dark modal theme */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(17, 24, 39, 0.5); /* Matches dark modal theme */
 
   /* Spacing */
   margin: 0 -0.5rem -1rem -0.5rem; /* Negative margin to touch edges */
@@ -860,8 +837,7 @@
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* --- BUTTON VARIANTS --- */
@@ -934,9 +910,6 @@
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
 
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-
   font-size: 0.9rem;
   font-weight: 500;
   color: rgba(240, 244, 255, 0.92);
@@ -965,12 +938,10 @@
   from {
     opacity: 0;
     transform: translateY(-6px) scale(0.98);
-    filter: blur(4px);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0);
   }
 }
 
@@ -1005,7 +976,6 @@
   width: 420px;
   color: #fff;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(18px) saturate(180%);
 }
 
 .overnight-actions {
@@ -1058,9 +1028,6 @@
   border: 1px solid var(--glass-border);
   color: var(--glass-text);
 
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
     0 8px 22px rgba(0, 0, 0, 0.35);
 
@@ -1104,7 +1071,6 @@
     rgba(255, 255, 255, 0.06)
   );
 
-  backdrop-filter: blur(14px);
   border-radius: 14px;
 
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -1113,7 +1079,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
     0 8px 22px rgba(0, 0, 0, 0.35);
 
-  transition: all 0.25s ease;
+  transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .reserve-form .time-toggle button.active {
@@ -1279,9 +1245,6 @@
     rgba(255, 255, 255, 0.14),
     rgba(255, 255, 255, 0.06)
   );
-
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
 
   /* Subtle premium outline instead of color spine */
   border: 1px solid rgba(255, 255, 255, 0.22);
