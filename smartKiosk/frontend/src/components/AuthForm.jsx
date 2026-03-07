@@ -284,7 +284,7 @@ export default function AuthForm({ onLoginSuccess }) {
       <div className='auth-card-inner'>
         <h1 className='kiosk-title'>LOGIN</h1>
 
-        {!resetMode && (
+        {!resetMode && loginStatus === 'idle' && registerStatus === 'idle' && (
           <div className='tab-bar'>
             <button
               type='button'

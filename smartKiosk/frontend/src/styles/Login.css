@@ -1304,7 +1304,7 @@ input.input-field:-webkit-autofill {
   gap: 12px;
   opacity: 0;
   transform: translateY(16px) scale(0.92);
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transition: none; /* outgoing: snap instantly — no crossfade overlap on slow hardware */
   pointer-events: none;
   font-weight: 900;
   letter-spacing: 0.15em;
@@ -1314,7 +1314,7 @@ input.input-field:-webkit-autofill {
 .status-layer.active {
   opacity: 1;
   transform: translateY(0) scale(1);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease; /* only incoming fades in */
 }
 
 /* LOADING STATE: Blue Plasma Glow */
