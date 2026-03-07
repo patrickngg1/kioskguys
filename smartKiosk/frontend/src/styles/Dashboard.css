@@ -913,7 +913,7 @@
 .room-card .room-meta {
   font-weight: 500;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.88);
+  color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 0 6px rgba(0, 0, 0, 0.45);
   transition: color 0.3s ease;
 }
