@@ -1303,6 +1303,7 @@ input.input-field:-webkit-autofill {
   justify-content: center;
   gap: 12px;
   opacity: 0;
+  visibility: hidden;
   transform: translateY(16px) scale(0.92);
   transition: none; /* outgoing: snap instantly — no crossfade overlap on slow hardware */
   pointer-events: none;
@@ -1313,6 +1314,7 @@ input.input-field:-webkit-autofill {
 
 .status-layer.active {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0) scale(1);
   transition: opacity 0.18s ease, transform 0.18s ease; /* only incoming fades in */
 }
