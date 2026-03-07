@@ -1291,7 +1291,7 @@ input.input-field:-webkit-autofill {
   overflow: hidden !important;
   padding: 0 !important;
   border-radius: 16px !important;
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: background 0.4s ease, box-shadow 0.4s ease !important;
 }
 
 .status-layer {
@@ -1303,8 +1303,8 @@ input.input-field:-webkit-autofill {
   justify-content: center;
   gap: 12px;
   opacity: 0;
-  transform: translateY(20px) scale(0.9);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(16px) scale(0.92);
+  transition: opacity 0.22s ease, transform 0.22s ease;
   pointer-events: none;
   font-weight: 900;
   letter-spacing: 0.15em;
@@ -1314,6 +1314,7 @@ input.input-field:-webkit-autofill {
 .status-layer.active {
   opacity: 1;
   transform: translateY(0) scale(1);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 /* LOADING STATE: Blue Plasma Glow */

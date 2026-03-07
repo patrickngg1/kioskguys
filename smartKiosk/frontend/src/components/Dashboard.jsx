@@ -1,5 +1,5 @@
 // src/components/Dashboard.jsx
-import React, { useEffect, useState, useRef, useContext, useMemo } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UIAssetsContext } from '../App';
 import '../styles/Dashboard.css';
@@ -87,19 +87,8 @@ export default function Dashboard() {
   // ✅ NEW: Button State for Edit Name
   const [editNameBtnState, setEditNameBtnState] = useState('idle');
 
-  // Inactivity / Countdown State
-  const [ringProgress, setRingProgress] = useState(0);
-  const [showInactivityModal, setShowInactivityModal] = useState(false);
-  const [countdown, setCountdown] = useState(30);
-  const countdownRef = useRef(null);
-
-  const INACTIVITY_LIMIT = 10 * 60 * 1000;
-  const WARNING_TIME = 30;
-  const inactivityTimer = useRef(null);
   const [showLogoutSplash, setShowLogoutSplash] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-
-  const chimeRef = useRef(null);
 
   // ------------------------ Dynamic Banners State ------------------------
   const [banners, setBanners] = useState([]);
@@ -520,79 +509,6 @@ export default function Dashboard() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* INACTIVITY OVERLAY */}
-      {showInactivityModal && <div className='inactivity-dim'></div>}
-
-      {/* INACTIVITY MODAL */}
-      {showInactivityModal && (
-        <div className='modal-overlay' style={{ zIndex: 999 }}>
-          <div
-            className='modal-box inactivity-modal-enter'
-            style={{ maxWidth: 420, textAlign: 'center' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className='close-btn'
-              onClick={() => {
-                setShowInactivityModal(false);
-                if (countdownRef.current) clearInterval(countdownRef.current);
-              }}
-            >
-              ✕
-            </button>
-            <h2>Are you still here?</h2>
-            <p style={{ marginTop: '0.75rem', fontSize: '1.1rem' }}>
-              You will be signed out in
-            </p>
-            <div
-              className={`countdown-ring ${
-                countdown <= 5
-                  ? 'ring-glow-strong'
-                  : countdown <= 10
-                  ? 'ring-glow'
-                  : ''
-              }`}
-              style={{
-                background: `conic-gradient(var(--uta-orange) ${ringProgress}deg, var(--uta-blue) ${ringProgress}deg)`,
-              }}
-            >
-              <div
-                className={`countdown-ring-inner ${
-                  countdown <= 5
-                    ? 'text-pulse-strong'
-                    : countdown <= 10
-                    ? 'text-pulse'
-                    : ''
-                }`}
-              >
-                {countdown}s
-              </div>
-            </div>
-            <button
-              className='btn btn-primary w-full'
-              style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}
-              onClick={() => {
-                setShowInactivityModal(false);
-                if (countdownRef.current) clearInterval(countdownRef.current);
-              }}
-            >
-              Stay Signed In
-            </button>
-            <button
-              className='btn btn-primary w-full'
-              style={{ background: '#d72638' }}
-              onClick={async () => {
-                if (countdownRef.current) clearInterval(countdownRef.current);
-                await logoutSession();
-                startLogoutSplash();
-              }}
-            >
-              Sign Out Now
-            </button>
           </div>
         </div>
       )}
