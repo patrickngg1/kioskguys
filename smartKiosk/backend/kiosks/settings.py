@@ -109,6 +109,7 @@ CORS_ALLOWED_ORIGINS = [
     # Render — no trailing slash or path; origin = scheme+host only
     "https://kioskguys-front.onrender.com",
     "https://kioskguys-1.onrender.com",
+    "https://erbkiosk.onrender.com",
 ]
 
 CORS_ALLOW_HEADERS = [
