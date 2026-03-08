@@ -775,6 +775,9 @@ def save_supply_recipient(request):
     email = (data.get("email") or "").strip()
     if not email:
         return JsonResponse({"error": "Email is required"}, status=400)
+    allowed_domains = ("@gmail.com", "@uta.edu", "@mavs.uta.edu")
+    if not any(email.lower().endswith(d) for d in allowed_domains):
+        return JsonResponse({"error": "Email must end with @gmail.com, @uta.edu, or @mavs.uta.edu"}, status=400)
     r = SupplyRecipient.objects.first()
     if r:
         r.first_name = first_name

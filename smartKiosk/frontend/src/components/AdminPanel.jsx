@@ -1242,8 +1242,16 @@ function SupplyRecipientModal({ onClose }) {
     }).catch(() => {});
   }, []);
 
+  const ALLOWED_DOMAINS = ['@gmail.com', '@uta.edu', '@mavs.uta.edu'];
+  const isValidEmail = (val) => ALLOWED_DOMAINS.some((d) => val.toLowerCase().endsWith(d));
+
   const handleSave = async () => {
     if (!email.trim()) { setErrorMsg('Email is required.'); setStatus('error'); return; }
+    if (!isValidEmail(email.trim())) {
+      setErrorMsg('Email must end with @gmail.com, @uta.edu, or @mavs.uta.edu');
+      setStatus('error');
+      return;
+    }
     setSaving(true);
     setStatus('idle');
     setErrorMsg('');
@@ -1282,7 +1290,7 @@ function SupplyRecipientModal({ onClose }) {
               type='text'
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              placeholder='Patrick'
+              placeholder='John'
               style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.25)', background: 'rgba(15,23,42,0.7)', color: '#e5e7eb', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
@@ -1294,7 +1302,7 @@ function SupplyRecipientModal({ onClose }) {
               type='text'
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              placeholder='Nguyen'
+              placeholder='Doe'
               style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.25)', background: 'rgba(15,23,42,0.7)', color: '#e5e7eb', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
