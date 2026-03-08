@@ -179,6 +179,21 @@ class UIAsset(models.Model):
     
 
 # ---------------------------------------------------------
+# SUPPLY RECIPIENT MODEL
+# ---------------------------------------------------------
+class SupplyRecipient(models.Model):
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+
+    class Meta:
+        db_table = "api_supplyrecipient"
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} <{self.email}>"
+
+
+# ---------------------------------------------------------
 # PASSWORD RESET CODE MODEL
 # ---------------------------------------------------------
 class PasswordResetCode(models.Model):

@@ -40,6 +40,10 @@ urlpatterns = [
     path("items/save/", views.admin_save_item, name="admin_save_item"),
     path("items/<int:item_id>/delete/", views.admin_delete_item, name="admin_delete_item"),
 
+    # Supply recipient
+    path("supply-recipient/", views.get_supply_recipient, name="get_supply_recipient"),
+    path("supply-recipient/save/", views.save_supply_recipient, name="save_supply_recipient"),
+
 
 
 

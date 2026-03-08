@@ -19,7 +19,7 @@ from base64 import b64encode
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.db.models import F, Q
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -45,6 +45,7 @@ from .models import (
     RoomReservation,
     PasswordResetCode,
     BannerImage,
+    SupplyRecipient,
 )
 from datetime import datetime, timedelta, time
 from django.utils import timezone
@@ -751,6 +752,40 @@ def admin_delete_item(request, item_id):
 
 
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# GET  /api/supply-recipient/       — fetch current recipient
+# POST /api/supply-recipient/save/  — upsert recipient (admin only)
+# ---------------------------------------------------------
+@require_http_methods(["GET"])
+def get_supply_recipient(request):
+    r = SupplyRecipient.objects.first()
+    if not r:
+        return JsonResponse({"first_name": "", "last_name": "", "email": "patrickknguyen1@gmail.com"})
+    return JsonResponse({"first_name": r.first_name, "last_name": r.last_name, "email": r.email})
+
+
+@csrf_exempt
+@require_POST
+def save_supply_recipient(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"error": "Forbidden"}, status=403)
+    data = json.loads(request.body)
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    email = (data.get("email") or "").strip()
+    if not email:
+        return JsonResponse({"error": "Email is required"}, status=400)
+    r = SupplyRecipient.objects.first()
+    if r:
+        r.first_name = first_name
+        r.last_name = last_name
+        r.email = email
+        r.save()
+    else:
+        r = SupplyRecipient.objects.create(first_name=first_name, last_name=last_name, email=email)
+    return JsonResponse({"ok": True, "first_name": r.first_name, "last_name": r.last_name, "email": r.email})
+
+
 # POST /api/supplies/request/
 # Creates a supply request, updates popularity, sends email (PREMIUM)
 # ADDED: Daily Item Deactivation Logic
@@ -855,6 +890,16 @@ def create_supply_request(request):
             "smartKiosk/media/ui_assets/apple-touch-icon.png"
         )
 
+        supply_recipient = SupplyRecipient.objects.first()
+        if supply_recipient:
+            recipient_email = supply_recipient.email
+            recipient_first = supply_recipient.first_name
+            recipient_last = supply_recipient.last_name
+        else:
+            recipient_email = "patrickknguyen1@gmail.com"
+            recipient_first = ""
+            recipient_last = ""
+
         # Build premium HTML
         html_body = render_supply_request_email(
             full_name=full_name,
@@ -863,13 +908,14 @@ def create_supply_request(request):
             request_id=supply_request.id,
             timestamp=supply_request.requested_at,
             logo_url=logo_url,
+            recipient_first=recipient_first,
+            recipient_last=recipient_last,
         )
 
         subject = f"📦 New Supply Request — {full_name}"
-        recipient = "prakash.sapkota@mavs.uta.edu"  # whoever brings supplies
 
         send_via_sendgrid(
-            to_email=recipient,
+            to_email=recipient_email,
             subject=subject,
             html_content=html_body,
         )

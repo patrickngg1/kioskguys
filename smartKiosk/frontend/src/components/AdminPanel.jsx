@@ -1226,6 +1226,114 @@ function RoomsSection({ rooms }) {
   );
 }
 
+function SupplyRecipientModal({ onClose }) {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName]   = useState('');
+  const [email, setEmail]         = useState('');
+  const [saving, setSaving]       = useState(false);
+  const [status, setStatus]       = useState('idle'); // idle | success | error
+  const [errorMsg, setErrorMsg]   = useState('');
+
+  useEffect(() => {
+    apiFetch('/api/supply-recipient/', { method: 'GET' }).then((d) => {
+      setFirstName(d.first_name || '');
+      setLastName(d.last_name || '');
+      setEmail(d.email || '');
+    }).catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    if (!email.trim()) { setErrorMsg('Email is required.'); setStatus('error'); return; }
+    setSaving(true);
+    setStatus('idle');
+    setErrorMsg('');
+    try {
+      await apiFetch('/api/supply-recipient/save/', {
+        method: 'POST',
+        body: JSON.stringify({ first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim() }),
+      });
+      setStatus('success');
+      setTimeout(onClose, 900);
+    } catch (e) {
+      setErrorMsg('Failed to save. Please try again.');
+      setStatus('error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return createPortal(
+    <div className='modal-overlay' style={{ zIndex: 999999 }} onClick={onClose}>
+      <div
+        className='premium-modal'
+        style={{ maxWidth: 440, width: '100%' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className='premium-modal-title' style={{ fontSize: '1.3rem', marginBottom: '1.2rem' }}>
+          ✉ Supply Email Recipient
+        </h2>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '1.4rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(148,163,184,0.9)', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              First Name
+            </label>
+            <input
+              type='text'
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder='Patrick'
+              style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.25)', background: 'rgba(15,23,42,0.7)', color: '#e5e7eb', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(148,163,184,0.9)', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Last Name
+            </label>
+            <input
+              type='text'
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder='Nguyen'
+              style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.25)', background: 'rgba(15,23,42,0.7)', color: '#e5e7eb', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(148,163,184,0.9)', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Email <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <input
+              type='email'
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder='recipient@example.com'
+              style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '10px', border: `1px solid ${status === 'error' ? 'rgba(239,68,68,0.7)' : 'rgba(148,163,184,0.25)'}`, background: 'rgba(15,23,42,0.7)', color: '#e5e7eb', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          {errorMsg && (
+            <p style={{ margin: 0, fontSize: '0.78rem', color: '#f87171' }}>{errorMsg}</p>
+          )}
+        </div>
+
+        <div className='premium-modal-actions'>
+          <button className='admin-pill-button admin-pill-subtle' onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className={`admin-pill-button ${status === 'success' ? 'admin-pill-success' : 'admin-pill-primary'}`}
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : status === 'success' ? '✓ Saved' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+
 function ItemsSection({
   itemsByCategory,
   loading,
@@ -1234,6 +1342,7 @@ function ItemsSection({
   onDeleteItem,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showRecipientModal, setShowRecipientModal] = useState(false);
 
   const highlightMatch = (text) => {
     if (!searchQuery.trim()) return text;
@@ -1285,14 +1394,27 @@ function ItemsSection({
             Manage the catalog of items shown in the Request Supplies modal.
           </p>
         </div>
-        <button
-          type='button'
-          className='admin-pill-button admin-pill-primary'
-          onClick={onAddItem}
-        >
-          + Add Item
-        </button>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+          <button
+            type='button'
+            className='admin-pill-button admin-pill-subtle'
+            onClick={() => setShowRecipientModal(true)}
+          >
+            ✉ Email Recipient
+          </button>
+          <button
+            type='button'
+            className='admin-pill-button admin-pill-primary'
+            onClick={onAddItem}
+          >
+            + Add Item
+          </button>
+        </div>
       </div>
+
+      {showRecipientModal && (
+        <SupplyRecipientModal onClose={() => setShowRecipientModal(false)} />
+      )}
 
       <div className='admin-filter-bar' style={{ marginTop: '0.5rem' }}>
         <input
