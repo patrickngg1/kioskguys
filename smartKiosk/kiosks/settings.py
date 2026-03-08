@@ -163,7 +163,7 @@ SIMPLE_JWT = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ----------------------------------------------------
-# EMAIL CONFIGURATION (AMAZON SES SMTP)
+# EMAIL CONFIGURATION (GMAIL SMTP)
 # ----------------------------------------------------
 import os
 from dotenv import load_dotenv
@@ -171,14 +171,14 @@ load_dotenv()
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
-EMAIL_HOST = "email-smtp.us-east-1.amazonaws.com"
+EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = os.environ.get("SES_SMTP_USER")
-EMAIL_HOST_PASSWORD = os.environ.get("SES_SMTP_PASS")
+EMAIL_HOST_USER = "npthien1198@gmail.com"
+EMAIL_HOST_PASSWORD = "dyrr hqkn yjpg pquo"
 
-DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <ersaauta@gmail.com>"
+DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <npthien1198@gmail.com>"
 
 EMAIL_TIMEOUT = 30
 

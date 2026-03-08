@@ -585,7 +585,7 @@ def render_bulk_cancellation_email(reservations, logo_url, cancelled_by, reason)
 
 
 
-def render_supply_request_email(full_name, email, items, request_id, timestamp, logo_url):
+def render_supply_request_email(full_name, email, items, request_id, timestamp, logo_url, recipient_first="", recipient_last=""):
     """
     Premium admin-facing email for a new supply request.
     Uses real item images from GitHub, one item per row.
@@ -593,6 +593,11 @@ def render_supply_request_email(full_name, email, items, request_id, timestamp, 
 
     full_name = full_name or "Unknown User"
     email = email or "Not provided"
+
+    if recipient_first or recipient_last:
+        greeting = f"Hello {recipient_first} {recipient_last}".strip() + ","
+    else:
+        greeting = "Hello,"
 
     # Format timestamp safely
     try:
@@ -725,6 +730,10 @@ def render_supply_request_email(full_name, email, items, request_id, timestamp, 
                 <div style="width:110px; height:3px; background:#EE7624; border-radius:3px;
                             margin-top:8px; margin-bottom:12px;"></div>
 
+                <div style="font-family:system-ui,'Segoe UI',sans-serif; font-size:15px;
+                            font-weight:600; color:#e5e7eb; line-height:1.55; margin-bottom:4px;">
+                  {greeting}
+                </div>
                 <div style="font-family:system-ui,'Segoe UI',sans-serif; font-size:14px;
                             color:rgba(209,213,219,0.96); line-height:1.55;">
                   A new supply request has been submitted via UTA Smart Kiosk.

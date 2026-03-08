@@ -35,6 +35,7 @@ from .models import (
     RoomReservation,
     PasswordResetCode,
     BannerImage,
+    SupplyRecipient,
 )
 from datetime import datetime, timedelta, time
 from django.utils import timezone
@@ -420,7 +421,7 @@ def delete_user(request, user_id):
     return JsonResponse({"ok": True}, status=200)
 
 # ---------------------------------------------------------
-# SEND EMAIL VIA SENDGRID (HTML + optional ICS attachment)
+# SEND EMAIL VIA GMAIL SMTP (HTML + optional ICS attachment)
 # ---------------------------------------------------------
 def send_via_sendgrid(
     to_email,
@@ -431,47 +432,20 @@ def send_via_sendgrid(
     from_name="UTA Smart Kiosk",
     ics_content=None,
 ):
-    api_key = getattr(settings, "SENDGRID_API_KEY", None)
-    if not api_key:
-        raise Exception("SENDGRID_API_KEY missing in settings.py")
+    sender = from_email or settings.DEFAULT_FROM_EMAIL
 
-    verified_sender = getattr(settings, "SENDGRID_VERIFIED_SENDER", None)
-    if not verified_sender:
-        raise Exception("SENDGRID_VERIFIED_SENDER missing in settings.py")
-
-    if not from_email:
-        from_email = verified_sender
-
-    payload = {
-        "personalizations": [{"to": [{"email": to_email}]}],
-        "from": {"email": from_email, "name": from_name},
-        "subject": subject,
-        "content": [{"type": "text/html", "value": html_content}],
-    }
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body="",
+        from_email=sender,
+        to=[to_email],
+    )
+    msg.attach_alternative(html_content, "text/html")
 
     if ics_content:
-        payload["attachments"] = [
-            {
-                "content": b64encode(ics_content).decode("utf-8"),
-                "type": "text/calendar",
-                "filename": "rreservation.ics",
-                "disposition": "attachment",
-            }
-        ]
+        msg.attach("reservation.ics", ics_content, "text/calendar")
 
-    res = requests.post(
-        "https://api.sendgrid.com/v3/mail/send",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        timeout=15,
-    )
-
-    if res.status_code >= 400:
-        raise Exception(f"SendGrid error {res.status_code}: {res.text}")
-
+    msg.send()
     return True
 
 # ---------------------------------------------------------
@@ -764,6 +738,16 @@ def create_supply_request(request):
             "smartKiosk/media/ui_assets/apple-touch-icon.png"
         )
 
+        supply_recipient = SupplyRecipient.objects.first()
+        if supply_recipient:
+            recipient_email = supply_recipient.email
+            recipient_first = supply_recipient.first_name
+            recipient_last = supply_recipient.last_name
+        else:
+            recipient_email = "patrickknguyen1@gmail.com"
+            recipient_first = ""
+            recipient_last = ""
+
         # Build premium HTML
         html_body = render_supply_request_email(
             full_name=full_name,
@@ -772,13 +756,14 @@ def create_supply_request(request):
             request_id=supply_request.id,
             timestamp=supply_request.requested_at,
             logo_url=logo_url,
+            recipient_first=recipient_first,
+            recipient_last=recipient_last,
         )
 
         subject = f"📦 New Supply Request — {full_name}"
-        recipient = "prakash.sapkota@mavs.uta.edu"  # whoever brings supplies
 
         send_via_sendgrid(
-            to_email=recipient,
+            to_email=recipient_email,
             subject=subject,
             html_content=html_body,
         )

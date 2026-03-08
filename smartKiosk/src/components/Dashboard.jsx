@@ -1005,10 +1005,11 @@ export default function Dashboard() {
             <button
               className='btn btn-primary w-full'
               style={{ background: '#d72638' }}
-              onClick={async () => {
+              onClick={() => {
                 if (countdownRef.current) clearInterval(countdownRef.current);
-                await logoutSession();
+                setShowInactivityModal(false);
                 startLogoutSplash();
+                logoutSession();
               }}
             >
               Sign Out Now
