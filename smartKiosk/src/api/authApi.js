@@ -1,15 +1,11 @@
 // src/api/authApi.js
-// ------------------------------------------------------------
-// FINAL VERSION — FIXED FOR DJANGO SESSION AUTH + ROOM RESERVATION
-// ------------------------------------------------------------
-
-const BASE_URL = '';
+import { API_BASE } from './api';
 
 // ------------------------------------------------------------
 // LOGIN USING DJANGO SESSION AUTH   (/api/login/)
 // ------------------------------------------------------------
 export async function loginWithSession(email, password) {
-  const res = await fetch(`/api/login/`, {
+  const res = await fetch(`${API_BASE}/api/login/`, {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -24,7 +20,6 @@ export async function loginWithSession(email, password) {
     throw new Error(data.error || 'Login failed');
   }
 
-  // ⭐ RETURN FULL LOGIN PAYLOAD (critical)
   return {
     ok: true,
     id: data.id,
@@ -40,8 +35,8 @@ export async function loginWithSession(email, password) {
 // ------------------------------------------------------------
 export async function getSessionUser() {
   try {
-    const res = await fetch(`${BASE_URL}/api/me/`, {
-      credentials: 'include', // SEND COOKIE
+    const res = await fetch(`${API_BASE}/api/me/`, {
+      credentials: 'include',
     });
 
     if (!res.ok) return null;
@@ -60,17 +55,17 @@ export async function getSessionUser() {
 // LOGOUT SESSION
 // ------------------------------------------------------------
 export async function logoutSession() {
-  await fetch(`${BASE_URL}/api/logout/`, {
+  await fetch(`${API_BASE}/api/logout/`, {
     method: 'POST',
-    credentials: 'include', // remove session cookie
+    credentials: 'include',
   });
 }
 
 // ------------------------------------------------------------
-// OPTIONAL — REGISTER NEW USER (if you create /register/ later)
+// REGISTER NEW USER
 // ------------------------------------------------------------
 export async function registerWithSession(fullName, email, password) {
-  const res = await fetch(`${BASE_URL}/api/register/`, {
+  const res = await fetch(`${API_BASE}/api/register/`, {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -87,7 +82,7 @@ export async function registerWithSession(fullName, email, password) {
 }
 
 export async function requestPasswordReset(email) {
-  const res = await fetch(`${BASE_URL}/api/password-reset/request/`, {
+  const res = await fetch(`${API_BASE}/api/password-reset/request/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

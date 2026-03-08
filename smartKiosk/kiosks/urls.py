@@ -30,7 +30,6 @@ urlpatterns = [
     path('api/auth/jwt/verify/', TokenVerifyView.as_view(), name='jwt_verify'),
 ]
 
-# ⭐ ADD THIS BLOCK BELOW
-# Serve media files (uploaded images)
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files (uploaded images) in both dev and production.
+# In production Render serves files directly from disk via gunicorn.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,12 +1,15 @@
 // src/api/suppliesApi.js
-import axios from 'axios';
+import { API_BASE } from './api';
 
 export async function submitSupplyRequest(payload) {
   try {
-    const res = await axios.post('/api/supplies/request/', payload, {
-      withCredentials: true, // include Django session cookie
+    const res = await fetch(`${API_BASE}/api/supplies/request/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
-    return res.data;
+    return await res.json();
   } catch (error) {
     console.error('Supply request API error:', error);
     return { ok: false, error };

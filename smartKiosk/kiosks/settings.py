@@ -4,12 +4,20 @@ Django settings for kiosks project.
 import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-!uu)_)22cl-rk2f2wv!k(5%0shlio@%xqw!^(a%b$3d1pn9rwv'
-DEBUG = True
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+# ---------------------------------------------------------
+# SECURITY
+# ---------------------------------------------------------
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!uu)_)22cl-rk2f2wv!k(5%0shlio@%xqw!^(a%b$3d1pn9rwv')
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+_hosts = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost')
+ALLOWED_HOSTS = [h.strip() for h in _hosts.split(',') if h.strip()]
 
 # ---------------------------------------------------------
 # INSTALLED APPS
@@ -43,6 +51,7 @@ SITE_ID = 1
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',   # MUST BE FIRST
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
 
@@ -58,10 +67,8 @@ MIDDLEWARE = [
 # CORS SETTINGS
 # ---------------------------------------------------------
 CORS_ALLOW_CREDENTIALS = True   # allow cookies with cross-origin fetch
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+_cors = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors.split(',') if o.strip()]
 
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -105,11 +112,11 @@ WSGI_APPLICATION = 'kiosks.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'test',
-        'USER': '3hps72F5SkXUDHH.root',
-        'PASSWORD': 'Ypqr0JFtUtjJSo62',
-        'HOST': 'gateway01.us-east-1.prod.aws.tidbcloud.com',
-        'PORT': 4000,
+        'NAME': os.environ.get('DB_NAME', 'test'),
+        'USER': os.environ.get('DB_USER', '3hps72F5SkXUDHH.root'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'Ypqr0JFtUtjJSo62'),
+        'HOST': os.environ.get('DB_HOST', 'gateway01.us-east-1.prod.aws.tidbcloud.com'),
+        'PORT': int(os.environ.get('DB_PORT', '4000')),
         'OPTIONS': {
             'ssl': {
                 'ca': str(BASE_DIR / 'isrgrootx1.pem'),
@@ -141,6 +148,8 @@ USE_TZ = True
 # STATIC
 # ---------------------------------------------------------
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ---------------------------------------------------------
 # DRF + SIMPLE JWT (works alongside sessions)
@@ -165,10 +174,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ----------------------------------------------------
 # EMAIL CONFIGURATION (AMAZON SES SMTP)
 # ----------------------------------------------------
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 EMAIL_HOST = "email-smtp.us-east-1.amazonaws.com"
@@ -183,24 +188,31 @@ DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <ersaauta@gmail.com>"
 EMAIL_TIMEOUT = 30
 
 # ---------------------------------------------------------
-# SESSION / CSRF COOKIE SETTINGS (LOCAL DEV)
+# SESSION / CSRF COOKIE SETTINGS
 # ---------------------------------------------------------
-# NOTE: we intentionally DO NOT set *_COOKIE_DOMAIN so that the cookies
-# are bound to whatever host you’re actually using (localhost).
-SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
-
-CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = True
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
+if DEBUG:
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SECURE = False
+else:
+    # Cross-origin cookies require SameSite=None + Secure in production
+    SESSION_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SECURE = True
+    # Trust Render's reverse proxy for HTTPS detection
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+
+_trusted = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000',
+)
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _trusted.split(',') if o.strip()]
 
 # Optional: custom list you mentioned (Django will ignore unknown settings)
 CSRF_IGNORE_PATHS = [

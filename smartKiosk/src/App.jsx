@@ -6,6 +6,7 @@ import {
   Route,
   useLocation,
 } from 'react-router-dom';
+import { API_BASE } from './api/api';
 
 import LoginPage from './components/LoginPage';
 import Header from './components/Header';
@@ -219,7 +220,7 @@ export default function App() {
 
   // 🟧 Fetch UI assets ONCE from Django
   useEffect(() => {
-    fetch('/api/ui-assets/')
+    fetch(`${API_BASE}/api/ui-assets/`)
       .then((res) => res.json())
       .then((data) => setUIAssets(data.assets))
       .catch((e) => console.error('Failed to load UI assets', e));

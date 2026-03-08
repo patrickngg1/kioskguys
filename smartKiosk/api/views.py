@@ -48,19 +48,13 @@ import random
 def get_clean_banner_url(request, image_field):
     if not image_field:
         return ""
-    
-    # 1. Safely extract the filename from the database string
-    raw_string = str(image_field)
-    filename = raw_string.split('/')[-1]
-    
-    # 2. Hardcode your Render domain
-    RENDER_DOMAIN = "https://kioskguys.onrender.com"
-    
-    # 3. Stitch it all together so it ALWAYS points to the live server
-    # Output: https://kioskguys.onrender.com/api/media/Banners/wang-20260225-220625.jpeg
-    clean_path = f"{RENDER_DOMAIN}/api{settings.MEDIA_URL}Banners/{filename}"
-    
-    return clean_path
+
+    # Extract just the filename from the stored path
+    filename = str(image_field).split('/')[-1]
+
+    # Build the URL dynamically from the incoming request so it works in
+    # both local dev (http://127.0.0.1:8000) and production (https://kioskguys.onrender.com)
+    return request.build_absolute_uri(f"{settings.MEDIA_URL}Banners/{filename}")
 
 
 # ---------------------------

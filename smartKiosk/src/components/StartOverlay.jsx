@@ -1,6 +1,7 @@
 // src/components/StartOverlay.jsx
 import React, { useState, useEffect } from 'react';
 import '../styles/App.css';
+import { API_BASE } from '../api/api';
 
 export default function StartOverlay({ onStart }) {
   const [fadeOut, setFadeOut] = useState(false);
@@ -9,7 +10,7 @@ export default function StartOverlay({ onStart }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
-    fetch('/api/banners/active/')
+    fetch(`${API_BASE}/api/banners/active/`)
       .then((res) => res.json())
       .then((data) => {
         if (data.ok && Array.isArray(data.banners)) {
