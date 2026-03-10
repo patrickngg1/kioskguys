@@ -28,7 +28,9 @@ button.premium-input-field {
   outline: none;
   box-sizing: border-box !important;
 
-  transition: all 0.2s ease;
+  /* transition:all removed — watches every property, triggers paint for background/color/filter.
+     Only transition composited-friendly properties. */
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 /* ===== DATE PICKER ICON (BRIGHT WHITE FIX) ===== */
@@ -64,7 +66,7 @@ button.premium-input-field.am-mode {
   background: rgba(59, 130, 246, 0.45) !important;
   border: 1px solid #3b82f6 !important;
   color: #eff6ff !important;
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.35) !important;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.3) !important;
 }
 
 /* 🟠 PM MODE - ORANGE */
@@ -72,7 +74,7 @@ button.premium-input-field.pm-mode {
   background: rgba(249, 115, 22, 0.45) !important;
   border: 1px solid #f97316 !important;
   color: #fff7ed !important;
-  box-shadow: 0 0 15px rgba(249, 115, 22, 0.35) !important;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.3) !important;
 }
 
 /* Hover States */
