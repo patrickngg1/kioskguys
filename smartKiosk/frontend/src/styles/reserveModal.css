@@ -63,14 +63,11 @@
 }
 
 .vision-toggle.on {
-  background: linear-gradient(
-    135deg,
-    rgba(37, 99, 235, 0.98),
-    rgba(96, 165, 250, 0.98)
-  );
+  /* Flat color instead of gradient — solid fills repaint ~10× faster than gradients.
+     Visual difference is negligible at this size but paint cost drops significantly. */
+  background: rgba(37, 99, 235, 0.95);
   border-color: rgba(255, 255, 255, 0.26);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5),
-    0 4px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
 }
 
 /* static highlight when ON — shimmer animation removed (Pi perf) */
@@ -126,25 +123,26 @@
    ========================================================= */
 
 /* max-height animation REMOVED — it forces layout recalc on every frame (Pi INP killer).
-   Height is now instant; only opacity + transform are animated (GPU-composited). */
+   overflow:visible also removed from .open — switching overflow forces a full stacking
+   context recalc on all children (another large INP source). Keep overflow:hidden always;
+   use padding to prevent shadow clipping on cards. */
 .myres-panel {
   overflow: hidden;
   max-height: 0;
   opacity: 0;
   transform: translateY(-8px);
   pointer-events: none;
-  /* Only transition composited properties */
   transition: opacity 220ms ease, transform 220ms ease;
   margin-bottom: 0.9rem;
 }
 
 .myres-panel.open {
   max-height: none;    /* instant — no layout animation */
-  overflow: visible;
+  overflow: hidden;    /* keep hidden to avoid stacking context recalc */
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
-  padding-bottom: 1rem;
+  padding: 0.25rem 0.25rem 1.25rem; /* extra padding so card shadows aren't clipped */
 }
 
 /* ---------------- List container ---------------- */
@@ -155,10 +153,7 @@
   padding: 0.4rem 0.5rem 1rem 0.5rem; /* Added padding for shadows */
 }
 
-/* Fix last reservation hidden behind sticky footer */
-.myres-panel.open {
-  padding-bottom: 0rem !important;
-}
+/* padding-bottom override removed — consolidated into .myres-panel.open above */
 
 /* ================== Reservation cards ================== */
 .myres-card {
@@ -172,8 +167,7 @@
 
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
-  transition: transform 220ms ease, box-shadow 220ms ease, background 200ms ease,
-    border-color 200ms ease;
+  transition: transform 220ms ease, box-shadow 220ms ease;
   cursor: pointer;
   overflow: visible;
   will-change: transform;
@@ -740,10 +734,11 @@
   transition: opacity 180ms ease, transform 200ms ease, box-shadow 220ms ease;
 }
 
+/* day-grid-cell.free:hover — transform+box-shadow removed.
+   With 48 cells per row, painting box-shadow+transform on every cell the cursor
+   crosses caused continuous paint on cursor movement (bad INP & jank). */
 .day-grid-cell.free:hover {
-  opacity: 1;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.65);
+  opacity: 0.85;
 }
 
 /* BOOKED — reduced glow spread (Pi perf) */
