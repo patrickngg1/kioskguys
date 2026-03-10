@@ -851,74 +851,86 @@
   box-sizing: border-box;
 }
 
-/* Each room card */
+/* Each room card — Pi-perf rewrite:
+   - transition:all replaced with targeted GPU-only properties
+   - selected background moved to ::before so opacity fades in (GPU composited)
+   - base background never changes = no gradient repaint on click */
 .room-card {
+  position: relative;
+  isolation: isolate;
   max-width: 340px;
   flex: none;
   background: linear-gradient(
     to bottom right,
-    rgba(30, 41, 59, 0.75),
-    rgba(15, 23, 42, 0.327)
+    rgba(30, 41, 59, 0.8),
+    rgba(15, 23, 42, 0.7)
   );
   border-radius: 1.25rem;
   padding: 1.5rem 1rem;
   text-align: center;
-  border: 2px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  transition: all 0.25s ease;
+  /* Only GPU-composited properties — no background, no all */
+  transition: transform 180ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  will-change: transform;
 }
 
-/* 3. Hover State */
-.room-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(59, 130, 246, 0.6);
-}
-
-/* 4. Selected State (Orange/Blue Glow) */
-.room-card.selected {
+/* Selected highlight: opacity transition is GPU composited — zero layout cost */
+.room-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: radial-gradient(
-      circle at center,
-      rgba(37, 99, 235, 0.25) 0%,
-      rgba(30, 58, 138, 0.15) 40%,
-      transparent 70%
-    ),
-    linear-gradient(
-      to bottom right,
-      rgba(30, 41, 59, 0.85),
-      rgba(15, 23, 42, 0.95)
-    );
-  border: 2px solid rgba(249, 115, 22, 0.7); /* Orange Border */
-  box-shadow: 0 0 16px rgba(37, 99, 235, 0.3), 0 0 8px rgba(249, 115, 22, 0.2);
-  transform: translateY(-3px);
+    circle at center,
+    rgba(37, 99, 235, 0.22) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ----- Typography inside Room Cards ----- */
+.room-card.selected::before {
+  opacity: 1;
+}
+
+/* Hover */
+.room-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Selected — only border + shadow + transform change (no background repaint) */
+.room-card.selected {
+  border-color: rgba(249, 115, 22, 0.7);
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.25), 0 0 6px rgba(249, 115, 22, 0.18);
+  transform: translateY(-2px);
+}
+
+/* ----- Typography — single-layer text-shadow (multi-layer forces extra paint passes) ----- */
 .room-card .room-name {
   font-weight: 800;
   color: #fff;
   letter-spacing: 0.3px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  position: relative;
+  z-index: 1;
 }
 
 .room-card .room-meta {
   font-weight: 500;
   font-size: 0.9rem;
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 0 6px rgba(0, 0, 0, 0.45);
-  transition: color 0.3s ease;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  /* transition:color removed — forces repaint */
+  position: relative;
+  z-index: 1;
 }
 
-.room-card.selected .room-name {
-  color: #ffffff;
-  font-weight: 800;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75), 0 0 12px rgba(0, 0, 0, 0.55);
-}
-
-.room-card.selected .room-meta {
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.55);
-}
+/* selected variants are identical — no override needed, avoids style recalc */
 
 .room-status {
   font-weight: 700;
