@@ -14,13 +14,14 @@
 }
 
 /* ---------------- Option A header row ---------------- */
+/* resFadeInUp animation removed from toggle-row — it re-runs on every React re-render,
+   contributing to INP. Static layout is instant. */
 .myres-toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin: 0.95rem 0 0.75rem;
   padding: 0.25rem 0.1rem;
-  animation: resFadeInUp 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .myres-toggle-label {
@@ -41,6 +42,8 @@
 }
 
 /* ---------------- Vision Pro toggles ---------------- */
+/* background/box-shadow transitions removed from toggle track — not GPU composited.
+   The knob slide alone gives clear feedback without repainting the track on every frame. */
 .vision-toggle {
   width: 66px;
   height: 34px;
@@ -48,10 +51,10 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.085);
   position: relative;
-  transition: background 220ms cubic-bezier(0.22, 1, 0.36, 1), border-color 220ms ease, box-shadow 220ms ease;
+  transition: border-color 150ms ease;
   cursor: pointer;
   overflow: hidden;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
 }
 
 .vision-toggle.small {
@@ -85,17 +88,20 @@
   pointer-events: none;
 }
 
+/* Knob uses transform:translateX instead of left — GPU-composited, no layout reflow */
 .vision-toggle-knob {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
   left: 5px;
   width: 24px;
   height: 24px;
   border-radius: 999px;
   background: #ffffff;
-  transition: all 240ms cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.42);
+  /* translateX(0) = OFF position. Only transform transitions → no reflow */
+  transform: translateY(-50%) translateX(0);
+  transition: transform 180ms ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  will-change: transform;
 }
 
 .vision-toggle.small .vision-toggle-knob {
@@ -104,35 +110,41 @@
   left: 4px;
 }
 
+/* ON: translateX by (toggle-width - knob-width - left-offset - right-offset) */
+/* Default: 66px wide, left:5px, knob:24px, right gap:5px → 66-5-24-5 = 32px */
 .vision-toggle.on .vision-toggle-knob {
-  left: calc(100% - 29px);
+  transform: translateY(-50%) translateX(32px);
 }
 
+/* Small: 56px wide, left:4px, knob:22px, right gap:4px → 56-4-22-4 = 26px */
 .vision-toggle.small.on .vision-toggle-knob {
-  left: calc(100% - 26px);
+  transform: translateY(-50%) translateX(26px);
 }
 
 /* =========================================================
    FIX: ALLOW PANEL TO GROW FOR MANY RESERVATIONS
    ========================================================= */
 
+/* max-height animation REMOVED — it forces layout recalc on every frame (Pi INP killer).
+   Height is now instant; only opacity + transform are animated (GPU-composited). */
 .myres-panel {
   overflow: hidden;
-  /* Smooth open/close animation */
-  transition: max-height 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease,
-    transform 0.4s ease;
   max-height: 0;
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-8px);
+  pointer-events: none;
+  /* Only transition composited properties */
+  transition: opacity 220ms ease, transform 220ms ease;
   margin-bottom: 0.9rem;
 }
 
 .myres-panel.open {
-  /* ✅ INCREASED LIMIT: 3000px ensures buttons are never cut off */
-  max-height: 3000px;
+  max-height: none;    /* instant — no layout animation */
+  overflow: visible;
   opacity: 1;
   transform: translateY(0);
-  padding-bottom: 1rem; /* Space at the bottom */
+  pointer-events: auto;
+  padding-bottom: 1rem;
 }
 
 /* ---------------- List container ---------------- */
@@ -159,8 +171,7 @@
   background: rgba(255, 255, 255, 0.08);
 
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3),
-    inset 0 0 25px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
   transition: transform 220ms ease, box-shadow 220ms ease, background 200ms ease,
     border-color 200ms ease;
   cursor: pointer;
