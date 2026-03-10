@@ -381,19 +381,15 @@
     0 0 8px rgba(249, 115, 22, 0.18);
 }
 
-/* glowBreath removed — was causing continuous repaint on Pi GPU */
+/* cardEntrance: duration 0.8s→120ms, translateY+scale removed.
+   translateY+scale during entrance forces compositing cost on every frame for
+   all card shadows/backgrounds. Opacity-only is fully GPU composited. */
 .dashboard-view .card.action-card {
-  animation: cardEntrance 0.8s ease-out both;
+  animation: cardEntrance 120ms ease-out both;
 }
 @keyframes cardEntrance {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ============================================================
@@ -534,7 +530,7 @@
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   z-index: 9999999 !important;
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn 100ms ease-out;
   padding-top: 4rem;
   padding-bottom: 2rem;
 }
@@ -556,7 +552,7 @@
   color: #e5e7eb;
   padding: 2.5rem;
   overflow-y: auto;
-  animation: slideUp 0.3s ease;
+  animation: slideUp 100ms ease-out;
   /* backdrop-filter removed from modal-box — overlay already blurs behind the modal.
      Nested backdrop-filters double GPU composite cost and cause scroll jank. */
 }
@@ -685,7 +681,7 @@
   padding: 0.6rem;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  animation: fadeIn 0.5s ease-out;
+  animation: fadeIn 150ms ease-out;
 }
 
 .banner-qr-image {
@@ -2580,30 +2576,9 @@ select option {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
 }
 
-/* --- Shine Animation — left replaced with transform:translateX (GPU composited) --- */
-.btn-uta-blue::after,
-.btn-uta-orange::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  transform: skewX(-20deg) translateX(-200%);
-  transition: transform 0.5s ease;
-}
-
-.btn-uta-blue:hover::after,
-.btn-uta-orange:hover::after {
-  transform: skewX(-20deg) translateX(400%);
-  transition: transform 0.7s ease-in-out;
-}
+/* Shine animation removed — the 0.5-0.7s transform transition on ::after was
+   reported by DevTools as a 293ms animating transform on the button itself,
+   blocking click interactions for the full sweep duration on Pi. */
 
 /* ============================================================
    DISABLED STATE FOR SUBMIT BUTTON

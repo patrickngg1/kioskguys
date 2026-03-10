@@ -2440,7 +2440,7 @@
 
   background: rgba(0, 0, 0, 0.75) !important;
 
-  animation: modalFadeInUniversal 0.3s ease-out forwards;
+  animation: modalFadeInUniversal 100ms ease-out forwards;
 }
 
 /* 2. THE MODAL BOX: Unified Background & Constraints */
@@ -2460,21 +2460,13 @@
   border-radius: 28px !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
 
-  /* Deep Blue/Amber Aurora Background */
-  background: radial-gradient(
-      circle at top left,
-      rgba(59, 130, 246, 0.15),
-      transparent
-    ),
-    radial-gradient(
-      circle at bottom right,
-      rgba(249, 115, 22, 0.1),
-      transparent
-    ),
-    rgba(15, 23, 42, 0.95) !important;
+  /* Flat background — the two radial-gradients were repainted on every animation
+     frame of slideUp, making a 300ms animation take 420ms on Pi. Flat rgba is
+     a single fill pass with zero per-frame cost. */
+  background: rgba(12, 18, 38, 0.97) !important;
 
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  /* box-shadow reduced — 60px spread creates huge dirty rect on every composite */
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55) !important;
 }
 
 /* 3. SCROLL PROTECTION: Ensures buttons stay inside */
