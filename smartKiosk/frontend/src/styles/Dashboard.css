@@ -524,11 +524,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* radial-gradient replaced with flat color — gradient forces per-frame repaint
-     whenever anything inside composites. Flat rgba is a single fill pass. */
-  background: rgba(4, 8, 20, 0.88);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  /* backdrop-filter reduced blur(5px)→blur(2px). Full-screen blur on .modal-overlay
+     forced a complete re-composite on every toggle click, input focus, room selection,
+     and each scroll frame inside the modal (scroll INP 280-320ms). 2px still gives
+     a soft frosted-glass feel at a fraction of the GPU cost. Background raised to
+     0.92 so content behind stays adequately dimmed without needing heavy blur. */
+  background: rgba(4, 8, 20, 0.92);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   z-index: 9999999 !important;
   animation: fadeIn 100ms ease-out;
   padding-top: 4rem;
@@ -1768,19 +1771,20 @@ select option {
 /* ===========================================================
    STICKY SUBMIT BUTTON — APPLE-STYLE LIFT & SPRING RELEASE
    =========================================================== */
+/* submit-request-sticky: backdrop-filter removed (sticky+blur inside a scroll
+   container re-composites the blur on every scroll frame = scroll jank).
+   Solid semi-transparent background matches the dark modal theme.
+   transition:background removed; transform duration 1s→200ms. */
 .submit-request-sticky {
   position: sticky;
   bottom: -2.2rem;
-  background: transparent;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(8, 14, 28, 0.94);
   padding: 1rem 1.25rem 2.25rem 1rem;
   z-index: 25;
   border-top: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 15px;
   transform: translateY(0);
-  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1),
-    /* smoother spring-like drop */ background 0.3s ease;
+  transition: transform 200ms ease;
   will-change: transform;
 }
 
@@ -2773,14 +2777,14 @@ select option {
 }
 
 /* 7. Sticky Footer */
+/* Sticky inside scroll: backdrop-filter removed (re-composites blur on every scroll frame).
+   Solid dark background preserves the layered look without the GPU cost. */
 .modal-scroll-content .submit-request-sticky {
   position: sticky;
   bottom: 0;
   margin: 1rem -2.5rem;
-  padding: 1.5rem 2.5rem 2.5rem; /* Increased bottom padding */
-  background: transparent;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  padding: 1.5rem 2.5rem 2.5rem;
+  background: rgba(8, 14, 28, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 40;
 }
