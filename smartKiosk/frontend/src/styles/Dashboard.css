@@ -170,8 +170,8 @@
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35), 0 0 28px rgba(37, 99, 235, 0.22),
     inset 0 1px 4px rgba(255, 255, 255, 0.1);
 
-  animation: glowBreath 5s ease-in-out infinite;
-  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  /* glowBreath removed — continuous repaint on Pi GPU */
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 /* Make reserve + supplies cards fill their grid row */
@@ -180,12 +180,12 @@
   flex-direction: column;
 }
 
-/* Unified hover state (slightly lifted, stronger glow) */
+/* Unified hover state (slightly lifted, lighter glow — Pi perf) */
 .dashboard-view .user-card:hover,
 .dashboard-view .card.action-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4), 0 0 36px rgba(59, 130, 246, 0.45),
-    0 0 24px rgba(249, 115, 22, 0.28), inset 0 1px 5px rgba(255, 255, 255, 0.14);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35), 0 0 16px rgba(59, 130, 246, 0.28),
+    inset 0 1px 4px rgba(255, 255, 255, 0.1);
 }
 
 /* Avatar */
@@ -222,7 +222,7 @@
 }
 .dashboard-view .auth-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 25px rgba(37, 99, 235, 0.45), 0 0 15px rgba(249, 115, 22, 0.3);
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.35), 0 0 8px rgba(249, 115, 22, 0.2);
 }
 
 /* ===== Final Tuned Banner Image and Button Layout ===== */
@@ -231,15 +231,14 @@
   overflow: hidden;
   border-radius: 1.25rem;
   height: 398px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 38px rgba(37, 99, 235, 0.25),
-    0 0 26px rgba(249, 115, 22, 0.15);
-  transition: transform 0.6s ease, box-shadow 0.6s ease;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4), 0 0 16px rgba(37, 99, 235, 0.15);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
 .dashboard-view .banner-block:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 45px rgba(37, 99, 235, 0.35),
-    0 0 30px rgba(249, 115, 22, 0.25);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(37, 99, 235, 0.2),
+    0 0 14px rgba(249, 115, 22, 0.15);
 }
 
 /* Image crossfade effect for slideshow */
@@ -377,24 +376,20 @@
 }
 
 .dashboard-view .card.action-card .btn-primary:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 0 30px rgba(37, 99, 235, 0.55),
-    0 0 18px rgba(249, 115, 22, 0.25);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.35),
+    0 0 8px rgba(249, 115, 22, 0.18);
 }
 
-/* Add breathing animation for premium effect */
+/* cardEntrance: duration 0.8s→120ms, translateY+scale removed.
+   translateY+scale during entrance forces compositing cost on every frame for
+   all card shadows/backgrounds. Opacity-only is fully GPU composited. */
 .dashboard-view .card.action-card {
-  animation: cardEntrance 0.8s ease-out both;
+  animation: cardEntrance 120ms ease-out both;
 }
 @keyframes cardEntrance {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ============================================================
@@ -447,8 +442,9 @@
 .inactivity-dim {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.6);
+  /* backdrop-filter kept minimal for dim overlay */
+  backdrop-filter: blur(2px);
   z-index: 99999;
   animation: dimIn 0.35s ease forwards;
 }
@@ -526,17 +522,15 @@
   position: fixed;
   inset: 0;
   display: flex;
-  align-items: center; /* center modal vertically */
+  align-items: center;
   justify-content: center;
-  background: radial-gradient(
-    circle at 30% 10%,
-    rgba(30, 58, 138, 0.35),
-    rgba(7, 12, 24, 0.95)
-  );
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* radial-gradient replaced with flat color — gradient forces per-frame repaint
+     whenever anything inside composites. Flat rgba is a single fill pass. */
+  background: rgba(4, 8, 20, 0.88);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   z-index: 9999999 !important;
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn 100ms ease-out;
   padding-top: 4rem;
   padding-bottom: 2rem;
 }
@@ -553,13 +547,14 @@
   );
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 1.75rem;
-  box-shadow: 0 0 35px rgba(0, 0, 0, 0.55), 0 0 35px rgba(37, 99, 235, 0.25);
+  /* box-shadow glow reduced — large spread forces big dirty rect on every composite */
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   color: #e5e7eb;
   padding: 2.5rem;
   overflow-y: auto;
-  animation: slideUp 0.3s ease;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  animation: slideUp 100ms ease-out;
+  /* backdrop-filter removed from modal-box — overlay already blurs behind the modal.
+     Nested backdrop-filters double GPU composite cost and cause scroll jank. */
 }
 
 /* Larger modals inherit the same styles */
@@ -638,10 +633,10 @@
 .btn.btn-primary.w-full.mt-2:hover {
   background: linear-gradient(90deg, #1e40af, #1d4ed8);
   transform: translateY(-2px);
-  box-shadow: 0 0 22px rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.4);
 }
 
-/* New class added dynamically by React when any items are selected */
+/* active-glow — reduced spread (Pi perf) */
 .btn.btn-primary.active-glow:not(.banner-cta),
 .btn.btn-primary.w-full.mt-2.active-glow {
   background: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9))
@@ -649,8 +644,8 @@
     linear-gradient(135deg, #2563eb, #f97316) border-box;
   border: 2px solid transparent;
 
-  box-shadow: 0 0 35px rgba(37, 99, 235, 0.45),
-    inset 0 0 20px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.35),
+    inset 0 0 10px rgba(37, 99, 235, 0.12);
   transform: translateY(-2px);
 }
 
@@ -686,7 +681,7 @@
   padding: 0.6rem;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  animation: fadeIn 0.5s ease-out;
+  animation: fadeIn 150ms ease-out;
 }
 
 .banner-qr-image {
@@ -708,27 +703,18 @@
    PREMIUM GLOW PULSE EFFECT — Reserve & Supplies Cards
    ============================================================ */
 
-/* Soft ambient pulse (always on) */
-.dashboard-view .card.action-card {
-  animation: glowBreath 5s ease-in-out infinite;
-}
+/* glowBreath removed — continuous animation caused high INP on Pi */
 
 @keyframes glowBreath {
-  0%,
-  100% {
-    opacity: 0.95;
-  }
-  50% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 1; }
 }
 
-/* Slight intensity boost on hover without killing the glow */
+/* Hover: simple lift + glow (Pi-safe) */
 .dashboard-view .card.action-card:hover {
-  animation: none;
   opacity: 1;
-  box-shadow: 0 0 32px rgba(37, 99, 235, 0.55), 0 0 22px rgba(249, 115, 22, 0.3);
-  transition: transform 0.6s ease, box-shadow 0.6s ease;
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.3), 0 0 10px rgba(249, 115, 22, 0.18);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .dashboard-fade-in {
@@ -860,74 +846,86 @@
   box-sizing: border-box;
 }
 
-/* Each room card */
+/* Each room card — Pi-perf rewrite:
+   - transition:all replaced with targeted GPU-only properties
+   - selected background moved to ::before so opacity fades in (GPU composited)
+   - base background never changes = no gradient repaint on click */
 .room-card {
+  position: relative;
+  isolation: isolate;
   max-width: 340px;
   flex: none;
   background: linear-gradient(
     to bottom right,
-    rgba(30, 41, 59, 0.75),
-    rgba(15, 23, 42, 0.327)
+    rgba(30, 41, 59, 0.8),
+    rgba(15, 23, 42, 0.7)
   );
   border-radius: 1.25rem;
   padding: 1.5rem 1rem;
   text-align: center;
-  border: 2px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  transition: all 0.25s ease;
+  /* Only GPU-composited properties — no background, no all */
+  transition: transform 180ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  will-change: transform;
 }
 
-/* 3. Hover State */
-.room-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(59, 130, 246, 0.6);
-}
-
-/* 4. Selected State (Orange/Blue Glow) */
-.room-card.selected {
+/* Selected highlight: opacity transition is GPU composited — zero layout cost */
+.room-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: radial-gradient(
-      circle at center,
-      rgba(37, 99, 235, 0.25) 0%,
-      rgba(30, 58, 138, 0.15) 40%,
-      transparent 70%
-    ),
-    linear-gradient(
-      to bottom right,
-      rgba(30, 41, 59, 0.85),
-      rgba(15, 23, 42, 0.95)
-    );
-  border: 2px solid rgba(249, 115, 22, 0.7); /* Orange Border */
-  box-shadow: 0 0 35px rgba(37, 99, 235, 0.4), 0 0 15px rgba(249, 115, 22, 0.3);
-  transform: translateY(-3px);
+    circle at center,
+    rgba(37, 99, 235, 0.22) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ----- Typography inside Room Cards ----- */
+.room-card.selected::before {
+  opacity: 1;
+}
+
+/* Hover */
+.room-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Selected — only border + shadow + transform change (no background repaint) */
+.room-card.selected {
+  border-color: rgba(249, 115, 22, 0.7);
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.25), 0 0 6px rgba(249, 115, 22, 0.18);
+  transform: translateY(-2px);
+}
+
+/* ----- Typography — single-layer text-shadow (multi-layer forces extra paint passes) ----- */
 .room-card .room-name {
   font-weight: 800;
   color: #fff;
   letter-spacing: 0.3px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  position: relative;
+  z-index: 1;
 }
 
 .room-card .room-meta {
   font-weight: 500;
   font-size: 0.9rem;
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 0 6px rgba(0, 0, 0, 0.45);
-  transition: color 0.3s ease;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  /* transition:color removed — forces repaint */
+  position: relative;
+  z-index: 1;
 }
 
-.room-card.selected .room-name {
-  color: #ffffff;
-  font-weight: 800;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75), 0 0 12px rgba(0, 0, 0, 0.55);
-}
-
-.room-card.selected .room-meta {
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.55);
-}
+/* selected variants are identical — no override needed, avoids style recalc */
 
 .room-status {
   font-weight: 700;
@@ -985,7 +983,7 @@
 }
 .btn-primary:hover {
   background-position: right;
-  box-shadow: 0 0 30px rgba(37, 99, 235, 0.5), 0 0 15px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.35), 0 0 8px rgba(249, 115, 22, 0.25);
 }
 
 .reserve-form button {
@@ -1058,16 +1056,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 180ms ease, box-shadow 180ms ease;
   overflow: hidden;
 }
 
-/* Shimmer overlay effect */
+/* Shimmer — left replaced with transform:translateX (GPU composited) */
 .luxury-card-btn::before {
   content: '';
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 100%;
   height: 100%;
   background: linear-gradient(
@@ -1076,21 +1074,19 @@
     rgba(255, 255, 255, 0.8),
     transparent
   );
-  transform: skewX(-20deg);
-  transition: left 0.6s ease;
+  transform: skewX(-20deg) translateX(-200%);
+  transition: transform 0.6s ease;
   pointer-events: none;
 }
 
 /* HOVER: Lift + Shimmer + stronger glow */
 .luxury-card-btn:hover {
   transform: translateY(-3px) scale(1.01);
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 14px 30px -8px rgba(37, 99, 235, 0.35),
-    0 0 20px rgba(249, 115, 22, 0.1) inset; /* Subtle orange inner glow */
+  box-shadow: 0 12px 26px -8px rgba(37, 99, 235, 0.3);
 }
 
 .luxury-card-btn:hover::before {
-  left: 150%; /* Triggers the shimmer swipe */
+  transform: skewX(-20deg) translateX(200%);
 }
 
 .luxury-card-btn:active {
@@ -1110,7 +1106,7 @@
 /* 2. Success state override: Emerald Glow only, NO selection border */
 .smart-submit-btn.success {
   background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
-  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6) !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.5) !important;
   border: 1px solid rgba(16, 185, 129, 0.5) !important; /* Emerald border, not blue */
   transform: scale(1) !important;
   pointer-events: none; /* Prevents further clicks during the success animation */
@@ -1273,14 +1269,14 @@
   align-items: center;
   gap: 1rem;
 
-  /* Dark aurora glass */
-  background: rgba(17, 24, 39);
-  backdrop-filter: blur(26px) saturate(220%);
-  -webkit-backdrop-filter: blur(26px) saturate(220%);
+  /* Dark aurora glass — reduced blur (Pi perf) */
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.14);
 
   /* Glow */
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.55), 0 0 28px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 14px rgba(59, 130, 246, 0.25);
 
   overflow: hidden;
   pointer-events: auto;
@@ -1417,33 +1413,29 @@
   transform: translateY(-1px);
 }
 
-/* When active, make them pop like real buttons */
+/* When active, make them pop like real buttons (Pi-safe glows) */
 .ampm-badge.am-active {
   background: linear-gradient(145deg, #1d4ed8, #2563eb);
   color: #fff;
   border-color: rgba(147, 197, 253, 0.5);
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.7),
-    inset 0 0 6px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
 }
 
 .ampm-badge.pm-active {
   background: linear-gradient(145deg, #c2410c, #ea580c);
   color: #fff;
   border-color: rgba(251, 146, 60, 0.4);
-  box-shadow: 0 0 12px rgba(251, 146, 60, 0.6),
-    inset 0 0 6px rgba(251, 146, 60, 0.4);
+  box-shadow: 0 0 8px rgba(251, 146, 60, 0.45);
 }
 
+/* glowPulse kept for reference but values reduced (Pi perf) */
 @keyframes glowPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 10px rgba(37, 99, 235, 0.45),
-      0 0 12px rgba(249, 115, 22, 0.3);
-    opacity: 0.95;
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(37, 99, 235, 0.3), 0 0 6px rgba(249, 115, 22, 0.2);
+    opacity: 1;
   }
   50% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.55),
-      0 0 24px rgba(249, 115, 22, 0.4);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.4), 0 0 10px rgba(249, 115, 22, 0.28);
     opacity: 1;
   }
 }
@@ -1535,7 +1527,7 @@
   color: #f8fafc;
   font-size: 0.95rem;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
-  transition: all 0.25s ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .form-row input:focus,
@@ -1580,7 +1572,7 @@ select::-webkit-scrollbar-thumb {
 /* 1. Base Button Layout */
 .smart-submit-btn {
   position: relative;
-  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 200ms ease, opacity 180ms ease;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1597,7 +1589,7 @@ select::-webkit-scrollbar-thumb {
   gap: 10px;
   opacity: 0;
   transform: translateY(10px);
-  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 220ms ease, transform 220ms ease;
   pointer-events: none;
 }
 
@@ -1619,7 +1611,7 @@ select::-webkit-scrollbar-thumb {
 /* 4. Success State (Emerald Green Transformation) */
 .smart-submit-btn.success {
   background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
-  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6) !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.5) !important;
   border: 1px solid rgba(16, 185, 129, 0.5) !important;
   color: #fff !important;
   transform: scale(1);
@@ -1724,14 +1716,14 @@ select::-webkit-scrollbar-thumb {
 .ampm-badge.am-active {
   background: linear-gradient(145deg, #1e3a8a, #2563eb);
   color: #fff;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.45);
 }
 
 /* Orange glow for PM */
 .ampm-badge.pm-active {
   background: linear-gradient(145deg, #b45309, #ea580c);
   color: #fff;
-  box-shadow: 0 0 10px rgba(234, 88, 12, 0.6);
+  box-shadow: 0 0 8px rgba(234, 88, 12, 0.45);
 }
 
 /* Make dropdown menus fit theme */
@@ -1780,8 +1772,8 @@ select option {
   position: sticky;
   bottom: -2.2rem;
   background: transparent;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   padding: 1rem 1.25rem 2.25rem 1rem;
   z-index: 25;
   border-top: 1px solid rgba(255, 255, 255, 0.09);
@@ -1845,8 +1837,8 @@ select option {
       transparent 55%
     ),
     linear-gradient(135deg, #0f172a, #1e293b, #0f172a);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
   animation: logoutFadeIn 0.8s ease forwards;
 }
 
@@ -1868,10 +1860,10 @@ select option {
   height: 300px;
   border-radius: 1.8rem;
   background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 28px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 14px rgba(37, 99, 235, 0.2);
 
   display: flex;
   flex-direction: column;
@@ -1906,24 +1898,18 @@ select option {
   box-shadow: 0 0 22px rgba(59, 130, 246, 0.35);
 }
 
+/* filter:hue-rotate removed from ringSweep — not GPU-composited (Pi perf) */
 @keyframes ringSweep {
-  0% {
-    filter: hue-rotate(0deg);
-    transform: rotate(0deg);
-  }
-  100% {
-    filter: hue-rotate(90deg);
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .logout-ring-inner {
   width: 135px;
   height: 135px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 50%;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  /* backdrop-filter removed from nested ring (Pi perf: nested blur is very expensive) */
   color: white;
   font-size: 1.35rem;
   font-weight: 900;
@@ -1992,8 +1978,8 @@ select option {
   transition: box-shadow 0.2s ease-out;
 }
 .ring-glow-strong {
-  box-shadow: 0 0 20px rgba(251, 146, 60, 0.9), 0 0 38px rgba(251, 146, 60, 0.6),
-    0 0 50px rgba(251, 146, 60, 0.3);
+  box-shadow: 0 0 14px rgba(251, 146, 60, 0.75), 0 0 24px rgba(251, 146, 60, 0.45),
+    0 0 32px rgba(251, 146, 60, 0.2);
   transition: box-shadow 0.2s ease-in-out;
 }
 /* ============================================================
@@ -2121,8 +2107,8 @@ select option {
   border-radius: 1.9rem;
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.38);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(37, 99, 235, 0.4),
-    0 0 26px rgba(249, 115, 22, 0.24);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.65), 0 0 18px rgba(37, 99, 235, 0.25),
+    0 0 12px rgba(249, 115, 22, 0.15);
 
   display: flex;
   flex-direction: column;
@@ -2188,8 +2174,8 @@ select option {
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.45))
-    drop-shadow(0 0 28px rgba(30, 64, 175, 0.8));
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.35))
+    drop-shadow(0 0 16px rgba(30, 64, 175, 0.55));
   animation: portalFloat 5.5s ease-in-out infinite;
 }
 
@@ -2224,8 +2210,8 @@ select option {
       transparent 60%
     );
   opacity: 0.9;
-  box-shadow: 0 0 30px rgba(59, 130, 246, 0.65),
-    0 0 22px rgba(59, 130, 246, 0.32);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.5),
+    0 0 10px rgba(59, 130, 246, 0.25);
   mask-image: radial-gradient(circle, transparent 58%, black 64%);
 }
 
@@ -2289,7 +2275,7 @@ select option {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 22px rgba(191, 219, 254, 0.9), 0 0 18px rgba(37, 99, 235, 0.9);
+  box-shadow: 0 0 12px rgba(191, 219, 254, 0.7), 0 0 10px rgba(37, 99, 235, 0.6);
   overflow: hidden;
 }
 
@@ -2536,7 +2522,9 @@ select option {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  /* transition:all replaced — only animate composited properties */
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  will-change: transform;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
@@ -2546,42 +2534,36 @@ select option {
 
 /* --- 1. UTA CRYSTAL BLUE (For Reservations) --- */
 .btn-uta-blue {
-  /* Rich Gradient: Lighter Blue top-left -> UTA Blue bottom-right */
   background: linear-gradient(135deg, #3b82f6 0%, #0064b1 100%);
-
-  /* Inner light border for "Glass" edge */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 8px 20px -4px rgba(0, 100, 177, 0.4);
+  /* inset box-shadow removed — inset shadows are painted in software and repaint
+     on every interaction. Single outer shadow is cheaper. */
+  box-shadow: 0 6px 16px -4px rgba(0, 100, 177, 0.35);
 }
 
 .btn-uta-blue:hover {
   transform: translateY(-2px) scale(1.01);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 12px 28px -6px rgba(0, 100, 177, 0.6);
-  filter: brightness(1.1);
+    0 10px 22px -6px rgba(0, 100, 177, 0.5);
+  /* filter:brightness removed — not GPU composited, triggers full repaint */
 }
 
 /* --- 2. UTA BLAZE ORANGE (For Supplies) --- */
 .btn-uta-orange {
-  /* Vibrant Gradient: Tangerine top-left -> Burnt Orange bottom-right */
   background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
-
-  /* Inner light border */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 8px 20px -4px rgba(234, 88, 12, 0.4);
+  box-shadow: 0 6px 16px -4px rgba(234, 88, 12, 0.35);
 }
 
 .btn-uta-orange:hover {
   transform: translateY(-2px) scale(1.01);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 12px 28px -6px rgba(234, 88, 12, 0.6);
-  filter: brightness(1.1);
+    0 10px 22px -6px rgba(234, 88, 12, 0.5);
+  /* filter:brightness removed — not GPU composited, triggers full repaint */
 }
 
 /* --- 3. ADMIN SLATE (Discreet/Professional) --- */
 .btn-uta-admin {
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(10px);
+  background: rgba(15, 23, 42, 0.85);
+  /* backdrop-filter removed (isolated small button, not worth the cost) */
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #94a3b8;
 }
@@ -2594,30 +2576,9 @@ select option {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
 }
 
-/* --- Shine Animation (Optional, makes them look alive) --- */
-.btn-uta-blue::after,
-.btn-uta-orange::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  transform: skewX(-20deg);
-  transition: 0.5s;
-}
-
-.btn-uta-blue:hover::after,
-.btn-uta-orange:hover::after {
-  left: 150%;
-  transition: 0.7s ease-in-out;
-}
+/* Shine animation removed — the 0.5-0.7s transform transition on ::after was
+   reported by DevTools as a 293ms animating transform on the button itself,
+   blocking click interactions for the full sweep duration on Pi. */
 
 /* ============================================================
    DISABLED STATE FOR SUBMIT BUTTON
@@ -2668,9 +2629,12 @@ select option {
   flex: 1;
   overflow-y: auto;
   padding: 1rem 2.5rem 0rem;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
+  /* scroll-behavior:smooth removed — it intercepts native scroll events and adds
+     ~100-150ms latency to every scroll interaction (one of the top scroll INP killers) */
   max-height: 65vh;
+  /* contain:layout isolates children so their layout doesn't propagate outside,
+     reducing repaint area on scroll significantly */
+  contain: layout;
 }
 
 .modal-header-fixed .close-btn {
@@ -2691,48 +2655,54 @@ select option {
 /* 3. The Premium Card */
 .supply-item {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 100%;
   min-height: 210px;
 
-  /* Lighter Glass Background for Contrast */
-  background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.09) 0%,
-    rgba(255, 255, 255, 0.03) 100%
-  );
+  /* Static background — never changes, no repaint on hover */
+  background: rgba(255, 255, 255, 0.07);
 
-  /* Crisper Border */
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
 
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* Center content vertically */
+  justify-content: center;
   padding: 1rem;
   gap: 1rem;
 
-  /* Subtle depth shadow */
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
 
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  /* transition:all removed — only animate composited properties */
+  transition: transform 180ms ease, border-color 120ms ease, box-shadow 150ms ease;
+  will-change: transform;
   overflow: visible;
   cursor: pointer;
 }
 
-/* Hover: Lift & Brighten */
+/* Hover background via ::before opacity (GPU composited, no gradient repaint) */
+.supply-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.07);
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .supply-item:hover {
-  transform: translateY(-6px);
-  background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.15) 0%,
-    rgba(255, 255, 255, 0.06) 100%
-  );
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.5),
-    0 0 30px rgba(37, 99, 235, 0.25); /* Blue ambient glow */
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 12px 24px -5px rgba(0, 0, 0, 0.4);
+}
+
+.supply-item:hover::after {
+  opacity: 1;
 }
 
 /* 4. The Image & Spotlight Effect */
@@ -2763,25 +2733,21 @@ select option {
   height: 90px;
   border-radius: 50%;
 
-  /* Default Blue Glow - makes item look "placed" not floating */
+  /* Static radial glow — background removed from transition, only opacity+transform animate */
   background: radial-gradient(
     circle,
-    rgba(37, 99, 235, 0.35) 0%,
+    rgba(37, 99, 235, 0.45) 0%,
     rgba(37, 99, 235, 0) 70%
   );
   opacity: 0.6;
-  transition: all 0.4s ease;
+  transition: opacity 180ms ease, transform 180ms ease;
   z-index: 1;
 }
 
 .supply-item:hover::before {
   opacity: 0.9;
-  transform: translateX(-50%) scale(1.3);
-  background: radial-gradient(
-    circle,
-    rgba(37, 99, 235, 0.5) 0%,
-    rgba(37, 99, 235, 0) 70%
-  );
+  transform: translateX(-50%) scale(1.2);
+  /* gradient removed from hover — same gradient, only opacity+scale change */
 }
 
 /* 5. Typography */
@@ -2795,22 +2761,15 @@ select option {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-/* 6. Selected State (Neon Active) */
+/* 6. Selected State — gradient border replaced with solid border (cheaper paint) */
 .supply-item.selected {
-  /* Gradient Border */
-  background: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9))
-      padding-box,
-    linear-gradient(135deg, #2563eb, #f97316) border-box;
-  border: 2px solid transparent;
-
-  box-shadow: 0 0 35px rgba(37, 99, 235, 0.45),
-    inset 0 0 20px rgba(37, 99, 235, 0.2);
+  border: 2px solid rgba(59, 130, 246, 0.7);
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.25);
 }
 
 .supply-item.selected span {
   color: #fff;
   font-weight: 800;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 /* 7. Sticky Footer */
@@ -2820,8 +2779,8 @@ select option {
   margin: 1rem -2.5rem;
   padding: 1.5rem 2.5rem 2.5rem; /* Increased bottom padding */
   background: transparent;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 40;
 }
@@ -2847,16 +2806,16 @@ select option {
   }
 }
 
-/* 2. Full Modal Success Glow */
+/* 2. Full Modal Success Glow — reduced spread (Pi perf) */
 .status-saved-glow {
-  box-shadow: 0 0 60px rgba(16, 185, 129, 0.3), 0 30px 70px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.25), 0 20px 45px rgba(0, 0, 0, 0.6) !important;
   border: 1px solid rgba(16, 185, 129, 0.4) !important;
   transition: all 0.5s ease;
 }
 
 /* 3. Card Bloom - The card itself glows green when saved */
 .card-saved-bloom {
-  filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.5)) !important;
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4)) !important;
   animation: savedBloom 1.5s ease-out forwards;
 }
 
@@ -2884,10 +2843,10 @@ select option {
   right: 2.5rem;
   z-index: 50;
 
-  /* 1 Trillion Dollar Glass Base */
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(25px) saturate(160%);
-  -webkit-backdrop-filter: blur(25px) saturate(160%);
+  /* Glass Base — reduced blur (Pi perf) */
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
 
   padding: 1rem;
   border-radius: 24px;

@@ -35,10 +35,11 @@ body::before {
   background-position: center;
   /* Fallback color if image fails. This element is Z-indexed low. */
   background-color: #111827;
-  /* 2. Blur, Scale, and Animation */
+  /* 2. Blur, Scale, and Animation — reduced scale range for Pi GPU */
   filter: blur(8px) brightness(0.75);
-  transform: scale(1.03);
-  animation: slowZoom 20s ease-in-out infinite;
+  transform: scale(1.02);
+  animation: slowZoom 30s ease-in-out infinite;
+  will-change: transform;
   /* 3. Z-Index below content/vignette (using -2 as -1 is used for vignette) */
   z-index: -2;
 }
@@ -63,16 +64,11 @@ html {
   z-index: auto;
 }
 
+/* Reduced scale range — less GPU composite work on Pi */
 @keyframes slowZoom {
-  0% {
-    transform: scale(1.06);
-  }
-  50% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1.06);
-  }
+  0% { transform: scale(1.02); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1.02); }
 }
 
 /* --- Scrollbar Aesthetics (Applied globally for sleek kiosk look) --- */

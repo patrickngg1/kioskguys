@@ -13,11 +13,13 @@
 .premium-input-field textarea,
 button.premium-input-field {
   width: 100%;
-  height: 44px !important; /* Force standard height */
+  height: 44px !important;
   padding: 0 14px;
 
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  /* Use background-color instead of background shorthand so background-image
+     on selects is never reset by focus/hover rules overriding the shorthand */
+  background-color: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
 
   color: #ffffff !important;
@@ -28,7 +30,10 @@ button.premium-input-field {
   outline: none;
   box-sizing: border-box !important;
 
-  transition: all 0.2s ease;
+  /* Only transition composited-friendly properties.
+     background-color intentionally excluded — any color change inside a
+     backdrop-filter ancestor forces full layer re-composite (~200ms on Pi). */
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 /* ===== DATE PICKER ICON (BRIGHT WHITE FIX) ===== */
@@ -38,7 +43,6 @@ button.premium-input-field {
 }
 
 .premium-input-field[type='date']::-webkit-calendar-picker-indicator {
-  /* Force pure white icon */
   filter: invert(1);
   opacity: 1 !important;
   cursor: pointer;
@@ -61,34 +65,37 @@ button.premium-input-field {
 
 /* 🔵 AM MODE - BLUE */
 button.premium-input-field.am-mode {
-  background: rgba(59, 130, 246, 0.45) !important;
+  background-color: rgba(59, 130, 246, 0.45) !important;
   border: 1px solid #3b82f6 !important;
   color: #eff6ff !important;
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.35) !important;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.3) !important;
 }
 
 /* 🟠 PM MODE - ORANGE */
 button.premium-input-field.pm-mode {
-  background: rgba(249, 115, 22, 0.45) !important;
+  background-color: rgba(249, 115, 22, 0.45) !important;
   border: 1px solid #f97316 !important;
   color: #fff7ed !important;
-  box-shadow: 0 0 15px rgba(249, 115, 22, 0.35) !important;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.3) !important;
 }
 
-/* Hover States */
+/* Hover States — background changes removed (repaint inside backdrop-filter parent).
+   Border opacity change provides hover feedback at zero paint cost. */
 button.premium-input-field:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
 }
 button.premium-input-field.am-mode:hover {
-  background: rgba(59, 130, 246, 0.6) !important;
+  border-color: rgba(59, 130, 246, 0.9) !important;
 }
 button.premium-input-field.pm-mode:hover {
-  background: rgba(249, 115, 22, 0.6) !important;
+  border-color: rgba(249, 115, 22, 0.9) !important;
 }
 
 /* ===== FOCUS STATES ===== */
 .premium-input-field:focus {
-  background: rgba(255, 255, 255, 0.15);
+  /* background removed — changing background inside a backdrop-filter ancestor
+     forces full blur re-composite on every focus/click (main cause of 300-400ms INP).
+     Border-color + box-shadow ring are GPU-friendly focus indicators. */
   border-color: rgba(96, 165, 250, 0.9);
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
 }
@@ -97,6 +104,8 @@ button.premium-input-field.pm-mode:hover {
 select.premium-input-field {
   appearance: none;
   cursor: pointer;
+  /* background-image kept separate from background-color so focus rule
+     (which only sets border-color/box-shadow) never resets the SVG arrow */
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 20' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
@@ -131,29 +140,18 @@ input[type='file'].premium-input-field::file-selector-button {
 /* ===== DATE PICKER ICON (SUPER BRIGHT FIX) ===== */
 .premium-input-field[type='date'] {
   padding-right: 10px;
-  /* Force the browser to render the 'default' black icon first */
   color-scheme: light;
 }
 
 .premium-input-field[type='date']::-webkit-calendar-picker-indicator {
-  /* 1. Force icon to BLACK (brightness 0) */
-  /* 2. Invert it to pure WHITE (invert 1) */
   filter: brightness(0) invert(1) !important;
-
-  /* Force full visibility */
   opacity: 1 !important;
-
-  /* Make it larger and easier to tap */
   width: 24px;
   height: 24px;
-
   cursor: pointer;
   margin-left: 10px;
 }
 
 .premium-input-field[type='date']::-webkit-calendar-picker-indicator:hover {
-  /* Add a slight glow on hover */
   opacity: 0.8 !important;
-  transform: scale(1.1);
-  transition: transform 0.2s ease;
 }
