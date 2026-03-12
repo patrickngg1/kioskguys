@@ -42,21 +42,19 @@
 }
 
 /* ---------------- Vision Pro toggles ---------------- */
-/* Toggle track: ::before opacity trick — base background never changes (no repaint).
-   The blue "ON" state lives in ::before at opacity 0→1 (GPU composited opacity only).
-   Removing background change eliminates the paint triggered on every toggle click. */
+/* background/box-shadow transitions removed from toggle track — not GPU composited.
+   The knob slide alone gives clear feedback without repainting the track on every frame. */
 .vision-toggle {
   width: 66px;
   height: 34px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.085); /* never changes */
+  background: rgba(255, 255, 255, 0.085);
   position: relative;
-  isolation: isolate;
   transition: border-color 150ms ease;
   cursor: pointer;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
 }
 
 .vision-toggle.small {
@@ -64,30 +62,30 @@
   height: 30px;
 }
 
-/* Blue fill in ::before — opacity transitions are GPU composited, no repaint */
-.vision-toggle::before {
+.vision-toggle.on {
+  /* Flat color instead of gradient — solid fills repaint ~10× faster than gradients.
+     Visual difference is negligible at this size but paint cost drops significantly. */
+  background: rgba(37, 99, 235, 0.95);
+  border-color: rgba(255, 255, 255, 0.26);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+/* static highlight when ON — shimmer animation removed (Pi perf) */
+.vision-toggle.on::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(37, 99, 235, 0.95);
-  opacity: 0;
-  transition: opacity 150ms ease;
+  background: radial-gradient(
+    circle at 30% 20%,
+    rgba(255, 255, 255, 0.22),
+    transparent 58%
+  );
+  opacity: 0.35;
   pointer-events: none;
-  z-index: 0;
 }
 
-.vision-toggle.on::before {
-  opacity: 1;
-}
-
-.vision-toggle.on {
-  border-color: rgba(255, 255, 255, 0.26);
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.35);
-}
-
-/* Knob uses transform:translateX instead of left — GPU-composited, no layout reflow.
-   z-index:1 keeps it above the ::before blue fill layer. */
+/* Knob uses transform:translateX instead of left — GPU-composited, no layout reflow */
 .vision-toggle-knob {
   position: absolute;
   top: 50%;
@@ -96,11 +94,11 @@
   height: 24px;
   border-radius: 999px;
   background: #ffffff;
+  /* translateX(0) = OFF position. Only transform transitions → no reflow */
   transform: translateY(-50%) translateX(0);
-  transition: transform 150ms ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 180ms ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
   will-change: transform;
-  z-index: 1;
 }
 
 .vision-toggle.small .vision-toggle-knob {
@@ -279,8 +277,8 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25),
     inset 0 0 0 rgba(255, 255, 255, 0.12);
 
-  /* background removed from transition */
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s ease, background 0.25s ease;
 }
 
 /* Hover lift — subtle but premium */
@@ -321,7 +319,7 @@
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.32);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  animation: resConfirmDrop 100ms ease-out;
+  animation: resConfirmDrop 380ms cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   z-index: 9999 !important;
 }
@@ -635,11 +633,11 @@
   opacity: 1;
 }
 
-/* padding/border-radius changes removed from .selected — any layout property change
-   (padding, border-radius) forces a full layout recalc on the row and all children.
-   Only transform changes now, which is GPU composited. */
 .day-grid-row.selected {
   transform: translateY(-2px);
+  padding-top: 1.1rem !important;
+  padding-bottom: 1.1rem !important;
+  border-radius: 20px;
 }
 
 .day-grid-row.selected .day-grid-track {
@@ -727,13 +725,13 @@
    CELLS
    ----------------------------------------------------------- */
 
-/* Transitions removed from cells — 48 cells × N room rows = hundreds of simultaneous
-   transitions on any state change, causing continuous paint during scroll/hover. */
 .day-grid-cell {
   height: 16px;
   border-radius: 10px;
-  border: 1px solid rgba(103, 161, 255, 0.25);
+  border: 1px solid #67a1ff3f;
   background: rgba(148, 163, 184, 0.22);
+
+  transition: opacity 180ms ease, transform 200ms ease, box-shadow 220ms ease;
 }
 
 /* day-grid-cell.free:hover — transform+box-shadow removed.
@@ -743,22 +741,34 @@
   opacity: 0.85;
 }
 
-/* BOOKED: 3 box-shadows → 1. Each shadow layer is a separate paint pass. */
+/* BOOKED — reduced glow spread (Pi perf) */
 .day-grid-cell.booked {
   opacity: 1;
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.8), 0 0 14px rgba(15, 118, 255, 0.5),
+    inset 0 0 6px rgba(255, 255, 255, 0.12);
 }
 
 /* -----------------------------------------------------------
    OPTION C — LONG BOOKED CAPSULES (Merged Blocks)
    ----------------------------------------------------------- */
 
-/* Capsule: 3 shadows → 1, removed hover transform (48 cells moving on hover = jank) */
 .day-grid-cell.capsule.grouped {
   height: 18px;
   border-radius: 6px;
-  background: linear-gradient(90deg, rgba(59, 130, 246, 1), rgba(249, 115, 22, 1));
-  box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  background: linear-gradient(
+    90deg,
+    rgba(59, 130, 246, 1),
+    rgba(249, 115, 22, 1)
+  );
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.85), 0 0 1px rgba(249, 115, 22, 0.85),
+    inset 0 0 14px rgba(255, 255, 255, 0.25);
+  transition: transform 180ms ease, box-shadow 220ms ease;
+}
+
+.day-grid-cell.capsule.grouped:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.8), 0 0 4px rgba(249, 115, 22, 0.7),
+    inset 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
 /* -----------------------------------------------------------
@@ -805,7 +815,7 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0 0 18px 18px; /* Round bottom corners */
 
-  animation: slideUpFade 100ms ease-out;
+  animation: slideUpFade 0.3s ease-out;
 }
 
 /* 1. INITIAL STATE: "Cancel Selected" on the Right */
@@ -831,8 +841,7 @@
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  /* background removed from transition — causes main-thread repaint per frame */
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* --- BUTTON VARIANTS --- */
@@ -913,17 +922,20 @@
   position: relative;
   overflow: hidden;
 
-  animation: hintFadeIn 100ms ease-out forwards;
+  animation: hintFadeIn 0.6s ease forwards;
 }
 
-/* hintShimmer infinite animation removed — it kept the compositor busy every frame
-   while the scheduler was open, raising the baseline cost of every interaction. */
 .availability-hint-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 25% 50%, rgba(59, 130, 246, 0.18), transparent 70%);
-  opacity: 1;
+  background: radial-gradient(
+    circle at 25% 50%,
+    rgba(59, 130, 246, 0.35),
+    transparent 70%
+  );
+  opacity: 0.25;
   pointer-events: none;
+  animation: hintShimmer 3.8s linear infinite;
 }
 
 @keyframes hintFadeIn {
@@ -999,10 +1011,6 @@
 
 /* ===== Reserve Modal – Input Field Polish ===== */
 
-/* Input/select: double linear-gradients replaced with flat rgba.
-   Gradient-to-gradient transitions are software-rendered per frame —
-   that was causing 184–328ms INP on every focus/click in the form.
-   Flat color is a single fill pass; background removed from transition. */
 .reserve-box input,
 .reserve-box select {
   appearance: none;
@@ -1010,18 +1018,28 @@
 
   width: 100%;
   height: 44px;
+
   padding: 0 14px;
   border-radius: 14px;
 
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0.08)
+    ),
+    var(--glass-bg);
+
   border: 1px solid var(--glass-border);
   color: var(--glass-text);
 
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 8px 22px rgba(0, 0, 0, 0.35);
+
   font-size: 15px;
   font-weight: 500;
 
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease,
+    background 0.25s ease;
 }
 
 .reserve-box input::placeholder {
@@ -1031,31 +1049,50 @@
 .reserve-box input:focus,
 .reserve-box select:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(120, 170, 255, 0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 0 0 2px rgba(120, 170, 255, 0.28), 0 4px 16px rgba(0, 0, 0, 0.4);
+
+  background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.28),
+      rgba(255, 255, 255, 0.12)
+    ),
+    var(--glass-bg-strong);
+
+  border-color: var(--glass-highlight);
+
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 0 2px rgba(120, 170, 255, 0.35), 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
-/* AM/PM buttons: gradients → flat rgba. gradient→gradient on press
-   was a main-thread paint per animation frame. Flat colors are single fills.
-   background removed from transition. */
+/* AM / PM – Glass pill buttons */
 .reserve-form .time-toggle button {
   min-height: 52px;
   padding: 0 1.25rem;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.1);
+
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.06)
+  );
+
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transition: box-shadow 150ms ease, transform 150ms ease;
+
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 8px 22px rgba(0, 0, 0, 0.35);
+
+  transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .reserve-form .time-toggle button.active {
-  background: rgba(37, 99, 235, 0.85);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45);
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+
+  border-color: rgba(255, 255, 255, 0.55);
+
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 10px 28px rgba(37, 99, 235, 0.75);
 }
 .modal-header-fixed {
   background-color: transparent;
