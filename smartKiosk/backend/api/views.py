@@ -2,8 +2,6 @@ import json
 import re
 import smtplib
 import os
-import requests
-from base64 import b64encode
 from accounts.models import UserCard
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -14,7 +12,6 @@ def _generate_jwt_tokens(user):
     return str(refresh.access_token), str(refresh)
 
 from email.mime.text import MIMEText
-from base64 import b64encode
 
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse
@@ -475,7 +472,7 @@ def delete_user(request, user_id):
     return JsonResponse({"ok": True}, status=200)
 
 # ---------------------------------------------------------
-# SEND EMAIL VIA SENDGRID (HTML + optional ICS attachment)
+# SEND EMAIL VIA GMAIL SMTP (HTML + optional ICS attachment)
 # ---------------------------------------------------------
 def send_via_sendgrid(
     to_email,
@@ -486,47 +483,20 @@ def send_via_sendgrid(
     from_name="UTA Smart Kiosk",
     ics_content=None,
 ):
-    api_key = getattr(settings, "SENDGRID_API_KEY", None)
-    if not api_key:
-        raise Exception("SENDGRID_API_KEY missing in settings.py")
+    sender = from_email or settings.DEFAULT_FROM_EMAIL
 
-    verified_sender = getattr(settings, "SENDGRID_VERIFIED_SENDER", None)
-    if not verified_sender:
-        raise Exception("SENDGRID_VERIFIED_SENDER missing in settings.py")
-
-    if not from_email:
-        from_email = verified_sender
-
-    payload = {
-        "personalizations": [{"to": [{"email": to_email}]}],
-        "from": {"email": from_email, "name": from_name},
-        "subject": subject,
-        "content": [{"type": "text/html", "value": html_content}],
-    }
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body="",
+        from_email=sender,
+        to=[to_email],
+    )
+    msg.attach_alternative(html_content, "text/html")
 
     if ics_content:
-        payload["attachments"] = [
-            {
-                "content": b64encode(ics_content).decode("utf-8"),
-                "type": "text/calendar",
-                "filename": "rreservation.ics",
-                "disposition": "attachment",
-            }
-        ]
+        msg.attach("reservation.ics", ics_content, "text/calendar")
 
-    res = requests.post(
-        "https://api.sendgrid.com/v3/mail/send",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        timeout=15,
-    )
-
-    if res.status_code >= 400:
-        raise Exception(f"SendGrid error {res.status_code}: {res.text}")
-
+    msg.send()
     return True
 
 # ---------------------------------------------------------

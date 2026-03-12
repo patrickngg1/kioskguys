@@ -4,7 +4,6 @@ Django settings for kiosks project.
 import os
 from pathlib import Path
 from datetime import timedelta
-import ssl  # Import needed for SMTP_UNVERIFIED_CONTEXT
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,7 +22,6 @@ ALLOWED_HOSTS = (
     else ["*"]
 )
 
-SENDGRID_VERIFIED_SENDER = "ersaatuta@gmail.com"
 
 # ---------------------------------------------------------
 # INSTALLED APPS
@@ -214,19 +212,16 @@ SIMPLE_JWT = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ----------------------------------------------------
-# EMAIL CONFIGURATION (SENDGRID SMTP)
+# EMAIL CONFIGURATION (Gmail SMTP)
 # ----------------------------------------------------
-from dotenv import load_dotenv
-load_dotenv()
-
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
-
-DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <no-reply@smartkiosk.uta.edu>"
-
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "npthien1198@gmail.com"
+EMAIL_HOST_PASSWORD = "dyrr hqkn yjpg pquo"
+DEFAULT_FROM_EMAIL = "UTA Smart Kiosk <npthien1198@gmail.com>"
 EMAIL_TIMEOUT = 30
-
-# Disable SMTP SSL certificate verification (dev only)
-SMTP_UNVERIFIED_CONTEXT = ssl._create_unverified_context()
 
 # ---------------------------------------------------------
 # SESSION / CSRF COOKIE SETTINGS (PRODUCTION / LIVE SITE)
@@ -269,4 +264,3 @@ CSRF_IGNORE_PATHS = [
 MEDIA_URL = "/api/media/"
 MEDIA_ROOT = "/var/data/media"
 
-print("DEBUG SENDGRID KEY:", os.environ.get("SENDGRID_API_KEY"))
