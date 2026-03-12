@@ -524,11 +524,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* radial-gradient replaced with flat color — gradient forces per-frame repaint
-     whenever anything inside composites. Flat rgba is a single fill pass. */
-  background: rgba(4, 8, 20, 0.88);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  /* backdrop-filter removed — full-screen blur(5px) on .modal-overlay forced a
+     complete re-composite on EVERY interaction inside the modal: toggle clicks,
+     input focus, room selection, and each scroll frame (causing 280-320ms scroll INP).
+     Background at 88% opacity is sufficient to dim content without blur cost. */
+  background: rgba(4, 8, 20, 0.9);
   z-index: 9999999 !important;
   animation: fadeIn 100ms ease-out;
   padding-top: 4rem;
@@ -540,11 +540,8 @@
    ============================================================ */
 .modal-box {
   position: relative;
-  background: linear-gradient(
-    to bottom right,
-    rgba(17, 24, 39, 0.85),
-    rgba(10, 15, 26, 0.9)
-  );
+  /* Flat color — gradient was painted on every frame of the slideUp entrance animation */
+  background: rgba(12, 18, 36, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 1.75rem;
   /* box-shadow glow reduced — large spread forces big dirty rect on every composite */
@@ -1768,19 +1765,20 @@ select option {
 /* ===========================================================
    STICKY SUBMIT BUTTON — APPLE-STYLE LIFT & SPRING RELEASE
    =========================================================== */
+/* submit-request-sticky: backdrop-filter removed — sticky+blur inside a scroll
+   container forces a blur re-composite on every scroll frame (major scroll INP cause).
+   Solid background replaces transparent+blur. transition:background removed.
+   transform duration reduced 1s→200ms. */
 .submit-request-sticky {
   position: sticky;
   bottom: -2.2rem;
-  background: transparent;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 15, 28, 0.95);
   padding: 1rem 1.25rem 2.25rem 1rem;
   z-index: 25;
   border-top: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 15px;
   transform: translateY(0);
-  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1),
-    /* smoother spring-like drop */ background 0.3s ease;
+  transition: transform 200ms ease;
   will-change: transform;
 }
 
@@ -2777,10 +2775,9 @@ select option {
   position: sticky;
   bottom: 0;
   margin: 1rem -2.5rem;
-  padding: 1.5rem 2.5rem 2.5rem; /* Increased bottom padding */
-  background: transparent;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  padding: 1.5rem 2.5rem 2.5rem;
+  /* backdrop-filter removed — sticky blur inside scroll = re-composite every scroll frame */
+  background: rgba(10, 15, 28, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 40;
 }
