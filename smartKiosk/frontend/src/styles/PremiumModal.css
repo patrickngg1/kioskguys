@@ -1,10 +1,8 @@
-/* BACKDROP */
+/* BACKDROP — backdrop-filter replaced with opaque dark overlay (cheaper) */
 .premium-modal-overlay {
   position: fixed;
   inset: 0;
-  background: transparent;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(2, 6, 23, 0.72);
   display: flex;
   justify-content: center;
   align-items: center;

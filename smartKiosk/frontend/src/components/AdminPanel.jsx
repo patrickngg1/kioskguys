@@ -2552,7 +2552,7 @@ function ItemEditModal({ isOpen, onClose, item, itemsByCategory, onSaved }) {
   return createPortal(
     <div
       className='modal-overlay'
-      style={{ zIndex: 99999, backdropFilter: 'blur(8px)' }}
+      style={{ zIndex: 99999, background: 'rgba(2, 6, 23, 0.72)' }}
       onClick={(e) => e.stopPropagation()}
     >
       <div

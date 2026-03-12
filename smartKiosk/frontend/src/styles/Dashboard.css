@@ -293,7 +293,7 @@
   font-weight: 700;
   text-decoration: none;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .dashboard-view .banner-cta:hover {
@@ -604,7 +604,7 @@
   background: linear-gradient(90deg, #2563eb, #1d4ed8);
   color: #fff;
   box-shadow: 0 0 14px rgba(37, 99, 235, 0.35);
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
   margin-top: 1rem;
   position: relative;
   overflow: hidden;
@@ -615,7 +615,7 @@
   content: '';
   position: absolute;
   top: 0;
-  left: -75%;
+  left: 0;
   width: 50%;
   height: 100%;
   background: linear-gradient(
@@ -623,14 +623,14 @@
     rgba(255, 255, 255, 0.4) 0%,
     rgba(255, 255, 255, 0) 80%
   );
-  transform: skewX(-20deg);
-  transition: left 0.45s ease;
+  transform: skewX(-20deg) translateX(-150%);
+  transition: transform 0.45s ease;
   z-index: 1;
 }
 
 .btn.btn-primary:not(.banner-cta):hover::before,
 .btn.btn-primary.w-full.mt-2:hover::before {
-  left: 125%;
+  transform: skewX(-20deg) translateX(250%);
 }
 
 .btn.btn-primary.w-full.mt-2:hover {
@@ -802,9 +802,9 @@
   color: #ffffff; /* Sets the SVG fill color */
 
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
   flex-shrink: 0;
-  margin-top: 2px; /* Visual alignment with text */
+  margin-top: 2px;
 }
 
 .edit-name-btn:hover {
@@ -962,7 +962,7 @@
   background: rgba(255, 255, 255, 0.08);
   color: #f8fafc;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .grid-2 input:focus,
 .grid-2 select:focus {
@@ -979,13 +979,12 @@
   border: none;
   border-radius: 0.9rem;
   padding: 0.85rem 1.25rem;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
   background-size: 220%;
   box-shadow: 0 6px 24px rgba(59, 130, 246, 0.3);
 }
 .btn-primary:hover {
-  background-position: right;
   box-shadow: 0 0 16px rgba(37, 99, 235, 0.35), 0 0 8px rgba(249, 115, 22, 0.25);
 }
 
@@ -1117,8 +1116,7 @@
 
 /* 3. Ensure the "UTA Swipe" button returns to its platinum state gracefully */
 .luxury-card-btn {
-  /* ... existing styles ... */
-  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }
 
 /* Internal Layout */
@@ -1219,10 +1217,10 @@
   font-weight: 700; /* Bolder text */
   letter-spacing: 0.02em;
 
-  padding: 0.8rem 0; /* Taller touch target */
-  border-radius: 14px; /* Matches the card radius */
+  padding: 0.8rem 0;
+  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 
   /* Flex centering */
   display: flex;
@@ -1272,10 +1270,8 @@
   align-items: center;
   gap: 1rem;
 
-  /* Dark aurora glass — reduced blur (Pi perf) */
-  background: rgba(17, 24, 39, 0.95);
-  backdrop-filter: blur(10px) saturate(150%);
-  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  /* Dark glass — backdrop-filter removed (replaced by more opaque bg) */
+  background: rgba(17, 24, 39, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.14);
 
   /* Glow */
@@ -1408,7 +1404,7 @@
   color: #cbd5e1;
   box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.06),
     0 4px 10px rgba(0, 0, 0, 0.5);
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease, background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .ampm-badge:hover {
@@ -1705,10 +1701,10 @@ select::-webkit-scrollbar-thumb {
   font-size: 0.9rem;
   cursor: pointer;
   user-select: none;
-  transition: all 0.25s ease;
   background: rgba(255, 255, 255, 0.08);
   box-shadow: 0 0 4px rgba(255, 255, 255, 0.1) inset;
   color: #d1d5db;
+  transition: transform 0.25s ease, background-color 0.25s ease;
 }
 
 .ampm-badge:hover {
@@ -2814,7 +2810,7 @@ select option {
 .status-saved-glow {
   box-shadow: 0 0 24px rgba(16, 185, 129, 0.25), 0 20px 45px rgba(0, 0, 0, 0.6) !important;
   border: 1px solid rgba(16, 185, 129, 0.4) !important;
-  transition: all 0.5s ease;
+  transition: box-shadow 0.5s ease, border-color 0.5s ease;
 }
 
 /* 3. Card Bloom - The card itself glows green when saved */
@@ -2847,10 +2843,8 @@ select option {
   right: 2.5rem;
   z-index: 50;
 
-  /* Glass Base — reduced blur (Pi perf) */
-  background: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  /* Glass base — backdrop-filter removed */
+  background: rgba(15, 23, 42, 0.80);
 
   padding: 1rem;
   border-radius: 24px;
@@ -2862,7 +2856,7 @@ select option {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  transition: all 0.4s ease;
+  transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
 /* Specific Dashboard Tweak: Slightly smaller & centered in the corner */
@@ -3091,13 +3085,13 @@ select option {
   font-size: 0.95rem;
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-red-signout:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
-  filter: brightness(1.1);
+  /* filter:brightness removed — triggers full repaint */
 }
 
 .btn-red-signout:active {

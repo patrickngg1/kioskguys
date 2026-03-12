@@ -64,11 +64,10 @@
   /* Keep your original sizing/glass styling here, but delete the animation property */
   width: clamp(380px, 30vw, 480px);
   background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(8px);
+  /* backdrop-filter removed — expensive even when not interacting */
   border-radius: 1.5rem;
   padding: clamp(1.5rem, 2.8vw, 2.5rem);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-  /* animation: fadeUp ... <--- DELETE THIS IN YOUR CSS */ 
 }
 
 /* --- KEYFRAMES --- */
@@ -164,7 +163,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 0 18px rgba(255, 255, 255, 0.3);
-  animation: titlePowerOn 1.2s ease-out both, kioskGlow 6s ease-in-out infinite;
+  animation: titlePowerOn 1.2s ease-out both;
   position: relative; /* For the ::after sweep */
 }
 
@@ -210,8 +209,8 @@
   position: relative;
   width: 440px;
   padding: 32px 40px 40px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.93);
+  /* backdrop-filter removed */
   border-radius: 22px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
   transition: filter 0.25s ease-out;
@@ -228,11 +227,11 @@
 .auth-blur-overlay {
   position: absolute;
   inset: 0;
-  backdrop-filter: blur(6px) brightness(0.86);
-  -webkit-backdrop-filter: blur(6px) brightness(0.86);
-  border-radius: 1rem; /* <--- UPDATED */
+  background: rgba(0, 0, 0, 0.45);
+  /* backdrop-filter removed */
+  border-radius: 1rem;
   z-index: 50;
-  transition: all 0.25s ease-out;
+  transition: opacity 0.25s ease-out;
   pointer-events: none;
 }
 
@@ -259,12 +258,12 @@
   }
 }
 
-/* Glass reflection sweep */
+/* Glass reflection sweep — left replaced with transform:translateX */
 .kiosk-title::after {
   content: '';
   position: absolute;
   top: 0;
-  left: -40%;
+  left: 0;
   width: 180%;
   height: 100%;
   background: linear-gradient(
@@ -272,24 +271,24 @@
     rgba(255, 255, 255, 0.25) 0%,
     rgba(255, 255, 255, 0) 60%
   );
-  transform: skewX(-20deg);
   animation: titleSweep 8s ease-in-out infinite;
   pointer-events: none;
 }
 @keyframes titleSweep {
   0% {
-    left: -60%;
+    transform: skewX(-20deg) translateX(-100%);
     opacity: 0;
   }
   25% {
-    left: 100%;
+    transform: skewX(-20deg) translateX(100%);
     opacity: 0.6;
   }
   40% {
+    transform: skewX(-20deg) translateX(100%);
     opacity: 0;
   }
   100% {
-    left: 100%;
+    transform: skewX(-20deg) translateX(100%);
     opacity: 0;
   }
 }
@@ -326,7 +325,7 @@
     inset 0 0 4px rgba(255, 255, 255, 0.4);
   transform: scale(1.015);
   box-sizing: border-box;
-  transition: all 0.25s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
 }
 .input-field::placeholder {
   color: #9ca3af;
@@ -470,7 +469,7 @@ input.input-field:-webkit-autofill {
   background-position: -180% -180%, center;
 
   animation: utaButtonShimmer 12s ease-in-out infinite;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
 /* ACTIVE SEGMENT */
@@ -586,10 +585,9 @@ input.input-field:-webkit-autofill {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.4); /* Frosted base */
   border: 1px solid rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  /* backdrop-filter removed */
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
@@ -634,10 +632,9 @@ input.input-field:-webkit-autofill {
 .glass-scanner-card.scanner-processing .scanner-beam {
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 50%;
   height: 100%;
-  /* A sharp, white-hot beam */
   background: linear-gradient(
     90deg,
     transparent,
@@ -645,7 +642,6 @@ input.input-field:-webkit-autofill {
     rgba(6, 182, 212, 0.4),
     transparent
   );
-  transform: skewX(-20deg);
   animation: premium-scan 1s infinite linear;
 }
 
@@ -687,12 +683,8 @@ input.input-field:-webkit-autofill {
 
 /* --- ANIMATIONS --- */
 @keyframes premium-scan {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 200%;
-  }
+  0% { transform: skewX(-20deg) translateX(-200%); }
+  100% { transform: skewX(-20deg) translateX(400%); }
 }
 
 @keyframes pulse-text {
@@ -947,7 +939,7 @@ input.input-field:-webkit-autofill {
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 12px;
   padding: 14px 20px;
-  backdrop-filter: blur(10px);
+  /* backdrop-filter removed */
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03),
     inset 0 0 0 1px rgba(255, 255, 255, 0.5);
 
@@ -965,11 +957,11 @@ input.input-field:-webkit-autofill {
   border-color: rgba(37, 99, 235, 0.3);
 }
 
-/* --- The "Scanner Beam" (Light passing through) --- */
+/* Scanner Beam — left replaced with transform:translateX */
 .scanner-beam {
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 50%;
   height: 100%;
   background: linear-gradient(
@@ -978,7 +970,6 @@ input.input-field:-webkit-autofill {
     rgba(255, 255, 255, 0.8) 50%,
     rgba(255, 255, 255, 0) 100%
   );
-  transform: skewX(-20deg);
   pointer-events: none;
   animation: beamSweep 4s infinite ease-in-out;
   mix-blend-mode: overlay;
@@ -986,18 +977,18 @@ input.input-field:-webkit-autofill {
 
 @keyframes beamSweep {
   0% {
-    left: -100%;
+    transform: skewX(-20deg) translateX(-200%);
     opacity: 0;
   }
   20% {
     opacity: 1;
   }
   50% {
-    left: 200%;
+    transform: skewX(-20deg) translateX(400%);
     opacity: 0;
   }
   100% {
-    left: 200%;
+    transform: skewX(-20deg) translateX(400%);
     opacity: 0;
   }
 }
@@ -1036,26 +1027,28 @@ input.input-field:-webkit-autofill {
   background: rgba(0, 0, 0, 0.5);
 }
 
-/* The laser line scanning the card icon itself */
+/* Scan line — left replaced with translateX; using calc trick to move across parent */
 .scan-line {
   position: absolute;
   top: 0;
   left: 0;
   width: 2px;
   height: 100%;
-  background: #f97316; /* UTA Orange */
+  background: #f97316;
   box-shadow: 0 0 8px #f97316;
   opacity: 0.8;
+  will-change: transform;
   animation: iconScan 2s ease-in-out infinite alternate;
 }
 
 @keyframes iconScan {
   0% {
-    left: 0;
+    transform: translateX(0);
     opacity: 0.4;
   }
   100% {
-    left: 100%;
+    /* card-shape is 32px wide; move ~30px = 1500% of 2px element */
+    transform: translateX(1500%);
     opacity: 1;
   }
 }
@@ -1192,15 +1185,13 @@ input.input-field:-webkit-autofill {
    ======================================================================= */
 
 /* --- 1. GLASS INPUT FIELDS --- */
-/* Makes inputs look like carved glass slots */
 .input-field {
-  background: rgba(255, 255, 255, 0.45) !important; /* Semi-transparent */
-  backdrop-filter: blur(12px); /* Frosted effect */
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.6) !important; /* Subtle glass edge */
+  background: rgba(255, 255, 255, 0.75) !important;
+  /* backdrop-filter removed */
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
   color: #1e293b;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
 /* Hover State: Slightly clearer glass */
@@ -1220,7 +1211,6 @@ input.input-field:-webkit-autofill {
 }
 
 /* --- 2. GLASS "SIGN IN" BUTTON --- */
-/* Replaces the flat blue button with a premium glass jewel */
 .auth-button {
   background: linear-gradient(
     135deg,
@@ -1228,12 +1218,12 @@ input.input-field:-webkit-autofill {
     rgba(37, 99, 235, 0.95) 100%
   );
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-top: 1px solid rgba(255, 255, 255, 0.4); /* Highlight on top edge */
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2),
-    0 10px 20px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3); /* Inner shine */
+    0 10px 20px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
 .auth-button:hover {
@@ -1247,12 +1237,10 @@ input.input-field:-webkit-autofill {
     0 20px 30px rgba(37, 99, 235, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.2); /* Inner glow */
 }
 
-/* --- 3. REFINED SWIPE CARD (Ultra Glass) --- */
-/* Updates the existing card to match the new inputs */
+/* --- 3. REFINED SWIPE CARD --- */
 .glass-scanner-card {
-  background: rgba(255, 255, 255, 0.35) !important;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, 0.55) !important;
+  /* backdrop-filter removed */
   border: 1px solid rgba(255, 255, 255, 0.5) !important;
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 }
