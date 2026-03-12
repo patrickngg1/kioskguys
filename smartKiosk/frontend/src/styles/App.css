@@ -125,6 +125,8 @@ html {
   overflow-y: auto; /* ✅ This will now create the main scrollbar */
   overflow-x: hidden;
   z-index: 1;
+  /* Isolate layout/paint so child changes don't propagate up to the viewport */
+  contain: layout paint;
 }
 
 

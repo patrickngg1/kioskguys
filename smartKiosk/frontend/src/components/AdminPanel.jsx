@@ -822,8 +822,8 @@ function RoomsSection({ rooms }) {
     return (
       roomForm.name !== originalForm.name ||
       String(roomForm.capacity) !== String(originalForm.capacity) ||
-      JSON.stringify(roomForm.features.sort()) !==
-        JSON.stringify(originalForm.features.sort())
+      JSON.stringify([...roomForm.features].sort()) !==
+        JSON.stringify([...originalForm.features].sort())
     );
   }, [roomForm, originalForm]);
 
@@ -1377,14 +1377,18 @@ function ItemsSection({
     return parts;
   };
 
-  const entries = Object.entries(itemsByCategory || {})
-    .map(([category, items]) => {
-      const filteredItems = items.filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      return [category, filteredItems];
-    })
-    .filter(([_, items]) => items.length > 0);
+  const entries = useMemo(
+    () =>
+      Object.entries(itemsByCategory || {})
+        .map(([category, items]) => {
+          const filteredItems = items.filter((item) =>
+            item.name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+          return [category, filteredItems];
+        })
+        .filter(([_, items]) => items.length > 0),
+    [itemsByCategory, searchQuery]
+  );
 
   return (
     <div className='admin-section'>
@@ -1707,6 +1711,15 @@ function BannersSection({ }) {
       setDeleteBtnState("idle");
     }
   };
+
+  // Pre-compute status for all banners so the render loop doesn't call
+  // computeStatus (with new Date()) on every paint cycle.
+  const bannerStatusMap = useMemo(() => {
+    const map = {};
+    banners.forEach((b) => { map[b.id] = computeStatus(b); });
+    return map;
+  }, [banners]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className='admin-section'>
       <div
@@ -1742,7 +1755,7 @@ function BannersSection({ }) {
         <div className='admin-grid'>
           {banners.map((b) => {
             const { statusText, chipClass, dateRange, repeatText } =
-              computeStatus(b);
+              bannerStatusMap[b.id] || computeStatus(b);
             const toggleState = togglingBanners[b.id] || 'idle';
             const isActive = b.is_active;
 

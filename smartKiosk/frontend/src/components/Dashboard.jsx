@@ -14,6 +14,9 @@ import SetPasswordOverlay from './SetPasswordOverlay';
 import PremiumInput from './PremiumInput';
 import { apiFetch } from '../api/api';
 
+// Static array — avoids allocating a new Array(12) on every render
+const LOGOUT_PARTICLE_INDICES = Array.from({ length: 12 }, (_, i) => i);
+
 // --- HELPER: Smart Button Inner Content ---
 // (Identical to AdminPanel to ensure premium animations)
 const SmartButtonContent = ({
@@ -423,33 +426,29 @@ export default function Dashboard() {
       {/*             MODALS & OVERLAYS             */}
       {/* ========================================= */}
 
-      {/* ADMIN PANEL */}
-      {showAdminPanel && (
-        <AdminPanel
-          isOpen={showAdminPanel}
-          onClose={() => setShowAdminPanel(false)}
-          user={user}
-          reservations={reservations}
-          itemsByCategory={itemsByCategory}
-          rooms={[]}
-          users={[]}
-          loadReservations={loadReservations}
-        />
-      )}
+      {/* ADMIN PANEL — always mounted so state/data survives open/close */}
+      <AdminPanel
+        isOpen={showAdminPanel}
+        onClose={() => setShowAdminPanel(false)}
+        user={user}
+        reservations={reservations}
+        itemsByCategory={itemsByCategory}
+        rooms={[]}
+        users={[]}
+        loadReservations={loadReservations}
+      />
 
-      {/* RESERVE MODAL */}
-      {showReserveModal && (
-        <ReserveConferenceRoom
-          isOpen={showReserveModal}
-          onClose={() => {
-            setShowReserveModal(false);
-            loadReservations();
-          }}
-          user={user}
-          existingReservations={reservations}
-          onReservationCreated={() => loadReservations()}
-        />
-      )}
+      {/* RESERVE MODAL — always mounted so state/data survives open/close */}
+      <ReserveConferenceRoom
+        isOpen={showReserveModal}
+        onClose={() => {
+          setShowReserveModal(false);
+          loadReservations();
+        }}
+        user={user}
+        existingReservations={reservations}
+        onReservationCreated={() => loadReservations()}
+      />
 
       {/* EDIT NAME MODAL */}
       {showEditNameModal && (
@@ -530,7 +529,7 @@ export default function Dashboard() {
               <span className='logout-message-sub'>See you next time ✨</span>
             </div>
             <div className='portal-particles'>
-              {[...Array(12)].map((_, i) => (
+              {LOGOUT_PARTICLE_INDICES.map((i) => (
                 <span key={i} className={`portal-particle p-${i + 1}`}></span>
               ))}
             </div>

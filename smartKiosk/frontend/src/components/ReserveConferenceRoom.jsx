@@ -521,6 +521,7 @@ function ReserveConferenceRoom({
   const [dayReservationsError, setDayReservationsError] = useState(null);
 
   const [selectedIds, setSelectedIds] = useState([]);
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [locallyCancelledIds, setLocallyCancelledIds] = useState([]);
 
@@ -826,6 +827,8 @@ function ReserveConferenceRoom({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className='modal-overlay'>
       {/* Inject animations directly */}
@@ -929,7 +932,7 @@ function ReserveConferenceRoom({
                   {/* 1. RENDER UPCOMING RESERVATIONS */}
                   {upcoming.length > 0
                     ? upcoming.map((res) => {
-                        const isSelected = selectedIds.includes(res.id);
+                        const isSelected = selectedIdSet.has(res.id);
                         return (
                           <div
                             key={res.id}
