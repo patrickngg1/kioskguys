@@ -1159,16 +1159,59 @@ def create_room_reservation(request):
     )
 
     # ------------------------------------------------------
-    # Send email confirmation (does not block reservation)
+    # Send confirmation email (non-blocking)
     # ------------------------------------------------------
-    try:
-        email_reservation_confirmation(reservation)
-    except Exception as e:
-        print("Email error:", e)
+    email_sent = False
+    email_error = None
+    calendar_link = None
 
-    # ------------------------------------------------------
-    # Return success response
-    # ------------------------------------------------------
+    try:
+        from api.utils.calendar_utils import create_ics_content, build_calendar_links
+        from api.utils.email_templates import render_reservation_email
+
+        tz = timezone.get_current_timezone()
+        start_aware = timezone.make_aware(
+            datetime.combine(reservation.date, reservation.start_time), tz
+        )
+        end_aware = timezone.make_aware(
+            datetime.combine(reservation.date, reservation.end_time), tz
+        )
+
+        ics_data = create_ics_content(
+            room_name=room.name,
+            start_dt=start_aware,
+            end_dt=end_aware,
+            reservation_id=reservation.id,
+            user_email=email,
+        )
+
+        logo_url = (
+            "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/"
+            "smartKiosk/media/ui_assets/apple-touch-icon.png"
+        )
+
+        calendar_links = build_calendar_links(
+            room_name=room.name,
+            start_dt=start_aware,
+            end_dt=end_aware,
+            details_url=request.build_absolute_uri("/").rstrip("/") + "/dashboard",
+        )
+
+        html_body = render_reservation_email(user, reservation, calendar_links, logo_url)
+
+        send_via_sendgrid(
+            to_email=email,
+            subject=f"✅ Reservation Confirmed — {room.name}",
+            html_content=html_body,
+            ics_content=ics_data,
+        )
+
+        email_sent = True
+        calendar_link = calendar_links.get("google")
+
+    except Exception as e:
+        email_error = str(e)
+
     return JsonResponse({
         "ok": True,
         "reservation": {
@@ -1183,100 +1226,11 @@ def create_room_reservation(request):
             "endTime": reservation.end_time.strftime("%H:%M"),
             "cancelled": reservation.cancelled,
             "cancelReason": reservation.cancel_reason or "",
-        }
-    })
-
-
-
-        # ---------------------------------------------------------
-        # PREMIUM CALENDAR EMAIL (UTA + Apple Vision Glass Style)
-        # ---------------------------------------------------------
-    email_sent = False
-    email_error = None
-    calendar_link = None
-    html_body = None  # avoid NameError
-
-    try:
-        from api.utils.calendar_utils import create_ics_content, build_calendar_links
-        from api.utils.email_templates import render_reservation_email
-
-        tz = timezone.get_current_timezone()
-
-        start_naive = datetime.combine(date_value, start_value)
-        end_naive = datetime.combine(date_value, end_value)
-
-        start_dt = timezone.make_aware(start_naive, tz)
-        end_dt = timezone.make_aware(end_naive, tz)
-
-        # ICS bytes
-        ics_data = create_ics_content(
-            room_name=room.name,
-            start_dt=start_dt,
-            end_dt=end_dt,
-            reservation_id=reservation.id,
-            user_email=email,
-        )
-
-        backend_base = request.build_absolute_uri("/").rstrip("/")
-        frontend_base = backend_base
-
-        logo_url = "https://raw.githubusercontent.com/patrickngg1/kioskguys/main/smartKiosk/media/ui_assets/apple-touch-icon.png"
-
-
-        calendar_links = build_calendar_links(
-            room_name=room.name,
-            start_dt=start_dt,
-            end_dt=end_dt,
-            details_url=f"{frontend_base}/dashboard",
-        )
-
-        # -------------------------------
-        # Build full premium HTML body
-        # -------------------------------
-        html_body = render_reservation_email(
-            request.user,
-            reservation,
-            calendar_links,
-            logo_url
-        )
-
-
-        send_via_sendgrid(
-            to_email=email,
-            subject=f"✅ Reservation Confirmed — {room.name}",
-            html_content=html_body,
-            ics_content=ics_data,   # attach ICS
-        )
-
-        email_sent = True
-        calendar_link = calendar_links.get("google")
-
-    except Exception as e:
-        email_error = str(e)
-        email_sent = False
-
-
-    return JsonResponse(
-        {
-            "ok": True,
-            "reservation": {
-                "id": reservation.id,
-                "roomId": room.id,
-                "roomName": room.name,
-                "capacity": room.capacity,
-                "hasScreen": room.has_screen,
-                "hasHdmi": room.has_hdmi,
-                "date": str(reservation.date),
-                "startTime": reservation.start_time.strftime("%H:%M"),
-                "endTime": reservation.end_time.strftime("%H:%M"),
-                "cancelled": reservation.cancelled,
-            },
-            "emailSent": email_sent,
-            "emailError": email_error,
-            "calendarLink": calendar_link,
         },
-        status=201,
-    )
+        "emailSent": email_sent,
+        "emailError": email_error,
+        "calendarLink": calendar_link,
+    }, status=201)
 
 # ---------------------------------------------------------
 # GET /api/rooms/reservations/my/
@@ -1592,7 +1546,7 @@ def admin_cancel_reservation(request, reservation_id):
         reservation.cancel_reason = reason
         reservation.save()
 
-        send_cancellation_email(reservation, reason)
+        send_cancellation_email(reservation, reason, cancelled_by=request.user.username)
 
         return JsonResponse({"ok": True, "message": "Reservation cancelled"})
 
