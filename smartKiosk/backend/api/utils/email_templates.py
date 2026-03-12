@@ -5,7 +5,8 @@ import datetime
 # RENDER RESERVATION CONFIRMATION (PREMIUM VERSION)
 # --------------------------------------------------
 def render_reservation_email(user, reservation, calendar_links, logo_url):
-    user_first = user.first_name or user.username
+    full = getattr(reservation, "full_name", None) or user.get_full_name() or ""
+    user_first = full.split()[0] if full.strip() else (user.first_name or user.username)
 
     room_name = reservation.room.name
     date_str = reservation.date.strftime("%Y-%m-%d")
@@ -237,7 +238,8 @@ def render_cancellation_email(reservation, reason, logo_url, cancelled_by):
     """
 
     user = reservation.user
-    user_first = user.first_name or user.username or "User"
+    full = getattr(reservation, "full_name", None) or user.get_full_name() or ""
+    user_first = full.split()[0] if full.strip() else (user.first_name or user.username or "User")
 
     room_name = reservation.room.name
     date_str = reservation.date.strftime("%Y-%m-%d")
@@ -402,7 +404,8 @@ def render_bulk_cancellation_email(reservations, logo_url, cancelled_by, reason)
 
     # All reservations belong to same user
     user = reservations[0].user
-    user_first = user.first_name or user.username or "User"
+    full = getattr(reservations[0], "full_name", None) or user.get_full_name() or ""
+    user_first = full.split()[0] if full.strip() else (user.first_name or user.username or "User")
 
     # Build reservation rows
     rows_html = ""
