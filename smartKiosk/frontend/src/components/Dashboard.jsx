@@ -426,17 +426,20 @@ export default function Dashboard() {
       {/*             MODALS & OVERLAYS             */}
       {/* ========================================= */}
 
-      {/* ADMIN PANEL — always mounted so state/data survives open/close */}
-      <AdminPanel
-        isOpen={showAdminPanel}
-        onClose={() => setShowAdminPanel(false)}
-        user={user}
-        reservations={reservations}
-        itemsByCategory={itemsByCategory}
-        rooms={[]}
-        users={[]}
-        loadReservations={loadReservations}
-      />
+      {/* ADMIN PANEL — conditional render: component has useMemo after its early return
+          guard, so it cannot be always-mounted (hooks-after-conditional-return violation) */}
+      {showAdminPanel && (
+        <AdminPanel
+          isOpen={showAdminPanel}
+          onClose={() => setShowAdminPanel(false)}
+          user={user}
+          reservations={reservations}
+          itemsByCategory={itemsByCategory}
+          rooms={[]}
+          users={[]}
+          loadReservations={loadReservations}
+        />
+      )}
 
       {/* RESERVE MODAL — always mounted so state/data survives open/close */}
       <ReserveConferenceRoom
